@@ -1,0 +1,1028 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <meta name="design_doc_mode" content="canvas">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    body{margin:0;background:#EAEDF2;font-family:'Inter',sans-serif;color:#2E2E2E}
+    a{color:#1B2A4A}
+    a:hover{color:#8BC53F}
+  </style>
+</helmet>
+
+<section style="padding:48px;display:flex;flex-direction:column;gap:56px;max-width:2200px">
+
+  <div style="display:flex;flex-direction:column;gap:6px">
+    <div style="font-family:'Manrope',sans-serif;font-weight:800;font-size:28px;color:#1B2A4A">CoplanFit — Propuestas de diseño</div>
+    <div style="font-size:14px;color:#5A6270">3 direcciones de logo y 3 versiones visuales de la app (mismo layout, distinto tono)</div>
+  </div>
+
+  <!-- ===================== LOGOS ===================== -->
+  <div style="display:flex;flex-direction:column;gap:20px">
+    <div style="font-family:'Manrope',sans-serif;font-weight:700;font-size:20px;color:#1B2A4A">Logos</div>
+    <div style="display:flex;gap:28px;flex-wrap:wrap">
+
+      <!-- 1a: Isotipo + wordmark -->
+      <div id="1a" style="width:340px;background:#fff;border-radius:16px;box-shadow:0 8px 24px rgba(27,42,74,0.10);padding:24px;display:flex;flex-direction:column;gap:16px">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <span style="font-size:11px;font-weight:700;color:#8BC53F;background:#EAF6D9;padding:3px 10px;border-radius:20px">1a</span>
+          <span style="font-size:12px;color:#5A6270">Isotipo + wordmark</span>
+        </div>
+        <div style="background:#F7F8FA;border-radius:12px;padding:28px 16px;display:flex;align-items:center;justify-content:center;gap:12px">
+          <div style="width:44px;height:44px;position:relative">
+            <div style="position:absolute;left:0;top:6px;width:30px;height:30px;border-radius:9px;background:#1B2A4A"></div>
+            <div style="position:absolute;right:0;bottom:6px;width:30px;height:30px;border-radius:9px;background:#8BC53F"></div>
+          </div>
+          <div style="font-family:'Manrope',sans-serif;font-weight:800;font-size:24px;color:#1B2A4A">Coplan<span style="color:#8BC53F">Fit</span></div>
+        </div>
+        <div style="background:#1B2A4A;border-radius:12px;padding:28px 16px;display:flex;align-items:center;justify-content:center;gap:12px">
+          <div style="width:44px;height:44px;position:relative">
+            <div style="position:absolute;left:0;top:6px;width:30px;height:30px;border-radius:9px;background:#F7F8FA"></div>
+            <div style="position:absolute;right:0;bottom:6px;width:30px;height:30px;border-radius:9px;background:#8BC53F"></div>
+          </div>
+          <div style="font-family:'Manrope',sans-serif;font-weight:800;font-size:24px;color:#fff">Coplan<span style="color:#8BC53F">Fit</span></div>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center">
+          <div style="width:56px;height:56px;border-radius:14px;background:#1B2A4A;position:relative;flex-shrink:0">
+            <div style="position:absolute;left:10px;top:12px;width:18px;height:18px;border-radius:6px;background:#F7F8FA"></div>
+            <div style="position:absolute;right:10px;bottom:12px;width:18px;height:18px;border-radius:6px;background:#8BC53F"></div>
+          </div>
+          <div style="font-size:12px;color:#5A6270;line-height:1.5">Dos formas superpuestas: el entrenador y el cliente co-planificando. Funciona como ícono de app.</div>
+        </div>
+      </div>
+
+      <!-- 1b: Monograma -->
+      <div id="1b" style="width:340px;background:#fff;border-radius:16px;box-shadow:0 8px 24px rgba(27,42,74,0.10);padding:24px;display:flex;flex-direction:column;gap:16px">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <span style="font-size:11px;font-weight:700;color:#8BC53F;background:#EAF6D9;padding:3px 10px;border-radius:20px">1b</span>
+          <span style="font-size:12px;color:#5A6270">Monograma / lettermark</span>
+        </div>
+        <div style="background:#F7F8FA;border-radius:12px;padding:28px 16px;display:flex;align-items:center;justify-content:center;gap:14px">
+          <div style="width:52px;height:52px;border-radius:14px;background:#1B2A4A;display:flex;align-items:center;justify-content:center;font-family:'Manrope',sans-serif;font-weight:800;font-size:20px;color:#8BC53F;letter-spacing:-1px">CF</div>
+          <div style="font-family:'Manrope',sans-serif;font-weight:800;font-size:24px;color:#1B2A4A">Coplan<span style="color:#8BC53F">Fit</span></div>
+        </div>
+        <div style="background:#1B2A4A;border-radius:12px;padding:28px 16px;display:flex;align-items:center;justify-content:center;gap:14px">
+          <div style="width:52px;height:52px;border-radius:14px;background:#8BC53F;display:flex;align-items:center;justify-content:center;font-family:'Manrope',sans-serif;font-weight:800;font-size:20px;color:#1B2A4A;letter-spacing:-1px">CF</div>
+          <div style="font-family:'Manrope',sans-serif;font-weight:800;font-size:24px;color:#fff">Coplan<span style="color:#8BC53F">Fit</span></div>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center">
+          <div style="width:56px;height:56px;border-radius:16px;background:#1B2A4A;display:flex;align-items:center;justify-content:center;font-family:'Manrope',sans-serif;font-weight:800;font-size:20px;color:#8BC53F;flex-shrink:0">CF</div>
+          <div style="font-size:12px;color:#5A6270;line-height:1.5">Badge tipográfico simple, sólido para ícono de app y favicon; el más sobrio de los tres.</div>
+        </div>
+      </div>
+
+      <!-- 1c: Símbolo abstracto (anillo de progreso) -->
+      <div id="1c" style="width:340px;background:#fff;border-radius:16px;box-shadow:0 8px 24px rgba(27,42,74,0.10);padding:24px;display:flex;flex-direction:column;gap:16px">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <span style="font-size:11px;font-weight:700;color:#8BC53F;background:#EAF6D9;padding:3px 10px;border-radius:20px">1c</span>
+          <span style="font-size:12px;color:#5A6270">Símbolo abstracto</span>
+        </div>
+        <div style="background:#F7F8FA;border-radius:12px;padding:28px 16px;display:flex;align-items:center;justify-content:center;gap:14px">
+          <div style="width:44px;height:44px;border-radius:50%;background:conic-gradient(#8BC53F 0deg 270deg,#E3E7EE 270deg 360deg);display:flex;align-items:center;justify-content:center">
+            <div style="width:30px;height:30px;border-radius:50%;background:#F7F8FA"></div>
+          </div>
+          <div style="font-family:'Manrope',sans-serif;font-weight:800;font-size:24px;color:#1B2A4A">Coplan<span style="color:#8BC53F">Fit</span></div>
+        </div>
+        <div style="background:#1B2A4A;border-radius:12px;padding:28px 16px;display:flex;align-items:center;justify-content:center;gap:14px">
+          <div style="width:44px;height:44px;border-radius:50%;background:conic-gradient(#8BC53F 0deg 270deg,#33456B 270deg 360deg);display:flex;align-items:center;justify-content:center">
+            <div style="width:30px;height:30px;border-radius:50%;background:#1B2A4A"></div>
+          </div>
+          <div style="font-family:'Manrope',sans-serif;font-weight:800;font-size:24px;color:#fff">Coplan<span style="color:#8BC53F">Fit</span></div>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center">
+          <div style="width:56px;height:56px;border-radius:16px;background:#1B2A4A;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+            <div style="width:32px;height:32px;border-radius:50%;background:conic-gradient(#8BC53F 0deg 270deg,#33456B 270deg 360deg)"></div>
+          </div>
+          <div style="font-size:12px;color:#5A6270;line-height:1.5">Anillo en progreso: el plan que se va completando junto al entrenador. El más distintivo de los tres.</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ===================== APP — 3 VERSIONES ===================== -->
+  <div style="display:flex;flex-direction:column;gap:24px">
+    <div style="font-family:'Manrope',sans-serif;font-weight:700;font-size:20px;color:#1B2A4A">Diseño de app (Fase 1 — Entrenador)</div>
+    <div style="font-size:13px;color:#5A6270;max-width:640px">Mismo layout en las 3 versiones; lo que cambia es el tono visual. Pensado para iOS y Android por igual (chrome de sistema omitido en estos mockups).</div>
+
+    <!-- VERSION 1d: NAVY PRO -->
+    <div id="1d" style="display:flex;flex-direction:column;gap:16px">
+      <div style="display:flex;gap:10px;align-items:center">
+        <span style="font-size:11px;font-weight:700;color:#8BC53F;background:#EAF6D9;padding:3px 10px;border-radius:20px">1d</span>
+        <span style="font-family:'Manrope',sans-serif;font-weight:700;font-size:15px;color:#1B2A4A">Navy Pro — header oscuro, cuerpo claro</span>
+      </div>
+      <div style="display:flex;gap:20px;overflow-x:auto;padding-bottom:8px">
+
+        <div style="width:280px;height:600px;border-radius:28px;background:#F7F8FA;box-shadow:0 12px 30px rgba(27,42,74,0.18);overflow:hidden;flex-shrink:0;display:flex;flex-direction:column">
+          <div style="background:#1B2A4A;padding:36px 20px 24px;display:flex;flex-direction:column;gap:6px">
+            <div style="width:36px;height:36px;border-radius:10px;background:#8BC53F;display:flex;align-items:center;justify-content:center;font-family:'Manrope',sans-serif;font-weight:800;font-size:14px;color:#1B2A4A">CF</div>
+            <div style="font-family:'Manrope',sans-serif;font-weight:800;font-size:19px;color:#fff;margin-top:8px">Bienvenido de nuevo</div>
+          </div>
+          <div style="padding:20px;display:flex;flex-direction:column;gap:10px">
+            <div style="height:42px;border-radius:10px;border:1px solid #DDE2EA;background:#fff;display:flex;align-items:center;padding:0 12px;font-size:12px;color:#8B93A3">Correo electrónico</div>
+            <div style="height:42px;border-radius:10px;border:1px solid #DDE2EA;background:#fff;display:flex;align-items:center;padding:0 12px;font-size:12px;color:#8B93A3">Contraseña</div>
+            <div style="height:42px;border-radius:10px;background:#8BC53F;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;color:#1B2A4A;margin-top:8px">Iniciar sesión</div>
+            <div style="text-align:center;font-size:11px;color:#5A6270;margin-top:6px">¿Eres nuevo? <span style="color:#1B2A4A;font-weight:600">Crear cuenta</span></div>
+          </div>
+        </div>
+
+        <div style="width:280px;height:600px;border-radius:28px;background:#F7F8FA;box-shadow:0 12px 30px rgba(27,42,74,0.18);overflow:hidden;flex-shrink:0;display:flex;flex-direction:column">
+          <div style="background:#1B2A4A;padding:36px 20px 18px;display:flex;justify-content:space-between;align-items:center">
+            <div style="font-family:'Manrope',sans-serif;font-weight:800;font-size:18px;color:#fff">Clientes</div>
+            <div style="font-size:10px;font-weight:700;color:#1B2A4A;background:#8BC53F;padding:4px 9px;border-radius:20px">8/10</div>
+          </div>
+          <div style="padding:16px;display:flex;flex-direction:column;gap:8px;overflow:hidden;position:relative;flex:1">
+            <div style="height:36px;border-radius:9px;background:#fff;border:1px solid #DDE2EA;display:flex;align-items:center;padding:0 12px;font-size:11px;color:#8B93A3">Buscar cliente…</div>
+            <div style="display:flex;flex-direction:column;gap:8px;margin-top:4px">
+              <div style="display:flex;gap:10px;align-items:center;background:#fff;border-radius:10px;padding:10px;box-shadow:0 2px 6px rgba(27,42,74,0.06)"><div style="width:34px;height:34px;border-radius:50%;background:#DDE2EA;flex-shrink:0"></div><div style="display:flex;flex-direction:column;gap:2px"><div style="font-size:12px;font-weight:700;color:#2E2E2E">María Gómez</div><div style="font-size:10px;color:#8B93A3">Objetivo: volumen · v3 vigente</div></div></div>
+              <div style="display:flex;gap:10px;align-items:center;background:#fff;border-radius:10px;padding:10px;box-shadow:0 2px 6px rgba(27,42,74,0.06)"><div style="width:34px;height:34px;border-radius:50%;background:#DDE2EA;flex-shrink:0"></div><div style="display:flex;flex-direction:column;gap:2px"><div style="font-size:12px;font-weight:700;color:#2E2E2E">Carlos Ruiz</div><div style="font-size:10px;color:#8B93A3">Objetivo: definición · v1 vigente</div></div></div>
+              <div style="display:flex;gap:10px;align-items:center;background:#fff;border-radius:10px;padding:10px;box-shadow:0 2px 6px rgba(27,42,74,0.06)"><div style="width:34px;height:34px;border-radius:50%;background:#DDE2EA;flex-shrink:0"></div><div style="display:flex;flex-direction:column;gap:2px"><div style="font-size:12px;font-weight:700;color:#2E2E2E">Ana Torres</div><div style="font-size:10px;color:#8B93A3">Objetivo: subir de peso · v2 vigente</div></div></div>
+            </div>
+            <div style="position:absolute;bottom:72px;right:16px;width:44px;height:44px;border-radius:50%;background:#8BC53F;display:flex;align-items:center;justify-content:center;color:#1B2A4A;font-weight:800;font-size:18px">+</div>
+          </div>
+          <div style="display:flex;justify-content:space-around;align-items:center;height:56px;border-top:1px solid #E4E7ED;background:#fff;flex-shrink:0">
+            <div style="display:flex;flex-direction:column;align-items:center;gap:2px"><div style="width:16px;height:16px;border-radius:4px;background:#8BC53F"></div><div style="font-size:8px;color:#1B2A4A;font-weight:700">Clientes</div></div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:2px"><div style="width:16px;height:16px;border-radius:4px;background:#DDE2EA"></div><div style="font-size:8px;color:#8B93A3;font-weight:600">Suscripción</div></div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:2px"><div style="width:16px;height:16px;border-radius:4px;background:#DDE2EA"></div><div style="font-size:8px;color:#8B93A3;font-weight:600">Perfil</div></div>
+          </div>
+        </div>
+
+        <div style="width:280px;height:640px;border-radius:28px;background:#F7F8FA;box-shadow:0 12px 30px rgba(27,42,74,0.18);overflow:hidden;flex-shrink:0;display:flex;flex-direction:column">
+          <div style="background:#1B2A4A;padding:36px 20px 18px"><div style="font-family:'Manrope',sans-serif;font-weight:800;font-size:17px;color:#fff">‹ Nuevo cliente</div></div>
+          <div style="padding:16px;display:flex;flex-direction:column;gap:8px;overflow:hidden">
+            <div><div style="font-size:9px;font-weight:700;color:#5A6270;text-transform:uppercase;margin-bottom:3px">Nombre completo</div><div style="height:36px;border-radius:8px;border:1px solid #DDE2EA;background:#fff;display:flex;align-items:center;padding:0 10px;font-size:11px;color:#2E2E2E">Ej: Carlos Ruiz</div></div>
+            <div><div style="font-size:9px;font-weight:700;color:#5A6270;text-transform:uppercase;margin-bottom:3px">Correo o teléfono</div><div style="height:36px;border-radius:8px;border:1px solid #DDE2EA;background:#fff;display:flex;align-items:center;padding:0 10px;font-size:11px;color:#8B93A3">Opcional</div></div>
+            <div style="display:flex;gap:8px">
+              <div style="flex:1"><div style="font-size:9px;font-weight:700;color:#5A6270;text-transform:uppercase;margin-bottom:3px">Edad</div><div style="height:36px;border-radius:8px;border:1px solid #DDE2EA;background:#fff;display:flex;align-items:center;padding:0 10px;font-size:11px;color:#2E2E2E">—</div></div>
+              <div style="flex:1"><div style="font-size:9px;font-weight:700;color:#5A6270;text-transform:uppercase;margin-bottom:3px">Objetivo</div><div style="height:36px;border-radius:8px;border:1px solid #DDE2EA;background:#fff;display:flex;align-items:center;padding:0 10px;font-size:11px;color:#2E2E2E">Elegir ▾</div></div>
+            </div>
+            <div style="font-size:10px;color:#8B93A3;margin-top:2px">Los demás datos (alergias, condiciones, medidas) se completan luego, en la ficha del cliente.</div>
+            <div style="height:42px;border-radius:10px;background:#8BC53F;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;color:#1B2A4A;margin-top:auto">Crear cliente</div>
+          </div>
+        </div>
+
+        <div style="width:280px;height:640px;border-radius:28px;background:#F7F8FA;box-shadow:0 12px 30px rgba(27,42,74,0.18);overflow:hidden;flex-shrink:0;display:flex;flex-direction:column">
+          <div style="background:#1B2A4A;padding:36px 20px 16px;display:flex;flex-direction:column;gap:4px">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <div style="font-family:'Manrope',sans-serif;font-weight:800;font-size:17px;color:#fff">‹ María Gómez</div>
+              <div style="font-size:12px;color:#B9C2D6">✎</div>
+            </div>
+            <div style="font-size:10px;color:#B9C2D6">28 años · Cliente desde ene. 2026</div>
+          </div>
+          <div style="display:flex;gap:0;padding:0 20px;border-bottom:1px solid #DDE2EA;background:#fff">
+            <div style="padding:10px 0;margin-right:12px;font-size:11px;font-weight:700;color:#1B2A4A;border-bottom:2px solid #8BC53F">Datos</div>
+            <div style="padding:10px 0;margin-right:12px;font-size:11px;color:#8B93A3">Salud</div>
+            <div style="padding:10px 0;margin-right:12px;font-size:11px;color:#8B93A3">Antropometría</div>
+            <div style="padding:10px 0;font-size:11px;color:#8B93A3">Planes</div>
+          </div>
+          <div style="padding:16px;display:flex;flex-direction:column;gap:10px">
+            <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px">
+              <span style="font-size:10px;font-weight:600;color:#B4442E;background:#FFE4DF;padding:4px 9px;border-radius:20px">Alergia: mariscos</span>
+              <span style="font-size:10px;font-weight:600;color:#5A6270;background:#EEF0F4;padding:4px 9px;border-radius:20px">Evita: frutos secos</span>
+              <span style="font-size:10px;font-weight:600;color:#4B7A1F;background:#EAF6D9;padding:4px 9px;border-radius:20px">Objetivo: volumen</span>
+            </div>
+            <div style="font-size:10px;color:#5A6270;margin-top:2px">Última medición antropométrica: <span style="font-weight:700;color:#2E2E2E">15 jul 2026</span></div>
+          </div>
+        </div>
+
+        <div style="width:280px;height:820px;border-radius:28px;background:#F7F8FA;box-shadow:0 12px 30px rgba(27,42,74,0.18);overflow:hidden;flex-shrink:0;display:flex;flex-direction:column">
+          <div style="background:#1B2A4A;padding:36px 20px 16px"><div style="font-family:'Manrope',sans-serif;font-weight:800;font-size:17px;color:#fff">‹ Historial completo</div><div style="font-size:10px;color:#B9C2D6">María Gómez · antropometría</div></div>
+          <div style="padding:16px;display:flex;flex-direction:column;gap:8px;overflow:hidden">
+            <div style="font-size:9px;color:#8B93A3">Máximo 2 selecciones — desmarca una para elegir otra</div>
+            <div style="display:flex;align-items:center;gap:8px;background:#fff;border-radius:8px;padding:8px 10px;border:1px solid #8BC53F"><span style="width:16px;height:16px;border-radius:4px;background:#8BC53F;color:#fff;display:flex;align-items:center;justify-content:center;font-size:10px;flex-shrink:0">✓</span><div style="flex:1"><div style="font-size:10px;font-weight:700;color:#2E2E2E">15 jul 2026</div><div style="font-size:9px;color:#8B93A3">64.2 kg · 18% grasa · cintura 72cm · IMC 23.6</div></div></div>
+            <div style="display:flex;align-items:center;gap:8px;background:#F7F8FA;border-radius:8px;padding:8px 10px;opacity:.5"><span style="width:16px;height:16px;border-radius:4px;border:2px solid #DDE2EA;flex-shrink:0"></span><div style="flex:1"><div style="font-size:10px;font-weight:700;color:#2E2E2E">15 may 2026</div><div style="font-size:9px;color:#8B93A3">63.1 kg · 19% grasa · cintura 74cm · IMC 23.2</div></div></div>
+            <div style="display:flex;align-items:center;gap:8px;background:#fff;border-radius:8px;padding:8px 10px;border:1px solid #8BC53F"><span style="width:16px;height:16px;border-radius:4px;background:#8BC53F;color:#fff;display:flex;align-items:center;justify-content:center;font-size:10px;flex-shrink:0">✓</span><div style="flex:1"><div style="font-size:10px;font-weight:700;color:#2E2E2E">10 mar 2026</div><div style="font-size:9px;color:#8B93A3">62.4 kg · 19% grasa · cintura 75cm · IMC 22.9</div></div></div>
+            <div style="display:flex;align-items:center;gap:8px;background:#F7F8FA;border-radius:8px;padding:8px 10px;opacity:.5"><span style="width:16px;height:16px;border-radius:4px;border:2px solid #DDE2EA;flex-shrink:0"></span><div style="flex:1"><div style="font-size:10px;font-weight:700;color:#2E2E2E">10 ene 2026</div><div style="font-size:9px;color:#8B93A3">61.8 kg · 20% grasa · cintura 77cm · IMC 22.7</div></div></div>
+            <div style="height:40px;border-radius:10px;background:#8BC53F;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;color:#1B2A4A;margin-top:4px">Comparar seleccionadas (2)</div>
+          </div>
+        </div>
+
+        <div style="width:280px;height:760px;border-radius:28px;background:#F7F8FA;box-shadow:0 12px 30px rgba(27,42,74,0.18);overflow:hidden;flex-shrink:0;display:flex;flex-direction:column">
+          <div style="background:#1B2A4A;padding:36px 20px 16px"><div style="font-family:'Manrope',sans-serif;font-weight:800;font-size:17px;color:#fff">‹ Comparar mediciones</div><div style="font-size:10px;color:#B9C2D6">María Gómez</div></div>
+          <div style="padding:16px;display:flex;flex-direction:column;gap:6px;overflow:hidden">
+            <div style="display:grid;grid-template-columns:1.3fr 1fr 1fr;gap:4px;padding-bottom:6px;border-bottom:1px solid #DDE2EA">
+              <div></div>
+              <div style="font-size:9px;font-weight:800;color:#5A6270;text-align:center">10 mar</div>
+              <div style="font-size:9px;font-weight:800;color:#5A6270;text-align:center">15 jul</div>
+            </div>
+            <div style="display:grid;grid-template-columns:1.3fr 1fr 1fr;gap:4px;align-items:center"><div style="font-size:10px;color:#2E2E2E">Peso</div><div style="font-size:10px;color:#5A6270;text-align:center">62.4 kg</div><div style="font-size:10px;font-weight:700;color:#4B7A1F;text-align:center">64.2 kg ↑</div></div>
+            <div style="display:grid;grid-template-columns:1.3fr 1fr 1fr;gap:4px;align-items:center"><div style="font-size:10px;color:#2E2E2E">% grasa</div><div style="font-size:10px;color:#5A6270;text-align:center">19%</div><div style="font-size:10px;font-weight:700;color:#4B7A1F;text-align:center">18% ↓</div></div>
+            <div style="display:grid;grid-template-columns:1.3fr 1fr 1fr;gap:4px;align-items:center"><div style="font-size:10px;color:#2E2E2E">Cintura</div><div style="font-size:10px;color:#5A6270;text-align:center">75 cm</div><div style="font-size:10px;font-weight:700;color:#4B7A1F;text-align:center">72 cm ↓</div></div>
+            <div style="display:grid;grid-template-columns:1.3fr 1fr 1fr;gap:4px;align-items:center"><div style="font-size:10px;color:#2E2E2E">Cadera</div><div style="font-size:10px;color:#5A6270;text-align:center">97 cm</div><div style="font-size:10px;font-weight:700;color:#2E2E2E;text-align:center">96 cm</div></div>
+            <div style="display:grid;grid-template-columns:1.3fr 1fr 1fr;gap:4px;align-items:center"><div style="font-size:10px;color:#2E2E2E">Brazo</div><div style="font-size:10px;color:#5A6270;text-align:center">27 cm</div><div style="font-size:10px;font-weight:700;color:#4B7A1F;text-align:center">28 cm ↑</div></div>
+            <div style="display:grid;grid-template-columns:1.3fr 1fr 1fr;gap:4px;align-items:center"><div style="font-size:10px;color:#2E2E2E">IMC</div><div style="font-size:10px;color:#5A6270;text-align:center">22.9</div><div style="font-size:10px;font-weight:700;color:#4B7A1F;text-align:center">23.6 ↑</div></div>
+            <div style="display:grid;grid-template-columns:1.3fr 1fr 1fr;gap:4px;align-items:center"><div style="font-size:10px;color:#2E2E2E">Cintura/cadera</div><div style="font-size:10px;color:#5A6270;text-align:center">0.77</div><div style="font-size:10px;font-weight:700;color:#4B7A1F;text-align:center">0.75 ↓</div></div>
+            <div style="display:grid;grid-template-columns:1.3fr 1fr 1fr;gap:4px;align-items:center"><div style="font-size:10px;color:#2E2E2E">Tríceps</div><div style="font-size:10px;color:#5A6270;text-align:center">14 mm</div><div style="font-size:10px;font-weight:700;color:#4B7A1F;text-align:center">12 mm ↓</div></div>
+            <div style="font-size:9px;color:#8B93A3;margin-top:6px">↓ favorable para el objetivo de volumen con recomposición · ↑ ganancia de peso/medida</div>
+          </div>
+        </div>
+
+        <div style="width:280px;height:640px;border-radius:28px;background:#F7F8FA;box-shadow:0 12px 30px rgba(27,42,74,0.18);overflow:hidden;flex-shrink:0;display:flex;flex-direction:column">
+          <div style="background:#1B2A4A;padding:36px 20px 16px;display:flex;flex-direction:column;gap:4px">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <div style="font-family:'Manrope',sans-serif;font-weight:800;font-size:17px;color:#fff">‹ María Gómez</div>
+              <div style="font-size:12px;color:#B9C2D6">✎</div>
+            </div>
+            <div style="font-size:10px;color:#B9C2D6">28 años · Cliente desde ene. 2026</div>
+          </div>
+          <div style="display:flex;gap:0;padding:0 20px;border-bottom:1px solid #DDE2EA;background:#fff">
+            <div style="padding:10px 0;margin-right:12px;font-size:11px;color:#8B93A3">Datos</div>
+            <div style="padding:10px 0;margin-right:12px;font-size:11px;font-weight:700;color:#1B2A4A;border-bottom:2px solid #8BC53F">Salud</div>
+            <div style="padding:10px 0;margin-right:12px;font-size:11px;color:#8B93A3">Antropometría</div>
+            <div style="padding:10px 0;font-size:11px;color:#8B93A3">Planes</div>
+          </div>
+          <div style="padding:14px 16px;display:flex;flex-direction:column;gap:8px;overflow:hidden">
+            <div style="display:flex;gap:6px;align-items:center;background:#fff;border-radius:8px;padding:6px 8px;border:1px solid #DDE2EA"><div style="flex:1;font-size:10px;color:#2E2E2E">Edad</div><div style="font-size:10px;font-weight:700;color:#2E2E2E">28</div></div>
+            <div style="font-size:9px;font-weight:800;color:#5A6270;text-transform:uppercase;margin-top:2px">Condiciones</div>
+            <div style="display:flex;flex-wrap:wrap;gap:5px">
+              <span style="font-size:10px;background:#EEF0F4;color:#5A6270;padding:4px 9px;border-radius:20px;display:flex;align-items:center;gap:4px">Resistencia a la insulina <span style="color:#B9C2D6">×</span></span>
+              <span style="font-size:10px;border:1px dashed #C7CEDB;color:#5A6270;padding:4px 9px;border-radius:20px">+ Agregar</span>
+            </div>
+            <div style="font-size:9px;font-weight:800;color:#5A6270;text-transform:uppercase;margin-top:2px">Alergias</div>
+            <div style="display:flex;flex-wrap:wrap;gap:5px">
+              <span style="font-size:10px;background:#FFE4DF;color:#B4442E;padding:4px 9px;border-radius:20px;display:flex;align-items:center;gap:4px">Mariscos <span style="color:#E39C8F">×</span></span>
+              <span style="font-size:10px;border:1px dashed #C7CEDB;color:#5A6270;padding:4px 9px;border-radius:20px">+ Agregar</span>
+            </div>
+            <div style="font-size:9px;font-weight:800;color:#5A6270;text-transform:uppercase;margin-top:2px">Alimentos a evitar</div>
+            <div style="display:flex;flex-wrap:wrap;gap:5px">
+              <span style="font-size:10px;background:#EEF0F4;color:#5A6270;padding:4px 9px;border-radius:20px;display:flex;align-items:center;gap:4px">Frutos secos <span style="color:#B9C2D6">×</span></span>
+              <span style="font-size:10px;background:#EEF0F4;color:#5A6270;padding:4px 9px;border-radius:20px;display:flex;align-items:center;gap:4px">Brócoli <span style="color:#B9C2D6">×</span></span>
+              <span style="font-size:10px;border:1px dashed #C7CEDB;color:#5A6270;padding:4px 9px;border-radius:20px">+ Agregar</span>
+            </div>
+            <div style="display:flex;gap:6px;align-items:center;background:#fff;border-radius:8px;padding:6px 8px;border:1px solid #DDE2EA"><div style="flex:1;font-size:10px;color:#2E2E2E">Objetivo</div><div style="font-size:10px;font-weight:700;color:#4B7A1F">Volumen ▾</div></div>
+            <div style="font-size:9px;font-weight:800;color:#5A6270;text-transform:uppercase;margin-top:2px">Notas adicionales</div>
+            <div style="background:#fff;border-radius:8px;border:1px solid #DDE2EA;padding:8px;font-size:10px;color:#8B93A3;height:40px">Dificultad para digerir lácteos por la noche.</div>
+          </div>
+        </div>
+
+        <div style="width:280px;height:680px;border-radius:28px;background:#F7F8FA;box-shadow:0 12px 30px rgba(27,42,74,0.18);overflow:hidden;flex-shrink:0;display:flex;flex-direction:column">
+          <div style="background:#1B2A4A;padding:36px 20px 16px;display:flex;flex-direction:column;gap:4px">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <div style="font-family:'Manrope',sans-serif;font-weight:800;font-size:17px;color:#fff">‹ María Gómez</div>
+              <div style="font-size:12px;color:#B9C2D6">✎</div>
+            </div>
+            <div style="font-size:10px;color:#B9C2D6">28 años · Cliente desde ene. 2026</div>
+          </div>
+          <div style="display:flex;gap:0;padding:0 20px;border-bottom:1px solid #DDE2EA;background:#fff">
+            <div style="padding:10px 0;margin-right:12px;font-size:11px;color:#8B93A3">Datos</div>
+            <div style="padding:10px 0;margin-right:12px;font-size:11px;color:#8B93A3">Salud</div>
+            <div style="padding:10px 0;margin-right:12px;font-size:11px;font-weight:700;color:#1B2A4A;border-bottom:2px solid #8BC53F">Antropometría</div>
+            <div style="padding:10px 0;font-size:11px;color:#8B93A3">Planes</div>
+          </div>
+          <div style="padding:14px 16px;display:flex;flex-direction:column;gap:7px;overflow:hidden">
+            <div style="display:flex;gap:6px;align-items:center;background:#fff;border-radius:8px;padding:7px 9px;border:1px solid #DDE2EA"><div style="flex:1;font-size:10px;color:#2E2E2E">Peso</div><div style="font-size:10px;font-weight:700;color:#2E2E2E">64.2 kg</div></div>
+            <div style="display:flex;gap:6px;align-items:center;background:#fff;border-radius:8px;padding:7px 9px;border:1px solid #DDE2EA"><div style="flex:1;font-size:10px;color:#2E2E2E">Porcentaje de grasa</div><div style="font-size:10px;font-weight:700;color:#2E2E2E">18%</div></div>
+            <div style="display:flex;gap:6px;align-items:center;background:#fff;border-radius:8px;padding:7px 9px;border:1px solid #DDE2EA"><div style="flex:1;font-size:10px;color:#2E2E2E">Estatura</div><div style="font-size:10px;font-weight:700;color:#2E2E2E">1.65 m</div></div>
+            <div style="font-size:9px;font-weight:800;color:#5A6270;text-transform:uppercase;margin-top:2px">Medición corporal</div>
+            <div style="display:flex;gap:6px;align-items:center;background:#fff;border-radius:8px;padding:7px 9px;border:1px solid #DDE2EA"><div style="flex:1;font-size:10px;color:#2E2E2E">Cintura</div><div style="font-size:10px;font-weight:700;color:#2E2E2E">72 cm</div></div>
+            <div style="display:flex;gap:6px;align-items:center;background:#fff;border-radius:8px;padding:7px 9px;border:1px solid #DDE2EA"><div style="flex:1;font-size:10px;color:#2E2E2E">Cadera</div><div style="font-size:10px;font-weight:700;color:#2E2E2E">96 cm</div></div>
+            <div style="display:flex;gap:6px;align-items:center;background:#fff;border-radius:8px;padding:7px 9px;border:1px solid #DDE2EA"><div style="flex:1;font-size:10px;color:#2E2E2E">Brazo</div><div style="font-size:10px;font-weight:700;color:#2E2E2E">28 cm</div></div>
+            <div style="display:flex;gap:6px;align-items:center;background:#fff;border-radius:8px;padding:7px 9px;border:1px solid #DDE2EA"><div style="flex:1;font-size:10px;color:#2E2E2E">Índice de masa corporal</div><div style="font-size:10px;font-weight:700;color:#2E2E2E">23.6</div></div>
+            <div style="display:flex;gap:6px;align-items:center;background:#fff;border-radius:8px;padding:7px 9px;border:1px solid #DDE2EA"><div style="flex:1;font-size:10px;color:#2E2E2E">Relación cintura/cadera</div><div style="font-size:10px;font-weight:700;color:#2E2E2E">0.75</div></div>
+            <div style="font-size:9px;font-weight:800;color:#5A6270;text-transform:uppercase;margin-top:2px">Plicometría</div>
+            <div style="display:flex;gap:6px;align-items:center;background:#fff;border-radius:8px;padding:7px 9px;border:1px solid #DDE2EA"><div style="flex:1;font-size:10px;color:#2E2E2E">Tríceps</div><div style="font-size:10px;font-weight:700;color:#2E2E2E">12 mm</div></div>
+            <div style="display:flex;gap:6px;align-items:center;background:#fff;border-radius:8px;padding:7px 9px;border:1px solid #DDE2EA"><div style="flex:1;font-size:10px;color:#2E2E2E">Abdominal</div><div style="font-size:10px;font-weight:700;color:#2E2E2E">18 mm</div></div>
+            <div style="display:flex;gap:6px;align-items:center;background:#fff;border-radius:8px;padding:7px 9px;border:1px solid #DDE2EA"><div style="flex:1;font-size:10px;color:#2E2E2E">Subescapular</div><div style="font-size:10px;font-weight:700;color:#2E2E2E">15 mm</div></div>
+            <div style="font-size:9px;color:#8B93A3;margin-top:2px">Última actualización: 15 jul 2026</div>
+            <div style="font-size:10px;color:#4B7A1F;font-weight:700;text-align:right">Ver historial completo ›</div>
+            <div style="height:38px;border-radius:10px;background:#1B2A4A;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:11px;color:#fff;margin-top:2px">Actualizar medición</div>
+          </div>
+        </div>
+
+        <div style="width:280px;height:820px;border-radius:28px;background:#F7F8FA;box-shadow:0 12px 30px rgba(27,42,74,0.18);overflow:hidden;flex-shrink:0;display:flex;flex-direction:column">
+          <div style="background:#1B2A4A;padding:36px 20px 16px"><div style="font-family:'Manrope',sans-serif;font-weight:800;font-size:17px;color:#fff">Actualizar medición</div><div style="font-size:10px;color:#B9C2D6">Se guardará como nueva entrada en el historial</div></div>
+          <div style="padding:14px 16px;display:flex;flex-direction:column;gap:6px;overflow:hidden">
+            <div style="display:flex;gap:6px;align-items:center;background:#EAF6D9;border-radius:8px;padding:7px 9px;border:1px solid #8BC53F"><div style="flex:1;font-size:10px;color:#2E2E2E">Peso</div><div style="font-size:10px;font-weight:700;color:#1B2A4A">64.2 kg ✎</div></div>
+            <div style="display:flex;gap:6px;align-items:center;background:#EAF6D9;border-radius:8px;padding:7px 9px;border:1px solid #8BC53F"><div style="flex:1;font-size:10px;color:#2E2E2E">Porcentaje de grasa</div><div style="font-size:10px;font-weight:700;color:#1B2A4A">18% ✎</div></div>
+            <div style="display:flex;gap:6px;align-items:center;background:#EAF6D9;border-radius:8px;padding:7px 9px;border:1px solid #8BC53F"><div style="flex:1;font-size:10px;color:#2E2E2E">Estatura</div><div style="font-size:10px;font-weight:700;color:#1B2A4A">1.65 m ✎</div></div>
+            <div style="font-size:9px;font-weight:800;color:#5A6270;text-transform:uppercase;margin-top:2px">Medición corporal</div>
+            <div style="display:flex;gap:6px;align-items:center;background:#EAF6D9;border-radius:8px;padding:7px 9px;border:1px solid #8BC53F"><div style="flex:1;font-size:10px;color:#2E2E2E">Cintura</div><div style="font-size:10px;font-weight:700;color:#1B2A4A">72 cm ✎</div></div>
+            <div style="display:flex;gap:6px;align-items:center;background:#EAF6D9;border-radius:8px;padding:7px 9px;border:1px solid #8BC53F"><div style="flex:1;font-size:10px;color:#2E2E2E">Cadera</div><div style="font-size:10px;font-weight:700;color:#1B2A4A">96 cm ✎</div></div>
+            <div style="display:flex;gap:6px;align-items:center;background:#EAF6D9;border-radius:8px;padding:7px 9px;border:1px solid #8BC53F"><div style="flex:1;font-size:10px;color:#2E2E2E">Brazo</div><div style="font-size:10px;font-weight:700;color:#1B2A4A">28 cm ✎</div></div>
+            <div style="font-size:9px;font-weight:800;color:#5A6270;text-transform:uppercase;margin-top:2px">Plicometría</div>
+            <div style="display:flex;gap:6px;align-items:center;background:#EAF6D9;border-radius:8px;padding:7px 9px;border:1px solid #8BC53F"><div style="flex:1;font-size:10px;color:#2E2E2E">Tríceps</div><div style="font-size:10px;font-weight:700;color:#1B2A4A">12 mm ✎</div></div>
+            <div style="display:flex;gap:6px;align-items:center;background:#EAF6D9;border-radius:8px;padding:7px 9px;border:1px solid #8BC53F"><div style="flex:1;font-size:10px;color:#2E2E2E">Abdominal</div><div style="font-size:10px;font-weight:700;color:#1B2A4A">18 mm ✎</div></div>
+            <div style="font-size:9px;color:#8B93A3;margin-top:2px">Índice de masa corporal y relación cintura/cadera se recalculan automáticamente</div>
+            <div style="display:flex;gap:8px;margin-top:4px">
+              <div style="flex:1;height:40px;border-radius:10px;border:1px solid #DDE2EA;display:flex;align-items:center;justify-content:center;font-size:12px;color:#5A6270;font-weight:700">Cancelar</div>
+              <div style="flex:1;height:40px;border-radius:10px;background:#8BC53F;display:flex;align-items:center;justify-content:center;font-size:12px;color:#1B2A4A;font-weight:700">Guardar</div>
+            </div>
+          </div>
+        </div>
+
+        <div style="width:280px;height:640px;border-radius:28px;background:#F7F8FA;box-shadow:0 12px 30px rgba(27,42,74,0.18);overflow:hidden;flex-shrink:0;display:flex;flex-direction:column;position:relative">
+          <div style="background:#1B2A4A;padding:36px 20px 16px"><div style="font-family:'Manrope',sans-serif;font-weight:800;font-size:17px;color:#fff">María Gómez — Salud</div><div style="font-size:10px;color:#B9C2D6">Agregando un dato a la ficha</div></div>
+          <div style="padding:14px 16px;display:flex;flex-direction:column;gap:8px;filter:blur(1.5px);opacity:.5">
+            <div style="height:24px;border-radius:6px;background:#fff;width:60%"></div>
+            <div style="height:24px;border-radius:20px;background:#fff;width:40%"></div>
+          </div>
+          <div style="position:absolute;inset:0;background:rgba(18,32,61,0.55);display:flex;align-items:flex-end">
+            <div style="background:#fff;border-radius:20px 20px 0 0;padding:18px;display:flex;flex-direction:column;gap:8px;width:100%">
+              <div style="font-family:'Manrope',sans-serif;font-weight:800;font-size:14px;color:#1B2A4A">Agregar a la ficha</div>
+              <div style="font-size:9px;font-weight:700;color:#5A6270;text-transform:uppercase">Tipo de dato</div>
+              <div style="display:flex;gap:5px">
+                <div style="flex:1;text-align:center;font-size:10px;padding:7px 0;border-radius:8px;border:1px solid #DDE2EA;color:#5A6270">Condición</div>
+                <div style="flex:1;text-align:center;font-size:10px;padding:7px 0;border-radius:8px;background:#1B2A4A;color:#fff;font-weight:700">Alergia</div>
+                <div style="flex:1;text-align:center;font-size:10px;padding:7px 0;border-radius:8px;border:1px solid #DDE2EA;color:#5A6270">Evita</div>
+              </div>
+              <div style="font-size:9px;font-weight:700;color:#5A6270;text-transform:uppercase">Buscar o escribir</div>
+              <div style="height:36px;border-radius:8px;border:1px solid #DDE2EA;background:#F7F8FA;display:flex;align-items:center;padding:0 10px;font-size:11px;color:#2E2E2E">Lactosa</div>
+              <div style="font-size:9px;font-weight:700;color:#5A6270;text-transform:uppercase">Sugeridas</div>
+              <div style="display:flex;flex-wrap:wrap;gap:5px">
+                <span style="font-size:10px;background:#F7F8FA;border:1px solid #DDE2EA;color:#5A6270;padding:5px 10px;border-radius:20px">Mariscos</span>
+                <span style="font-size:10px;background:#F7F8FA;border:1px solid #DDE2EA;color:#5A6270;padding:5px 10px;border-radius:20px">Lactosa</span>
+                <span style="font-size:10px;background:#F7F8FA;border:1px solid #DDE2EA;color:#5A6270;padding:5px 10px;border-radius:20px">Gluten</span>
+                <span style="font-size:10px;background:#F7F8FA;border:1px solid #DDE2EA;color:#5A6270;padding:5px 10px;border-radius:20px">Frutos secos</span>
+              </div>
+              <div style="display:flex;gap:8px;margin-top:6px">
+                <div style="flex:1;height:40px;border-radius:10px;border:1px solid #DDE2EA;display:flex;align-items:center;justify-content:center;font-size:12px;color:#5A6270;font-weight:700">Cancelar</div>
+                <div style="flex:1;height:40px;border-radius:10px;background:#8BC53F;display:flex;align-items:center;justify-content:center;font-size:12px;color:#1B2A4A;font-weight:700">Agregar</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div style="width:280px;height:600px;border-radius:28px;background:#F7F8FA;box-shadow:0 12px 30px rgba(27,42,74,0.18);overflow:hidden;flex-shrink:0;display:flex;flex-direction:column">
+          <div style="background:#1B2A4A;padding:36px 20px 16px;display:flex;flex-direction:column;gap:4px">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <div style="font-family:'Manrope',sans-serif;font-weight:800;font-size:17px;color:#fff">‹ María Gómez</div>
+              <div style="font-size:12px;color:#B9C2D6">✎</div>
+            </div>
+            <div style="font-size:10px;color:#B9C2D6">28 años · Cliente desde ene. 2026</div>
+          </div>
+          <div style="display:flex;gap:0;padding:0 20px;border-bottom:1px solid #DDE2EA;background:#fff">
+            <div style="padding:10px 0;margin-right:12px;font-size:11px;color:#8B93A3">Datos</div>
+            <div style="padding:10px 0;margin-right:12px;font-size:11px;color:#8B93A3">Salud</div>
+            <div style="padding:10px 0;margin-right:12px;font-size:11px;color:#8B93A3">Antropometría</div>
+            <div style="padding:10px 0;font-size:11px;font-weight:700;color:#1B2A4A;border-bottom:2px solid #8BC53F">Planes</div>
+          </div>
+          <div style="padding:14px 16px;display:flex;flex-direction:column;gap:8px">
+            <div style="height:36px;border-radius:8px;border:1px dashed #8BC53F;color:#4B7A1F;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:11px">+ Nueva versión del plan</div>
+            <div style="font-size:9px;color:#8B93A3;margin-top:2px">Máximo 2 selecciones — desmarca una para elegir otra</div>
+            <div style="display:flex;align-items:center;gap:8px;background:#fff;border:1px solid #8BC53F;border-radius:10px;padding:10px"><span style="width:16px;height:16px;border-radius:4px;background:#8BC53F;color:#fff;display:flex;align-items:center;justify-content:center;font-size:10px;flex-shrink:0">✓</span><div style="flex:1"><div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:11px;font-weight:700;color:#2E2E2E">Versión 3</span><span style="font-size:9px;font-weight:700;color:#4B7A1F;background:#EAF6D9;padding:2px 8px;border-radius:20px">Vigente</span></div><div style="font-size:9px;color:#8B93A3">Desde 15 jul 2026</div></div></div>
+            <div style="display:flex;align-items:center;gap:8px;background:#fff;border:1px solid #8BC53F;border-radius:10px;padding:10px"><span style="width:16px;height:16px;border-radius:4px;background:#8BC53F;color:#fff;display:flex;align-items:center;justify-content:center;font-size:10px;flex-shrink:0">✓</span><div style="flex:1"><span style="font-size:11px;font-weight:700;color:#2E2E2E">Versión 2</span><div style="font-size:9px;color:#8B93A3">1 may – 14 jul 2026</div></div></div>
+            <div style="display:flex;align-items:center;gap:8px;background:#F7F8FA;border-radius:10px;padding:10px;opacity:.5"><span style="width:16px;height:16px;border-radius:4px;border:2px solid #DDE2EA;flex-shrink:0"></span><div style="flex:1"><span style="font-size:11px;font-weight:700;color:#2E2E2E">Versión 1</span><div style="font-size:9px;color:#8B93A3">10 mar – 30 abr 2026</div></div></div>
+            <div style="height:38px;border-radius:10px;background:#8BC53F;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:11px;color:#1B2A4A;margin-top:4px">Comparar seleccionadas (2)</div>
+          </div>
+        </div>
+
+        <div style="width:320px;height:640px;border-radius:28px;background:#F7F8FA;box-shadow:0 12px 30px rgba(27,42,74,0.18);overflow:hidden;flex-shrink:0;display:flex;flex-direction:column">
+          <div style="background:#1B2A4A;padding:28px 20px 14px"><div style="font-family:'Manrope',sans-serif;font-weight:800;font-size:17px;color:#fff">‹ Comparar planes</div><div style="font-size:10px;color:#B9C2D6">Versión 2 vs. Versión 3 — María Gómez</div></div>
+          <div style="padding:14px 16px;display:flex;flex-direction:column;gap:6px;overflow:hidden">
+            <div style="display:grid;grid-template-columns:0.9fr 1fr 1fr;gap:4px;padding-bottom:6px;border-bottom:1px solid #DDE2EA">
+              <div></div>
+              <div style="font-size:9px;font-weight:800;color:#5A6270">V2 · 1 may</div>
+              <div style="font-size:9px;font-weight:800;color:#4B7A1F">V3 · 15 jul (vigente)</div>
+            </div>
+            <div style="display:grid;grid-template-columns:0.9fr 1fr 1fr;gap:4px;align-items:start;padding:6px 0;border-bottom:1px solid #F2F3F6"><div style="font-size:10px;font-weight:700;color:#2E2E2E">Desayuno</div><div style="font-size:9px;color:#5A6270">2 huevos + 1 carbo + fruta</div><div style="font-size:9px;color:#4B7A1F;font-weight:600">3 huevos + 1 carbo + fruta</div></div>
+            <div style="display:grid;grid-template-columns:0.9fr 1fr 1fr;gap:4px;align-items:start;padding:6px 0;border-bottom:1px solid #F2F3F6"><div style="font-size:10px;font-weight:700;color:#2E2E2E">Almuerzo</div><div style="font-size:9px;color:#5A6270">180g proteína + carbo + ensalada</div><div style="font-size:9px;color:#4B7A1F;font-weight:600">200g proteína + carbo + ensalada</div></div>
+            <div style="display:grid;grid-template-columns:0.9fr 1fr 1fr;gap:4px;align-items:start;padding:6px 0;border-bottom:1px solid #F2F3F6"><div style="font-size:10px;font-weight:700;color:#2E2E2E">Merienda</div><div style="font-size:9px;color:#8B93A3">No incluida</div><div style="font-size:9px;color:#4B7A1F;font-weight:600">Fruta + frutos secos (nueva)</div></div>
+            <div style="display:grid;grid-template-columns:0.9fr 1fr 1fr;gap:4px;align-items:start;padding:6px 0;border-bottom:1px solid #F2F3F6"><div style="font-size:10px;font-weight:700;color:#2E2E2E">Cena</div><div style="font-size:9px;color:#5A6270">150g proteína + vegetales</div><div style="font-size:9px;color:#5A6270">150g proteína + vegetales</div></div>
+            <div style="display:grid;grid-template-columns:0.9fr 1fr 1fr;gap:4px;align-items:start;padding:6px 0"><div style="font-size:10px;font-weight:700;color:#2E2E2E">Suplementos</div><div style="font-size:9px;color:#5A6270">Creatina</div><div style="font-size:9px;color:#4B7A1F;font-weight:600">Creatina + proteína en polvo (nuevo)</div></div>
+            <div style="font-size:9px;color:#8B93A3;margin-top:6px">Verde = agregado o aumentado en la versión más reciente</div>
+          </div>
+        </div>
+
+        <div style="width:320px;height:760px;border-radius:28px;background:#F7F8FA;box-shadow:0 12px 30px rgba(27,42,74,0.18);overflow:hidden;flex-shrink:0;display:flex;flex-direction:column">
+          <div style="background:#1B2A4A;padding:28px 20px 14px"><div style="font-family:'Manrope',sans-serif;font-weight:800;font-size:17px;color:#fff">‹ Constructor de plan</div><div style="font-size:10px;color:#B9C2D6">María Gómez · configuración base</div></div>
+          <div style="padding:14px 16px;display:flex;flex-direction:column;gap:6px;overflow:hidden">
+
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:2px">
+              <div style="font-size:10px;font-weight:800;color:#5A6270;text-transform:uppercase;letter-spacing:.03em">Comidas del día</div>
+              <div style="font-size:9px;color:#8B93A3">4</div>
+            </div>
+            <div style="display:flex;gap:6px;align-items:center;background:#fff;border-radius:8px;padding:6px 8px;border:1px solid #DDE2EA">
+              <div style="flex:1;font-size:10px;color:#2E2E2E;font-weight:600">Desayuno</div>
+              <div style="width:62px;font-size:10px;color:#5A6270;background:#F7F8FA;border-radius:6px;padding:4px 6px;text-align:center">8:00am</div>
+              <div style="font-size:12px;color:#B9C2D6">×</div>
+            </div>
+            <div style="display:flex;gap:6px;align-items:center;background:#fff;border-radius:8px;padding:6px 8px;border:1px solid #DDE2EA">
+              <div style="flex:1;font-size:10px;color:#2E2E2E;font-weight:600">Almuerzo</div>
+              <div style="width:62px;font-size:10px;color:#5A6270;background:#F7F8FA;border-radius:6px;padding:4px 6px;text-align:center">1:00pm</div>
+              <div style="font-size:12px;color:#B9C2D6">×</div>
+            </div>
+            <div style="display:flex;gap:6px;align-items:center;background:#fff;border-radius:8px;padding:6px 8px;border:1px solid #DDE2EA">
+              <div style="flex:1;font-size:10px;color:#2E2E2E;font-weight:600">Merienda</div>
+              <div style="width:62px;font-size:10px;color:#5A6270;background:#F7F8FA;border-radius:6px;padding:4px 6px;text-align:center">4:00pm</div>
+              <div style="font-size:12px;color:#B9C2D6">×</div>
+            </div>
+            <div style="display:flex;gap:6px;align-items:center;background:#fff;border-radius:8px;padding:6px 8px;border:1px solid #DDE2EA">
+              <div style="flex:1;font-size:10px;color:#2E2E2E;font-weight:600">Cena</div>
+              <div style="width:62px;font-size:10px;color:#5A6270;background:#F7F8FA;border-radius:6px;padding:4px 6px;text-align:center">8:00pm</div>
+              <div style="font-size:12px;color:#B9C2D6">×</div>
+            </div>
+            <div style="display:flex;align-items:center;justify-content:center;gap:5px;border:1px dashed #C7CEDB;border-radius:8px;padding:6px;font-size:10px;color:#5A6270;font-weight:600">+ Agregar comida</div>
+
+            <div style="font-size:10px;font-weight:800;color:#5A6270;text-transform:uppercase;letter-spacing:.03em;margin-top:6px">Hidratación</div>
+            <div style="display:flex;gap:6px;align-items:center;background:#fff;border-radius:8px;padding:6px 8px;border:1px solid #DDE2EA">
+              <div style="flex:1;font-size:10px;color:#2E2E2E">Agua mínima al día</div>
+              <div style="width:56px;font-size:10px;color:#2E2E2E;font-weight:700;background:#F7F8FA;border-radius:6px;padding:4px 6px;text-align:center">2.5 L</div>
+            </div>
+
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px">
+              <div style="font-size:10px;font-weight:800;color:#5A6270;text-transform:uppercase;letter-spacing:.03em">Suplementación</div>
+              <div style="font-size:9px;color:#8B93A3">2</div>
+            </div>
+            <div style="display:flex;gap:6px;align-items:center;background:#fff;border-radius:8px;padding:6px 8px;border:1px solid #DDE2EA">
+              <div style="flex:1;font-size:10px;color:#2E2E2E;font-weight:600">Creatina</div>
+              <div style="width:88px;font-size:9px;color:#5A6270;background:#F7F8FA;border-radius:6px;padding:4px 6px;text-align:center">Cualquier hora</div>
+              <div style="font-size:12px;color:#B9C2D6">×</div>
+            </div>
+            <div style="display:flex;gap:6px;align-items:center;background:#fff;border-radius:8px;padding:6px 8px;border:1px solid #DDE2EA">
+              <div style="flex:1;font-size:10px;color:#2E2E2E;font-weight:600">Proteína en polvo</div>
+              <div style="width:88px;font-size:9px;color:#5A6270;background:#F7F8FA;border-radius:6px;padding:4px 6px;text-align:center">Después de 6pm</div>
+              <div style="font-size:12px;color:#B9C2D6">×</div>
+            </div>
+            <div style="display:flex;align-items:center;justify-content:center;gap:5px;border:1px dashed #C7CEDB;border-radius:8px;padding:6px;font-size:10px;color:#5A6270;font-weight:600">+ Agregar suplemento</div>
+
+            <div style="font-size:10px;font-weight:800;color:#5A6270;text-transform:uppercase;letter-spacing:.03em;margin-top:6px">Nota adicional para la IA</div>
+            <div style="background:#fff;border-radius:8px;border:1px solid #DDE2EA;padding:8px;font-size:10px;color:#8B93A3;height:42px">Ej: prefiere pollo sobre pescado, evitar lácteos esta semana…</div>
+
+            <div style="height:42px;border-radius:10px;background:#8BC53F;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;color:#1B2A4A;margin-top:8px">Generar sugerencias con IA</div>
+          </div>
+        </div>
+
+        <div style="width:320px;height:760px;border-radius:28px;background:#F7F8FA;box-shadow:0 12px 30px rgba(27,42,74,0.18);overflow:hidden;flex-shrink:0;display:flex;flex-direction:column;position:relative">
+          <div style="background:#1B2A4A;padding:28px 20px 14px"><div style="font-family:'Manrope',sans-serif;font-weight:800;font-size:17px;color:#fff">Constructor de plan</div><div style="font-size:10px;color:#B9C2D6">Agregando una comida</div></div>
+          <div style="padding:14px 16px;display:flex;flex-direction:column;gap:6px;filter:blur(1.5px);opacity:.5">
+            <div style="font-size:10px;font-weight:800;color:#5A6270;text-transform:uppercase">Comidas del día</div>
+            <div style="height:34px;border-radius:8px;background:#fff;border:1px solid #DDE2EA"></div>
+            <div style="height:34px;border-radius:8px;background:#fff;border:1px solid #DDE2EA"></div>
+            <div style="height:34px;border-radius:8px;background:#fff;border:1px solid #DDE2EA"></div>
+          </div>
+          <div style="position:absolute;inset:0;background:rgba(18,32,61,0.55);display:flex;align-items:flex-end">
+            <div style="background:#fff;border-radius:20px 20px 0 0;padding:18px;display:flex;flex-direction:column;gap:8px;width:100%">
+              <div style="font-family:'Manrope',sans-serif;font-weight:800;font-size:14px;color:#1B2A4A">Agregar comida</div>
+              <div style="font-size:9px;font-weight:700;color:#5A6270;text-transform:uppercase">Nombre</div>
+              <div style="height:36px;border-radius:8px;border:1px solid #DDE2EA;background:#F7F8FA;display:flex;align-items:center;padding:0 10px;font-size:11px;color:#2E2E2E">Merienda 2</div>
+              <div style="font-size:9px;font-weight:700;color:#5A6270;text-transform:uppercase">Tipo</div>
+              <div style="display:flex;gap:6px">
+                <div style="flex:1;height:32px;border-radius:8px;background:#1B2A4A;color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700">Comida</div>
+                <div style="flex:1;height:32px;border-radius:8px;border:1px solid #DDE2EA;color:#5A6270;display:flex;align-items:center;justify-content:center;font-size:11px">Merienda</div>
+              </div>
+              <div style="font-size:9px;font-weight:700;color:#5A6270;text-transform:uppercase">Hora recomendada</div>
+              <div style="display:flex;gap:6px;justify-content:center;background:#F7F8FA;border-radius:10px;padding:10px 6px">
+                <div style="display:flex;flex-direction:column;align-items:center;gap:3px;width:40px">
+                  <div style="font-size:10px;color:#C7CEDB">03</div><div style="font-size:10px;color:#C7CEDB">04</div>
+                  <div style="font-size:13px;font-weight:800;color:#1B2A4A;background:#EAF6D9;border-radius:6px;padding:3px 0;width:100%;text-align:center">05</div>
+                  <div style="font-size:10px;color:#C7CEDB">06</div><div style="font-size:10px;color:#C7CEDB">07</div>
+                </div>
+                <div style="display:flex;flex-direction:column;align-items:center;gap:3px;width:40px">
+                  <div style="font-size:10px;color:#C7CEDB">15</div><div style="font-size:10px;color:#C7CEDB">30</div>
+                  <div style="font-size:13px;font-weight:800;color:#1B2A4A;background:#EAF6D9;border-radius:6px;padding:3px 0;width:100%;text-align:center">45</div>
+                  <div style="font-size:10px;color:#C7CEDB">00</div><div style="font-size:10px;color:#C7CEDB">15</div>
+                </div>
+                <div style="display:flex;flex-direction:column;align-items:center;gap:3px;width:40px">
+                  <div style="font-size:10px;color:transparent">·</div><div style="font-size:10px;color:#C7CEDB">AM</div>
+                  <div style="font-size:13px;font-weight:800;color:#1B2A4A;background:#EAF6D9;border-radius:6px;padding:3px 0;width:100%;text-align:center">PM</div>
+                  <div style="font-size:10px;color:transparent">·</div><div style="font-size:10px;color:transparent">·</div>
+                </div>
+              </div>
+              <div style="display:flex;gap:8px;margin-top:6px">
+                <div style="flex:1;height:40px;border-radius:10px;border:1px solid #DDE2EA;display:flex;align-items:center;justify-content:center;font-size:12px;color:#5A6270;font-weight:700">Cancelar</div>
+                <div style="flex:1;height:40px;border-radius:10px;background:#8BC53F;display:flex;align-items:center;justify-content:center;font-size:12px;color:#1B2A4A;font-weight:700">Guardar</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div style="width:320px;height:760px;border-radius:28px;background:#F7F8FA;box-shadow:0 12px 30px rgba(27,42,74,0.18);overflow:hidden;flex-shrink:0;display:flex;flex-direction:column;position:relative">
+          <div style="background:#1B2A4A;padding:28px 20px 14px"><div style="font-family:'Manrope',sans-serif;font-weight:800;font-size:17px;color:#fff">Constructor de plan</div><div style="font-size:10px;color:#B9C2D6">Agregando un suplemento nuevo</div></div>
+          <div style="padding:14px 16px;display:flex;flex-direction:column;gap:6px;filter:blur(1.5px);opacity:.5">
+            <div style="font-size:10px;font-weight:800;color:#5A6270;text-transform:uppercase">Suplementación</div>
+            <div style="height:34px;border-radius:8px;background:#fff;border:1px solid #DDE2EA"></div>
+            <div style="height:34px;border-radius:8px;background:#fff;border:1px solid #DDE2EA"></div>
+          </div>
+          <div style="position:absolute;inset:0;background:rgba(18,32,61,0.55);display:flex;align-items:flex-end">
+            <div style="background:#fff;border-radius:20px 20px 0 0;padding:18px;display:flex;flex-direction:column;gap:6px;width:100%">
+              <div style="font-family:'Manrope',sans-serif;font-weight:800;font-size:14px;color:#1B2A4A">Agregar suplemento</div>
+              <div style="font-size:9px;font-weight:700;color:#5A6270;text-transform:uppercase">Nombre</div>
+              <div style="height:34px;border-radius:8px;border:1px solid #DDE2EA;background:#F7F8FA;display:flex;align-items:center;padding:0 10px;font-size:11px;color:#2E2E2E">Ej: Omega 3</div>
+              <div style="font-size:9px;font-weight:700;color:#5A6270;text-transform:uppercase">Dosis</div>
+              <div style="height:34px;border-radius:8px;border:1px solid #DDE2EA;background:#F7F8FA;display:flex;align-items:center;padding:0 10px;font-size:11px;color:#2E2E2E">Ej: 1 cápsula</div>
+              <div style="font-size:9px;font-weight:700;color:#5A6270;text-transform:uppercase;margin-top:2px">Horario</div>
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 10px;border-radius:8px;background:#EAF6D9"><span style="font-size:10px;font-weight:700;color:#1B2A4A">Cualquier hora</span><span style="width:14px;height:14px;border-radius:50%;background:#8BC53F;color:#fff;display:flex;align-items:center;justify-content:center;font-size:9px">✓</span></div>
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 10px;border-radius:8px"><span style="font-size:10px;color:#2E2E2E">Antes de entrenar</span><span style="width:14px;height:14px;border-radius:50%;border:2px solid #DDE2EA"></span></div>
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 10px;border-radius:8px"><span style="font-size:10px;color:#2E2E2E">Después de entrenar</span><span style="width:14px;height:14px;border-radius:50%;border:2px solid #DDE2EA"></span></div>
+              <div style="display:flex;gap:8px;margin-top:6px">
+                <div style="flex:1;height:38px;border-radius:10px;border:1px solid #DDE2EA;display:flex;align-items:center;justify-content:center;font-size:12px;color:#5A6270;font-weight:700">Cancelar</div>
+                <div style="flex:1;height:38px;border-radius:10px;background:#8BC53F;display:flex;align-items:center;justify-content:center;font-size:12px;color:#1B2A4A;font-weight:700">Agregar</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div style="width:320px;height:760px;border-radius:28px;background:#F7F8FA;box-shadow:0 12px 30px rgba(27,42,74,0.18);overflow:hidden;flex-shrink:0;display:flex;flex-direction:column;position:relative">
+          <div style="background:#1B2A4A;padding:28px 20px 14px"><div style="font-family:'Manrope',sans-serif;font-weight:800;font-size:17px;color:#fff">Constructor de plan</div><div style="font-size:10px;color:#B9C2D6">Editando suplemento ya añadido</div></div>
+          <div style="padding:14px 16px;display:flex;flex-direction:column;gap:6px;filter:blur(1.5px);opacity:.5">
+            <div style="font-size:10px;font-weight:800;color:#5A6270;text-transform:uppercase">Suplementación</div>
+            <div style="height:34px;border-radius:8px;background:#fff;border:1px solid #DDE2EA"></div>
+            <div style="height:34px;border-radius:8px;background:#fff;border:1px solid #DDE2EA"></div>
+          </div>
+          <div style="position:absolute;inset:0;background:rgba(18,32,61,0.55);display:flex;align-items:flex-end">
+            <div style="background:#fff;border-radius:20px 20px 0 0;padding:18px;display:flex;flex-direction:column;gap:6px;width:100%">
+              <div style="font-family:'Manrope',sans-serif;font-weight:800;font-size:14px;color:#1B2A4A">Editar suplemento</div>
+              <div style="font-size:9px;font-weight:700;color:#5A6270;text-transform:uppercase">Nombre</div>
+              <div style="height:34px;border-radius:8px;border:1px solid #DDE2EA;background:#F7F8FA;display:flex;align-items:center;padding:0 10px;font-size:11px;color:#2E2E2E">Proteína en polvo</div>
+              <div style="font-size:9px;font-weight:700;color:#5A6270;text-transform:uppercase">Dosis</div>
+              <div style="height:34px;border-radius:8px;border:1px solid #DDE2EA;background:#F7F8FA;display:flex;align-items:center;padding:0 10px;font-size:11px;color:#2E2E2E">1 scoop</div>
+              <div style="font-size:9px;font-weight:700;color:#5A6270;text-transform:uppercase;margin-top:2px">Horario</div>
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 10px;border-radius:8px"><span style="font-size:10px;color:#2E2E2E">Cualquier hora</span><span style="width:14px;height:14px;border-radius:50%;border:2px solid #DDE2EA"></span></div>
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 10px;border-radius:8px"><span style="font-size:10px;color:#2E2E2E">Antes de entrenar</span><span style="width:14px;height:14px;border-radius:50%;border:2px solid #DDE2EA"></span></div>
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 10px;border-radius:8px"><span style="font-size:10px;color:#2E2E2E">Después de entrenar</span><span style="width:14px;height:14px;border-radius:50%;border:2px solid #DDE2EA"></span></div>
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 10px;border-radius:8px;background:#EAF6D9"><span style="font-size:10px;font-weight:700;color:#1B2A4A">Después de las 6pm</span><span style="width:14px;height:14px;border-radius:50%;background:#8BC53F;color:#fff;display:flex;align-items:center;justify-content:center;font-size:9px">✓</span></div>
+              <div style="display:flex;gap:8px;margin-top:6px">
+                <div style="flex:1;height:38px;border-radius:10px;border:1px solid #FFE4DF;color:#B4442E;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700">Eliminar</div>
+                <div style="flex:2;height:38px;border-radius:10px;background:#8BC53F;display:flex;align-items:center;justify-content:center;font-size:12px;color:#1B2A4A;font-weight:700">Guardar</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div style="width:320px;height:760px;border-radius:28px;background:#F7F8FA;box-shadow:0 12px 30px rgba(27,42,74,0.18);overflow:hidden;flex-shrink:0;display:flex;flex-direction:column">
+          <div style="background:#1B2A4A;padding:28px 20px 14px"><div style="font-family:'Manrope',sans-serif;font-weight:800;font-size:17px;color:#fff">‹ Asistente de IA</div><div style="font-size:10px;color:#B9C2D6">Objetivo: volumen · nota del entrenador aplicada</div></div>
+          <div style="padding:14px 16px;display:flex;flex-direction:column;gap:9px;overflow:hidden">
+            <div style="display:flex;flex-direction:column;gap:5px">
+              <div style="font-size:10px;font-weight:800;color:#4B7A1F;text-transform:uppercase;letter-spacing:.03em">Carbohidratos</div>
+              <div style="display:flex;gap:8px;align-items:center;background:#fff;border-radius:8px;padding:7px 9px"><div style="width:15px;height:15px;border-radius:4px;background:#8BC53F;flex-shrink:0"></div><div style="flex:1;font-size:10px;color:#2E2E2E">Arroz integral</div><div style="font-size:9px;font-weight:700;color:#5A6270;background:#F7F8FA;border-radius:6px;padding:2px 6px;display:flex;align-items:center;gap:4px">150g <span style="color:#B9C2D6">✎</span></div></div>
+              <div style="display:flex;gap:8px;align-items:center;background:#fff;border-radius:8px;padding:7px 9px"><div style="width:15px;height:15px;border-radius:4px;background:#8BC53F;flex-shrink:0"></div><div style="flex:1;font-size:10px;color:#2E2E2E">Batata</div><div style="font-size:9px;font-weight:700;color:#5A6270;background:#F7F8FA;border-radius:6px;padding:2px 6px;display:flex;align-items:center;gap:4px">200g <span style="color:#B9C2D6">✎</span></div></div>
+              <div style="display:flex;gap:8px;align-items:center;background:#fff;border-radius:8px;padding:7px 9px"><div style="width:15px;height:15px;border-radius:4px;border:2px solid #DDE2EA;flex-shrink:0"></div><div style="flex:1;font-size:10px;color:#2E2E2E">Quinoa</div><div style="font-size:9px;font-weight:700;color:#5A6270;background:#F7F8FA;border-radius:6px;padding:2px 6px;display:flex;align-items:center;gap:4px">120g <span style="color:#B9C2D6">✎</span></div></div>
+              <div style="font-size:9px;color:#5A6270;font-weight:700;text-align:right">+ Agregar alimento</div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:5px">
+              <div style="font-size:10px;font-weight:800;color:#4B7A1F;text-transform:uppercase;letter-spacing:.03em">Proteínas</div>
+              <div style="display:flex;gap:8px;align-items:center;background:#fff;border-radius:8px;padding:7px 9px"><div style="width:15px;height:15px;border-radius:4px;background:#8BC53F;flex-shrink:0"></div><div style="flex:1;font-size:10px;color:#2E2E2E">Pechuga de pollo</div><div style="font-size:9px;font-weight:700;color:#5A6270;background:#F7F8FA;border-radius:6px;padding:2px 6px;display:flex;align-items:center;gap:4px">200g <span style="color:#B9C2D6">✎</span></div></div>
+              <div style="display:flex;gap:8px;align-items:center;background:#fff;border-radius:8px;padding:7px 9px"><div style="width:15px;height:15px;border-radius:4px;background:#8BC53F;flex-shrink:0"></div><div style="flex:1;font-size:10px;color:#2E2E2E">Filete de pescado</div><div style="font-size:9px;font-weight:700;color:#5A6270;background:#F7F8FA;border-radius:6px;padding:2px 6px;display:flex;align-items:center;gap:4px">180g <span style="color:#B9C2D6">✎</span></div></div>
+              <div style="display:flex;gap:8px;align-items:center;background:#fff;border-radius:8px;padding:7px 9px"><div style="width:15px;height:15px;border-radius:4px;border:2px solid #DDE2EA;flex-shrink:0"></div><div style="flex:1;font-size:10px;color:#2E2E2E">Huevos</div><div style="font-size:9px;font-weight:700;color:#5A6270;background:#F7F8FA;border-radius:6px;padding:2px 6px;display:flex;align-items:center;gap:4px">3 und <span style="color:#B9C2D6">✎</span></div></div>
+              <div style="font-size:9px;color:#5A6270;font-weight:700;text-align:right">+ Agregar alimento</div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:5px">
+              <div style="font-size:10px;font-weight:800;color:#4B7A1F;text-transform:uppercase;letter-spacing:.03em">Vegetales</div>
+              <div style="display:flex;gap:8px;align-items:center;background:#fff;border-radius:8px;padding:7px 9px"><div style="width:15px;height:15px;border-radius:4px;background:#8BC53F;flex-shrink:0"></div><div style="flex:1;font-size:10px;color:#2E2E2E">Brócoli</div><div style="font-size:9px;font-weight:700;color:#5A6270;background:#F7F8FA;border-radius:6px;padding:2px 6px;display:flex;align-items:center;gap:4px">Libre <span style="color:#B9C2D6">✎</span></div></div>
+              <div style="display:flex;gap:8px;align-items:center;background:#fff;border-radius:8px;padding:7px 9px"><div style="width:15px;height:15px;border-radius:4px;background:#8BC53F;flex-shrink:0"></div><div style="flex:1;font-size:10px;color:#2E2E2E">Lechuga + zanahoria</div><div style="font-size:9px;font-weight:700;color:#5A6270;background:#F7F8FA;border-radius:6px;padding:2px 6px;display:flex;align-items:center;gap:4px">Libre <span style="color:#B9C2D6">✎</span></div></div>
+              <div style="font-size:9px;color:#5A6270;font-weight:700;text-align:right">+ Agregar alimento</div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:5px">
+              <div style="font-size:10px;font-weight:800;color:#4B7A1F;text-transform:uppercase;letter-spacing:.03em">Grasas</div>
+              <div style="display:flex;gap:8px;align-items:center;background:#fff;border-radius:8px;padding:7px 9px"><div style="width:15px;height:15px;border-radius:4px;background:#8BC53F;flex-shrink:0"></div><div style="flex:1;font-size:10px;color:#2E2E2E">Aguacate</div><div style="font-size:9px;font-weight:700;color:#5A6270;background:#F7F8FA;border-radius:6px;padding:2px 6px;display:flex;align-items:center;gap:4px">100g <span style="color:#B9C2D6">✎</span></div></div>
+              <div style="font-size:9px;color:#5A6270;font-weight:700;text-align:right">+ Agregar alimento</div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:5px">
+              <div style="font-size:10px;font-weight:800;color:#B4442E;text-transform:uppercase;letter-spacing:.03em">Suplementos</div>
+              <div style="display:flex;gap:8px;align-items:center;background:#fff;border-radius:8px;padding:7px 9px"><div style="width:15px;height:15px;border-radius:4px;background:#8BC53F;flex-shrink:0"></div><div style="flex:1;font-size:10px;color:#2E2E2E">Creatina</div><div style="font-size:9px;font-weight:700;color:#5A6270;background:#F7F8FA;border-radius:6px;padding:2px 6px;display:flex;align-items:center;gap:4px">5g/día <span style="color:#B9C2D6">✎</span></div></div>
+              <div style="display:flex;gap:8px;align-items:center;background:#fff;border-radius:8px;padding:7px 9px"><div style="width:15px;height:15px;border-radius:4px;border:2px solid #DDE2EA;flex-shrink:0"></div><div style="flex:1;font-size:10px;color:#2E2E2E">Whey protein aislada</div><div style="font-size:9px;font-weight:700;color:#5A6270;background:#F7F8FA;border-radius:6px;padding:2px 6px;display:flex;align-items:center;gap:4px">1 scoop <span style="color:#B9C2D6">✎</span></div></div>
+              <div style="font-size:9px;color:#5A6270;font-weight:700;text-align:right">+ Agregar suplemento</div>
+            </div>
+            <div style="height:42px;border-radius:10px;background:#8BC53F;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;color:#1B2A4A;margin-top:4px">Generar vista previa del plan</div>
+          </div>
+        </div>
+
+        <div style="width:320px;height:760px;border-radius:28px;background:#F7F8FA;box-shadow:0 12px 30px rgba(27,42,74,0.18);overflow:hidden;flex-shrink:0;display:flex;flex-direction:column;position:relative">
+          <div style="background:#1B2A4A;padding:28px 20px 14px"><div style="font-family:'Manrope',sans-serif;font-weight:800;font-size:17px;color:#fff">Asistente de IA</div><div style="font-size:10px;color:#B9C2D6">Agregando alimento a un grupo</div></div>
+          <div style="padding:14px 16px;display:flex;flex-direction:column;gap:9px;filter:blur(1.5px);opacity:.5">
+            <div style="height:60px;border-radius:8px;background:#fff"></div>
+            <div style="height:60px;border-radius:8px;background:#fff"></div>
+          </div>
+          <div style="position:absolute;inset:0;background:rgba(18,32,61,0.55);display:flex;align-items:flex-end">
+            <div style="background:#fff;border-radius:20px 20px 0 0;padding:18px;display:flex;flex-direction:column;gap:8px;width:100%">
+              <div style="font-family:'Manrope',sans-serif;font-weight:800;font-size:14px;color:#1B2A4A">Agregar alimento sugerido</div>
+              <div style="font-size:9px;font-weight:700;color:#5A6270;text-transform:uppercase">Grupo</div>
+              <div style="display:flex;gap:5px;flex-wrap:wrap">
+                <div style="font-size:10px;padding:6px 10px;border-radius:20px;border:1px solid #DDE2EA;color:#5A6270">Carbos</div>
+                <div style="font-size:10px;padding:6px 10px;border-radius:20px;background:#1B2A4A;color:#fff;font-weight:700">Proteínas</div>
+                <div style="font-size:10px;padding:6px 10px;border-radius:20px;border:1px solid #DDE2EA;color:#5A6270">Vegetales</div>
+                <div style="font-size:10px;padding:6px 10px;border-radius:20px;border:1px solid #DDE2EA;color:#5A6270">Grasas</div>
+              </div>
+              <div style="font-size:9px;font-weight:700;color:#5A6270;text-transform:uppercase">Alimento</div>
+              <div style="height:36px;border-radius:8px;border:1px solid #DDE2EA;background:#F7F8FA;display:flex;align-items:center;padding:0 10px;font-size:11px;color:#2E2E2E">Filete de pescado</div>
+              <div style="font-size:9px;font-weight:700;color:#5A6270;text-transform:uppercase">Cantidad</div>
+              <div style="display:flex;gap:6px">
+                <div style="flex:1;height:36px;border-radius:8px;border:1px solid #DDE2EA;background:#F7F8FA;display:flex;align-items:center;padding:0 10px;font-size:11px;color:#2E2E2E">180</div>
+                <div style="width:64px;height:36px;border-radius:8px;border:1px solid #DDE2EA;background:#F7F8FA;display:flex;align-items:center;justify-content:center;font-size:11px;color:#2E2E2E">g ▾</div>
+              </div>
+              <div style="font-size:9px;font-weight:700;color:#5A6270;text-transform:uppercase">Motivo (opcional)</div>
+              <div style="height:36px;border-radius:8px;border:1px solid #DDE2EA;background:#F7F8FA;display:flex;align-items:center;padding:0 10px;font-size:10px;color:#8B93A3">Alternativa sin mariscos, alergia del cliente</div>
+              <div style="display:flex;gap:8px;margin-top:4px">
+                <div style="flex:1;height:40px;border-radius:10px;border:1px solid #DDE2EA;display:flex;align-items:center;justify-content:center;font-size:12px;color:#5A6270;font-weight:700">Cancelar</div>
+                <div style="flex:1;height:40px;border-radius:10px;background:#8BC53F;display:flex;align-items:center;justify-content:center;font-size:12px;color:#1B2A4A;font-weight:700">Agregar</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div style="width:320px;height:760px;border-radius:28px;background:#F7F8FA;box-shadow:0 12px 30px rgba(27,42,74,0.18);overflow:hidden;flex-shrink:0;display:flex;flex-direction:column">
+          <div style="background:#1B2A4A;padding:28px 20px 14px"><div style="font-family:'Manrope',sans-serif;font-weight:800;font-size:17px;color:#fff">‹ Vista previa del plan</div><div style="font-size:10px;color:#B9C2D6">Generado a partir de tus selecciones</div></div>
+          <div style="padding:14px;display:flex;flex-direction:column;gap:10px;align-items:center;overflow:hidden">
+            <div style="width:280px;background:#fff;border-radius:6px;box-shadow:0 4px 14px rgba(27,42,74,0.15);padding:12px;display:flex;flex-direction:column;gap:6px">
+              <div style="display:flex;align-items:center;gap:8px"><div style="width:20px;height:20px;border-radius:6px;background:#1B2A4A"></div><div style="font-size:9px;font-weight:800">PLAN NUTRICIONAL — VOLUMEN</div></div>
+              <div style="font-size:7px;color:#8B93A3">María Gómez · preparado por Daniel Baldivés</div>
+              <div style="display:grid;grid-template-columns:1fr 1.4fr 1.4fr;gap:2px;margin-top:4px">
+                <div style="font-size:6.5px;font-weight:800;color:#8B93A3">COMIDA</div><div style="font-size:6.5px;font-weight:800;color:#8B93A3">OPCIÓN 1</div><div style="font-size:6.5px;font-weight:800;color:#8B93A3">OPCIÓN 2</div>
+                <div style="font-size:7px;font-weight:700">Desayuno</div><div style="font-size:6.5px;color:#2E2E2E">3 claras + espinaca</div><div style="font-size:6.5px;color:#2E2E2E">Avena + fruta</div>
+                <div style="font-size:7px;font-weight:700">Almuerzo</div><div style="font-size:6.5px;color:#2E2E2E">Pollo + arroz + ensalada</div><div style="font-size:6.5px;color:#2E2E2E">Pescado + batata</div>
+                <div style="font-size:7px;font-weight:700">Merienda</div><div style="font-size:6.5px;color:#2E2E2E">Yogur griego + frutos secos</div><div style="font-size:6.5px;color:#2E2E2E">Scoop de proteína</div>
+                <div style="font-size:7px;font-weight:700">Cena</div><div style="font-size:6.5px;color:#2E2E2E">Bistec + vegetales</div><div style="font-size:6.5px;color:#2E2E2E">Camarones + brócoli</div>
+              </div>
+              <div style="height:1px;background:#EEF0F4;margin:4px 0"></div>
+              <div style="font-size:6.5px;font-weight:800;color:#8B93A3">LISTA DE MERCADO</div>
+              <div style="display:flex;flex-wrap:wrap;gap:3px">
+                <span style="font-size:6px;background:#EAF6D9;color:#4B7A1F;padding:2px 6px;border-radius:10px">Arroz integral</span>
+                <span style="font-size:6px;background:#EAF6D9;color:#4B7A1F;padding:2px 6px;border-radius:10px">Batata</span>
+                <span style="font-size:6px;background:#EAF6D9;color:#4B7A1F;padding:2px 6px;border-radius:10px">Pollo</span>
+                <span style="font-size:6px;background:#EAF6D9;color:#4B7A1F;padding:2px 6px;border-radius:10px">Pescado</span>
+                <span style="font-size:6px;background:#EAF6D9;color:#4B7A1F;padding:2px 6px;border-radius:10px">Brócoli</span>
+                <span style="font-size:6px;background:#EAF6D9;color:#4B7A1F;padding:2px 6px;border-radius:10px">Aguacate</span>
+              </div>
+              <div style="font-size:6.5px;color:#5A6270;margin-top:2px">Suplementos: creatina 5g/día · whey post-entreno</div>
+              <div style="margin-top:auto;display:flex;flex-direction:column;gap:2px;border-top:1px solid #EEF0F4;padding-top:5px">
+                <div style="font-size:7px;font-weight:700;color:#2E2E2E">Daniel Baldivés</div>
+                <div style="font-size:6px;color:#B4B9C3">Personal Trainer · Generado con CoplanFit</div>
+              </div>
+            </div>
+            <div style="display:flex;gap:8px"><div style="width:20px;height:20px;border-radius:6px;background:#1B2A4A"></div><div style="width:20px;height:20px;border-radius:6px;background:#8BC53F"></div><div style="width:20px;height:20px;border-radius:6px;background:#FF6B5A"></div></div>
+            <div style="height:40px;width:100%;border-radius:10px;background:#8BC53F;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;color:#1B2A4A;margin-top:auto">Exportar PDF</div>
+          </div>
+        </div>
+
+        <div style="width:280px;height:640px;border-radius:28px;background:#F7F8FA;box-shadow:0 12px 30px rgba(27,42,74,0.18);overflow:hidden;flex-shrink:0;display:flex;flex-direction:column">
+          <div style="background:#1B2A4A;padding:36px 20px 18px"><div style="font-family:'Manrope',sans-serif;font-weight:800;font-size:17px;color:#fff">Mi perfil</div></div>
+          <div style="padding:16px;display:flex;flex-direction:column;gap:10px;align-items:center">
+            <div style="width:64px;height:64px;border-radius:50%;background:#DDE2EA;display:flex;align-items:center;justify-content:center;font-size:10px;color:#8B93A3">Logo</div>
+            <div style="width:100%;display:flex;flex-direction:column;gap:8px">
+              <div><div style="font-size:9px;font-weight:700;color:#5A6270;text-transform:uppercase;margin-bottom:3px">Nombre</div><div style="height:36px;border-radius:8px;border:1px solid #DDE2EA;background:#fff;display:flex;align-items:center;padding:0 10px;font-size:11px;color:#2E2E2E">Daniel Baldivés</div></div>
+              <div><div style="font-size:9px;font-weight:700;color:#5A6270;text-transform:uppercase;margin-bottom:3px">Correo</div><div style="height:36px;border-radius:8px;border:1px solid #DDE2EA;background:#fff;display:flex;align-items:center;padding:0 10px;font-size:11px;color:#2E2E2E">daniel@coplanfit.com</div></div>
+              <div><div style="font-size:9px;font-weight:700;color:#5A6270;text-transform:uppercase;margin-bottom:3px">Negocio</div><div style="height:36px;border-radius:8px;border:1px solid #DDE2EA;background:#fff;display:flex;align-items:center;padding:0 10px;font-size:11px;color:#2E2E2E">DB Personal Training</div></div>
+              <div><div style="font-size:9px;font-weight:700;color:#5A6270;text-transform:uppercase;margin-bottom:3px">Logo para PDF</div><div style="height:44px;border-radius:8px;border:1px dashed #C7CEDB;display:flex;align-items:center;justify-content:center;font-size:10px;color:#8B93A3">Subir imagen</div></div>
+              <div style="height:42px;border-radius:10px;background:#8BC53F;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;color:#1B2A4A;margin-top:4px">Guardar cambios</div>
+            </div>
+          </div>
+          <div style="display:flex;justify-content:space-around;align-items:center;height:56px;border-top:1px solid #E4E7ED;background:#fff;flex-shrink:0">
+            <div style="display:flex;flex-direction:column;align-items:center;gap:2px"><div style="width:16px;height:16px;border-radius:4px;background:#DDE2EA"></div><div style="font-size:8px;color:#8B93A3;font-weight:600">Clientes</div></div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:2px"><div style="width:16px;height:16px;border-radius:4px;background:#DDE2EA"></div><div style="font-size:8px;color:#8B93A3;font-weight:600">Suscripción</div></div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:2px"><div style="width:16px;height:16px;border-radius:4px;background:#8BC53F"></div><div style="font-size:8px;color:#1B2A4A;font-weight:700">Perfil</div></div>
+          </div>
+        </div>
+
+        <div style="width:280px;height:600px;border-radius:28px;background:#F7F8FA;box-shadow:0 12px 30px rgba(27,42,74,0.18);overflow:hidden;flex-shrink:0;display:flex;flex-direction:column">
+          <div style="background:#1B2A4A;padding:36px 20px 18px"><div style="font-family:'Manrope',sans-serif;font-weight:800;font-size:17px;color:#fff">Suscripción</div></div>
+          <div style="padding:16px;display:flex;flex-direction:column;gap:10px">
+            <div style="background:#fff;border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:8px">
+              <div style="display:flex;justify-content:space-between"><div style="font-size:12px;font-weight:700">Paquete 2 · 11–50</div><div style="font-size:12px;font-weight:800;color:#1B2A4A">$30/mes</div></div>
+              <div style="height:6px;border-radius:4px;background:#EEF0F4"><div style="height:6px;width:64%;border-radius:4px;background:#8BC53F"></div></div>
+              <div style="font-size:10px;color:#8B93A3">32 de 50 asesorados</div>
+            </div>
+            <div style="background:#FFE4DF;border-radius:12px;padding:12px;display:flex;justify-content:space-between;align-items:center"><div style="font-size:11px;color:#B4442E;font-weight:600">Pago el 14 ago.</div><div style="font-size:10px;font-weight:700;color:#B4442E">2 días</div></div>
+            <div style="background:#fff;border-radius:10px;padding:10px;display:flex;justify-content:space-between;font-size:11px"><span>Tarjeta •••• 4821</span><span style="color:#8B93A3">Activa</span></div>
+            <div style="height:42px;border-radius:10px;border:2px solid #1B2A4A;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;color:#1B2A4A;margin-top:auto">Subir de paquete</div>
+          </div>
+          <div style="display:flex;justify-content:space-around;align-items:center;height:56px;border-top:1px solid #E4E7ED;background:#fff;flex-shrink:0">
+            <div style="display:flex;flex-direction:column;align-items:center;gap:2px"><div style="width:16px;height:16px;border-radius:4px;background:#DDE2EA"></div><div style="font-size:8px;color:#8B93A3;font-weight:600">Clientes</div></div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:2px"><div style="width:16px;height:16px;border-radius:4px;background:#8BC53F"></div><div style="font-size:8px;color:#1B2A4A;font-weight:700">Suscripción</div></div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:2px"><div style="width:16px;height:16px;border-radius:4px;background:#DDE2EA"></div><div style="font-size:8px;color:#8B93A3;font-weight:600">Perfil</div></div>
+          </div>
+        </div>
+
+        <div style="width:280px;height:600px;border-radius:28px;background:#F7F8FA;box-shadow:0 12px 30px rgba(27,42,74,0.18);overflow:hidden;flex-shrink:0;display:flex;flex-direction:column">
+          <div style="background:#1B2A4A;padding:36px 20px 18px"><div style="font-family:'Manrope',sans-serif;font-weight:800;font-size:17px;color:#fff">Super Admin</div><div style="font-size:10px;color:#B9C2D6">Reportes de pago móvil</div></div>
+          <div style="padding:16px;display:flex;flex-direction:column;gap:8px">
+            <div style="background:#fff;border-radius:10px;padding:10px;display:flex;flex-direction:column;gap:6px"><div style="display:flex;justify-content:space-between"><span style="font-size:11px;font-weight:700">Luis Prado</span><span style="font-size:10px;font-weight:700;color:#B4442E">$30.00</span></div><div style="font-size:9px;color:#8B93A3">Ref. 004829371</div><div style="display:flex;gap:6px;margin-top:2px"><div style="flex:1;height:30px;border-radius:8px;background:#8BC53F;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#1B2A4A">Validar</div><div style="flex:1;height:30px;border-radius:8px;border:1px solid #DDE2EA;display:flex;align-items:center;justify-content:center;font-size:10px;color:#5A6270">Rechazar</div></div></div>
+            <div style="background:#fff;border-radius:10px;padding:10px;display:flex;flex-direction:column;gap:6px"><div style="display:flex;justify-content:space-between"><span style="font-size:11px;font-weight:700">Sofía Reyes</span><span style="font-size:10px;font-weight:700;color:#B4442E">$10.00</span></div><div style="font-size:9px;color:#8B93A3">Ref. 004829402</div><div style="display:flex;gap:6px;margin-top:2px"><div style="flex:1;height:30px;border-radius:8px;background:#8BC53F;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#1B2A4A">Validar</div><div style="flex:1;height:30px;border-radius:8px;border:1px solid #DDE2EA;display:flex;align-items:center;justify-content:center;font-size:10px;color:#5A6270">Rechazar</div></div></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- VERSION 1e: LIGHT SAAS -->
+    <div id="1e" style="display:flex;flex-direction:column;gap:16px">
+      <div style="display:flex;gap:10px;align-items:center">
+        <span style="font-size:11px;font-weight:700;color:#8BC53F;background:#EAF6D9;padding:3px 10px;border-radius:20px">1e</span>
+        <span style="font-family:'Manrope',sans-serif;font-weight:700;font-size:15px;color:#1B2A4A">Light SaaS — todo claro, navy solo en acentos</span>
+      </div>
+      <div style="display:flex;gap:20px;overflow-x:auto;padding-bottom:8px">
+
+        <div style="width:280px;height:600px;border-radius:28px;background:#fff;box-shadow:0 12px 30px rgba(27,42,74,0.12);overflow:hidden;flex-shrink:0;display:flex;flex-direction:column">
+          <div style="padding:36px 20px 24px;display:flex;flex-direction:column;gap:6px;border-bottom:1px solid #EEF0F4">
+            <div style="width:36px;height:36px;border-radius:10px;background:#1B2A4A;display:flex;align-items:center;justify-content:center;font-family:'Manrope',sans-serif;font-weight:800;font-size:14px;color:#8BC53F">CF</div>
+            <div style="font-family:'Manrope',sans-serif;font-weight:800;font-size:19px;color:#1B2A4A;margin-top:8px">Bienvenido de nuevo</div>
+          </div>
+          <div style="padding:20px;display:flex;flex-direction:column;gap:10px">
+            <div style="height:42px;border-radius:10px;border:1px solid #E4E7ED;background:#FAFBFC;display:flex;align-items:center;padding:0 12px;font-size:12px;color:#8B93A3">Correo electrónico</div>
+            <div style="height:42px;border-radius:10px;border:1px solid #E4E7ED;background:#FAFBFC;display:flex;align-items:center;padding:0 12px;font-size:12px;color:#8B93A3">Contraseña</div>
+            <div style="height:42px;border-radius:10px;background:#8BC53F;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;color:#fff;margin-top:8px">Iniciar sesión</div>
+            <div style="text-align:center;font-size:11px;color:#5A6270;margin-top:6px">¿Eres nuevo? <span style="color:#1B2A4A;font-weight:600">Crear cuenta</span></div>
+          </div>
+        </div>
+
+        <div style="width:280px;height:600px;border-radius:28px;background:#fff;box-shadow:0 12px 30px rgba(27,42,74,0.12);overflow:hidden;flex-shrink:0;display:flex;flex-direction:column">
+          <div style="padding:36px 20px 18px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #EEF0F4">
+            <div style="font-family:'Manrope',sans-serif;font-weight:800;font-size:18px;color:#1B2A4A">Clientes</div>
+            <div style="font-size:10px;font-weight:700;color:#4B7A1F;background:#EAF6D9;padding:4px 9px;border-radius:20px">8/10</div>
+          </div>
+          <div style="padding:16px;display:flex;flex-direction:column;gap:8px;overflow:hidden;position:relative;flex:1">
+            <div style="height:36px;border-radius:9px;background:#FAFBFC;border:1px solid #E4E7ED;display:flex;align-items:center;padding:0 12px;font-size:11px;color:#8B93A3">Buscar cliente…</div>
+            <div style="display:flex;flex-direction:column;gap:1px;margin-top:4px">
+              <div style="display:flex;gap:10px;align-items:center;padding:10px 4px;border-bottom:1px solid #F2F3F6"><div style="width:34px;height:34px;border-radius:50%;background:#EEF0F4;flex-shrink:0"></div><div style="display:flex;flex-direction:column;gap:2px"><div style="font-size:12px;font-weight:700;color:#2E2E2E">María Gómez</div><div style="font-size:10px;color:#8B93A3">Objetivo: volumen · v3 vigente</div></div></div>
+              <div style="display:flex;gap:10px;align-items:center;padding:10px 4px;border-bottom:1px solid #F2F3F6"><div style="width:34px;height:34px;border-radius:50%;background:#EEF0F4;flex-shrink:0"></div><div style="display:flex;flex-direction:column;gap:2px"><div style="font-size:12px;font-weight:700;color:#2E2E2E">Carlos Ruiz</div><div style="font-size:10px;color:#8B93A3">Objetivo: definición · v1 vigente</div></div></div>
+              <div style="display:flex;gap:10px;align-items:center;padding:10px 4px"><div style="width:34px;height:34px;border-radius:50%;background:#EEF0F4;flex-shrink:0"></div><div style="display:flex;flex-direction:column;gap:2px"><div style="font-size:12px;font-weight:700;color:#2E2E2E">Ana Torres</div><div style="font-size:10px;color:#8B93A3">Objetivo: subir de peso · v2 vigente</div></div></div>
+            </div>
+            <div style="position:absolute;bottom:20px;right:20px;width:44px;height:44px;border-radius:50%;background:#1B2A4A;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:18px">+</div>
+          </div>
+        </div>
+
+        <div style="width:280px;height:600px;border-radius:28px;background:#fff;box-shadow:0 12px 30px rgba(27,42,74,0.12);overflow:hidden;flex-shrink:0;display:flex;flex-direction:column">
+          <div style="padding:36px 20px 16px;display:flex;flex-direction:column;gap:4px;border-bottom:1px solid #EEF0F4">
+            <div style="font-family:'Manrope',sans-serif;font-weight:800;font-size:17px;color:#1B2A4A">María Gómez</div>
+            <div style="font-size:10px;color:#8B93A3">28 años · Cliente desde ene. 2026</div>
+          </div>
+          <div style="display:flex;gap:0;padding:0 20px;border-bottom:1px solid #EEF0F4">
+            <div style="padding:10px 0;margin-right:16px;font-size:11px;font-weight:700;color:#1B2A4A;border-bottom:2px solid #8BC53F">Datos</div>
+            <div style="padding:10px 0;margin-right:16px;font-size:11px;color:#8B93A3">Salud</div>
+            <div style="padding:10px 0;font-size:11px;color:#8B93A3">Planes</div>
+          </div>
+          <div style="padding:16px;display:flex;flex-direction:column;gap:10px">
+            <div style="background:#FAFBFC;border-radius:10px;padding:12px;display:flex;justify-content:space-between"><div style="font-size:10px;color:#8B93A3">Peso</div><div style="font-size:12px;font-weight:700">64.2 kg</div></div>
+            <div style="background:#FAFBFC;border-radius:10px;padding:12px;display:flex;justify-content:space-between"><div style="font-size:10px;color:#8B93A3">Estatura</div><div style="font-size:12px;font-weight:700">1.65 m</div></div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px">
+              <span style="font-size:10px;font-weight:600;color:#B4442E;background:#FFE4DF;padding:4px 9px;border-radius:20px">Alergia: mariscos</span>
+              <span style="font-size:10px;font-weight:600;color:#5A6270;background:#EEF0F4;padding:4px 9px;border-radius:20px">Evita: frutos secos</span>
+              <span style="font-size:10px;font-weight:600;color:#4B7A1F;background:#EAF6D9;padding:4px 9px;border-radius:20px">Objetivo: volumen</span>
+            </div>
+          </div>
+        </div>
+
+        <div style="width:320px;height:700px;border-radius:28px;background:#fff;box-shadow:0 12px 30px rgba(27,42,74,0.12);overflow:hidden;flex-shrink:0;display:flex;flex-direction:column">
+          <div style="padding:36px 20px 18px;border-bottom:1px solid #EEF0F4"><div style="font-family:'Manrope',sans-serif;font-weight:800;font-size:17px;color:#1B2A4A">Constructor de plan</div><div style="font-size:10px;color:#8B93A3">María Gómez · nueva versión</div></div>
+          <div style="padding:16px;display:flex;flex-direction:column;gap:8px;overflow:hidden">
+            <div style="background:#FAFBFC;border-radius:10px;padding:10px;border:1px solid #EEF0F4"><div style="font-size:11px;font-weight:700;margin-bottom:4px">Desayuno · 8:00am</div><div style="font-size:10px;color:#5A6270">2 huevos + 1 carbohidrato + fruta</div></div>
+            <div style="background:#FAFBFC;border-radius:10px;padding:10px;border:1px solid #8BC53F"><div style="font-size:11px;font-weight:700;margin-bottom:4px">Almuerzo · 1:00pm</div><div style="font-size:10px;color:#5A6270">200g proteína + carbo + ensalada obligatoria</div></div>
+            <div style="background:#FAFBFC;border-radius:10px;padding:10px;border:1px solid #EEF0F4"><div style="font-size:11px;font-weight:700;margin-bottom:4px">Suplementos</div><div style="font-size:10px;color:#5A6270">Creatina · Proteína después de 6pm</div></div>
+            <div style="font-size:10px;font-weight:700;color:#5A6270;margin-top:4px">Nota adicional para la IA</div>
+            <div style="background:#FAFBFC;border-radius:10px;border:1px solid #E4E7ED;padding:10px;font-size:10px;color:#8B93A3;height:56px">Ej: prefiere pollo sobre pescado, evitar lácteos esta semana…</div>
+            <div style="height:42px;border-radius:10px;background:#8BC53F;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;color:#fff;margin-top:auto">Generar sugerencias con IA</div>
+          </div>
+        </div>
+
+        <div style="width:320px;height:700px;border-radius:28px;background:#fff;box-shadow:0 12px 30px rgba(27,42,74,0.12);overflow:hidden;flex-shrink:0;display:flex;flex-direction:column">
+          <div style="padding:28px 20px 14px;border-bottom:1px solid #EEF0F4"><div style="font-family:'Manrope',sans-serif;font-weight:800;font-size:17px;color:#1B2A4A">Asistente de IA</div><div style="font-size:10px;color:#8B93A3">Objetivo: volumen · nota del entrenador aplicada</div></div>
+          <div style="padding:14px 16px;display:flex;flex-direction:column;gap:10px;overflow:hidden">
+            <div style="display:flex;flex-direction:column;gap:5px">
+              <div style="font-size:10px;font-weight:800;color:#4B7A1F;text-transform:uppercase;letter-spacing:.03em">Carbohidratos</div>
+              <div style="display:flex;gap:8px;align-items:center;background:#FAFBFC;border:1px solid #EEF0F4;border-radius:8px;padding:7px 9px"><div style="width:15px;height:15px;border-radius:4px;background:#8BC53F;flex-shrink:0"></div><div style="font-size:10px;color:#2E2E2E">Arroz integral, 150g</div></div>
+              <div style="display:flex;gap:8px;align-items:center;background:#FAFBFC;border:1px solid #EEF0F4;border-radius:8px;padding:7px 9px"><div style="width:15px;height:15px;border-radius:4px;background:#8BC53F;flex-shrink:0"></div><div style="font-size:10px;color:#2E2E2E">Batata, 200g</div></div>
+              <div style="display:flex;gap:8px;align-items:center;background:#FAFBFC;border:1px solid #EEF0F4;border-radius:8px;padding:7px 9px"><div style="width:15px;height:15px;border-radius:4px;border:2px solid #DDE2EA;flex-shrink:0"></div><div style="font-size:10px;color:#2E2E2E">Quinoa, 120g</div></div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:5px">
+              <div style="font-size:10px;font-weight:800;color:#4B7A1F;text-transform:uppercase;letter-spacing:.03em">Proteínas</div>
+              <div style="display:flex;gap:8px;align-items:center;background:#FAFBFC;border:1px solid #EEF0F4;border-radius:8px;padding:7px 9px"><div style="width:15px;height:15px;border-radius:4px;background:#8BC53F;flex-shrink:0"></div><div style="font-size:10px;color:#2E2E2E">Pechuga de pollo, 200g</div></div>
+              <div style="display:flex;gap:8px;align-items:center;background:#FAFBFC;border:1px solid #EEF0F4;border-radius:8px;padding:7px 9px"><div style="width:15px;height:15px;border-radius:4px;background:#8BC53F;flex-shrink:0"></div><div style="font-size:10px;color:#2E2E2E">Filete de pescado, 180g</div></div>
+              <div style="display:flex;gap:8px;align-items:center;background:#FAFBFC;border:1px solid #EEF0F4;border-radius:8px;padding:7px 9px"><div style="width:15px;height:15px;border-radius:4px;border:2px solid #DDE2EA;flex-shrink:0"></div><div style="font-size:10px;color:#2E2E2E">Huevos, 3 unidades</div></div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:5px">
+              <div style="font-size:10px;font-weight:800;color:#4B7A1F;text-transform:uppercase;letter-spacing:.03em">Vegetales</div>
+              <div style="display:flex;gap:8px;align-items:center;background:#FAFBFC;border:1px solid #EEF0F4;border-radius:8px;padding:7px 9px"><div style="width:15px;height:15px;border-radius:4px;background:#8BC53F;flex-shrink:0"></div><div style="font-size:10px;color:#2E2E2E">Brócoli</div></div>
+              <div style="display:flex;gap:8px;align-items:center;background:#FAFBFC;border:1px solid #EEF0F4;border-radius:8px;padding:7px 9px"><div style="width:15px;height:15px;border-radius:4px;background:#8BC53F;flex-shrink:0"></div><div style="font-size:10px;color:#2E2E2E">Lechuga + zanahoria</div></div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:5px">
+              <div style="font-size:10px;font-weight:800;color:#4B7A1F;text-transform:uppercase;letter-spacing:.03em">Grasas</div>
+              <div style="display:flex;gap:8px;align-items:center;background:#FAFBFC;border:1px solid #EEF0F4;border-radius:8px;padding:7px 9px"><div style="width:15px;height:15px;border-radius:4px;background:#8BC53F;flex-shrink:0"></div><div style="font-size:10px;color:#2E2E2E">Aguacate, 100g</div></div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:5px">
+              <div style="font-size:10px;font-weight:800;color:#B4442E;text-transform:uppercase;letter-spacing:.03em">Suplementos</div>
+              <div style="display:flex;gap:8px;align-items:center;background:#FAFBFC;border:1px solid #EEF0F4;border-radius:8px;padding:7px 9px"><div style="width:15px;height:15px;border-radius:4px;background:#8BC53F;flex-shrink:0"></div><div style="font-size:10px;color:#2E2E2E">Creatina, 5g/día</div></div>
+              <div style="display:flex;gap:8px;align-items:center;background:#FAFBFC;border:1px solid #EEF0F4;border-radius:8px;padding:7px 9px"><div style="width:15px;height:15px;border-radius:4px;border:2px solid #DDE2EA;flex-shrink:0"></div><div style="font-size:10px;color:#2E2E2E">Whey protein aislada</div></div>
+            </div>
+            <div style="height:42px;border-radius:10px;background:#8BC53F;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;color:#fff;margin-top:4px">Generar vista previa del plan</div>
+          </div>
+        </div>
+
+        <div style="width:320px;height:700px;border-radius:28px;background:#fff;box-shadow:0 12px 30px rgba(27,42,74,0.12);overflow:hidden;flex-shrink:0;display:flex;flex-direction:column">
+          <div style="padding:28px 20px 14px;border-bottom:1px solid #EEF0F4"><div style="font-family:'Manrope',sans-serif;font-weight:800;font-size:17px;color:#1B2A4A">Vista previa del plan</div><div style="font-size:10px;color:#8B93A3">Generado a partir de tus selecciones</div></div>
+          <div style="padding:14px;display:flex;flex-direction:column;gap:10px;align-items:center;overflow:hidden">
+            <div style="width:280px;background:#fff;border-radius:6px;box-shadow:0 4px 14px rgba(27,42,74,0.12);border:1px solid #EEF0F4;padding:12px;display:flex;flex-direction:column;gap:6px">
+              <div style="display:flex;align-items:center;gap:8px"><div style="width:20px;height:20px;border-radius:6px;background:#1B2A4A"></div><div style="font-size:9px;font-weight:800">PLAN NUTRICIONAL — VOLUMEN</div></div>
+              <div style="font-size:7px;color:#8B93A3">María Gómez</div>
+              <div style="display:grid;grid-template-columns:1fr 1.4fr 1.4fr;gap:2px;margin-top:4px">
+                <div style="font-size:6.5px;font-weight:800;color:#8B93A3">COMIDA</div><div style="font-size:6.5px;font-weight:800;color:#8B93A3">OPCIÓN 1</div><div style="font-size:6.5px;font-weight:800;color:#8B93A3">OPCIÓN 2</div>
+                <div style="font-size:7px;font-weight:700">Desayuno</div><div style="font-size:6.5px;color:#2E2E2E">3 claras + espinaca</div><div style="font-size:6.5px;color:#2E2E2E">Avena + fruta</div>
+                <div style="font-size:7px;font-weight:700">Almuerzo</div><div style="font-size:6.5px;color:#2E2E2E">Pollo + arroz + ensalada</div><div style="font-size:6.5px;color:#2E2E2E">Pescado + batata</div>
+                <div style="font-size:7px;font-weight:700">Merienda</div><div style="font-size:6.5px;color:#2E2E2E">Yogur griego + frutos secos</div><div style="font-size:6.5px;color:#2E2E2E">Scoop de proteína</div>
+                <div style="font-size:7px;font-weight:700">Cena</div><div style="font-size:6.5px;color:#2E2E2E">Bistec + vegetales</div><div style="font-size:6.5px;color:#2E2E2E">Camarones + brócoli</div>
+              </div>
+              <div style="height:1px;background:#EEF0F4;margin:4px 0"></div>
+              <div style="font-size:6.5px;font-weight:800;color:#8B93A3">LISTA DE MERCADO</div>
+              <div style="display:flex;flex-wrap:wrap;gap:3px">
+                <span style="font-size:6px;background:#EAF6D9;color:#4B7A1F;padding:2px 6px;border-radius:10px">Arroz integral</span>
+                <span style="font-size:6px;background:#EAF6D9;color:#4B7A1F;padding:2px 6px;border-radius:10px">Batata</span>
+                <span style="font-size:6px;background:#EAF6D9;color:#4B7A1F;padding:2px 6px;border-radius:10px">Pollo</span>
+                <span style="font-size:6px;background:#EAF6D9;color:#4B7A1F;padding:2px 6px;border-radius:10px">Pescado</span>
+                <span style="font-size:6px;background:#EAF6D9;color:#4B7A1F;padding:2px 6px;border-radius:10px">Brócoli</span>
+                <span style="font-size:6px;background:#EAF6D9;color:#4B7A1F;padding:2px 6px;border-radius:10px">Aguacate</span>
+              </div>
+              <div style="font-size:6.5px;color:#5A6270;margin-top:2px">Suplementos: creatina 5g/día · whey post-entreno</div>
+              <div style="margin-top:auto;font-size:6px;color:#B4B9C3;border-top:1px solid #EEF0F4;padding-top:5px">Generado con CoplanFit · plan de María Gómez, entrenador</div>
+            </div>
+            <div style="display:flex;gap:8px"><div style="width:20px;height:20px;border-radius:6px;background:#1B2A4A"></div><div style="width:20px;height:20px;border-radius:6px;background:#8BC53F"></div><div style="width:20px;height:20px;border-radius:6px;background:#FF6B5A"></div></div>
+            <div style="height:40px;width:100%;border-radius:10px;background:#8BC53F;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;color:#fff;margin-top:auto">Exportar PDF</div>
+          </div>
+        </div>
+
+        <div style="width:280px;height:600px;border-radius:28px;background:#fff;box-shadow:0 12px 30px rgba(27,42,74,0.12);overflow:hidden;flex-shrink:0;display:flex;flex-direction:column">
+          <div style="padding:36px 20px 18px;border-bottom:1px solid #EEF0F4"><div style="font-family:'Manrope',sans-serif;font-weight:800;font-size:17px;color:#1B2A4A">Suscripción</div></div>
+          <div style="padding:16px;display:flex;flex-direction:column;gap:10px">
+            <div style="background:#FAFBFC;border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:8px;border:1px solid #EEF0F4">
+              <div style="display:flex;justify-content:space-between"><div style="font-size:12px;font-weight:700">Paquete 2 · 11–50</div><div style="font-size:12px;font-weight:800;color:#1B2A4A">$30/mes</div></div>
+              <div style="height:6px;border-radius:4px;background:#EEF0F4"><div style="height:6px;width:64%;border-radius:4px;background:#8BC53F"></div></div>
+              <div style="font-size:10px;color:#8B93A3">32 de 50 asesorados</div>
+            </div>
+            <div style="background:#FFE4DF;border-radius:12px;padding:12px;display:flex;justify-content:space-between;align-items:center"><div style="font-size:11px;color:#B4442E;font-weight:600">Pago el 14 ago.</div><div style="font-size:10px;font-weight:700;color:#B4442E">2 días</div></div>
+            <div style="background:#FAFBFC;border-radius:10px;padding:10px;display:flex;justify-content:space-between;font-size:11px;border:1px solid #EEF0F4"><span>Tarjeta •••• 4821</span><span style="color:#8B93A3">Activa</span></div>
+            <div style="height:42px;border-radius:10px;border:2px solid #1B2A4A;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;color:#1B2A4A;margin-top:auto">Subir de paquete</div>
+          </div>
+        </div>
+
+        <div style="width:280px;height:600px;border-radius:28px;background:#fff;box-shadow:0 12px 30px rgba(27,42,74,0.12);overflow:hidden;flex-shrink:0;display:flex;flex-direction:column">
+          <div style="padding:36px 20px 18px;border-bottom:1px solid #EEF0F4"><div style="font-family:'Manrope',sans-serif;font-weight:800;font-size:17px;color:#1B2A4A">Super Admin</div><div style="font-size:10px;color:#8B93A3">Reportes de pago móvil</div></div>
+          <div style="padding:16px;display:flex;flex-direction:column;gap:8px">
+            <div style="background:#FAFBFC;border-radius:10px;padding:10px;display:flex;flex-direction:column;gap:6px;border:1px solid #EEF0F4"><div style="display:flex;justify-content:space-between"><span style="font-size:11px;font-weight:700">Luis Prado</span><span style="font-size:10px;font-weight:700;color:#B4442E">$30.00</span></div><div style="font-size:9px;color:#8B93A3">Ref. 004829371</div><div style="display:flex;gap:6px;margin-top:2px"><div style="flex:1;height:30px;border-radius:8px;background:#8BC53F;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff">Validar</div><div style="flex:1;height:30px;border-radius:8px;border:1px solid #E4E7ED;display:flex;align-items:center;justify-content:center;font-size:10px;color:#5A6270">Rechazar</div></div></div>
+            <div style="background:#FAFBFC;border-radius:10px;padding:10px;display:flex;flex-direction:column;gap:6px;border:1px solid #EEF0F4"><div style="display:flex;justify-content:space-between"><span style="font-size:11px;font-weight:700">Sofía Reyes</span><span style="font-size:10px;font-weight:700;color:#B4442E">$10.00</span></div><div style="font-size:9px;color:#8B93A3">Ref. 004829402</div><div style="display:flex;gap:6px;margin-top:2px"><div style="flex:1;height:30px;border-radius:8px;background:#8BC53F;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff">Validar</div><div style="flex:1;height:30px;border-radius:8px;border:1px solid #E4E7ED;display:flex;align-items:center;justify-content:center;font-size:10px;color:#5A6270">Rechazar</div></div></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- VERSION 1f: DARK CONTRAST -->
+    <div id="1f" style="display:flex;flex-direction:column;gap:16px">
+      <div style="display:flex;gap:10px;align-items:center">
+        <span style="font-size:11px;font-weight:700;color:#8BC53F;background:#EAF6D9;padding:3px 10px;border-radius:20px">1f</span>
+        <span style="font-family:'Manrope',sans-serif;font-weight:700;font-size:15px;color:#1B2A4A">Dark Contrast — navy oscuro de punta a punta</span>
+      </div>
+      <div style="display:flex;gap:20px;overflow-x:auto;padding-bottom:8px">
+
+        <div style="width:280px;height:600px;border-radius:28px;background:#12203D;box-shadow:0 12px 30px rgba(0,0,0,0.35);overflow:hidden;flex-shrink:0;display:flex;flex-direction:column">
+          <div style="padding:36px 20px 24px;display:flex;flex-direction:column;gap:6px">
+            <div style="width:36px;height:36px;border-radius:10px;background:#8BC53F;display:flex;align-items:center;justify-content:center;font-family:'Manrope',sans-serif;font-weight:800;font-size:14px;color:#12203D">CF</div>
+            <div style="font-family:'Manrope',sans-serif;font-weight:800;font-size:19px;color:#fff;margin-top:8px">Bienvenido de nuevo</div>
+          </div>
+          <div style="padding:20px;display:flex;flex-direction:column;gap:10px">
+            <div style="height:42px;border-radius:10px;border:1px solid #2B3F63;background:#1B2A4A;display:flex;align-items:center;padding:0 12px;font-size:12px;color:#8492B0">Correo electrónico</div>
+            <div style="height:42px;border-radius:10px;border:1px solid #2B3F63;background:#1B2A4A;display:flex;align-items:center;padding:0 12px;font-size:12px;color:#8492B0">Contraseña</div>
+            <div style="height:42px;border-radius:10px;background:#8BC53F;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;color:#12203D;margin-top:8px">Iniciar sesión</div>
+            <div style="text-align:center;font-size:11px;color:#8492B0;margin-top:6px">¿Eres nuevo? <span style="color:#8BC53F;font-weight:600">Crear cuenta</span></div>
+          </div>
+        </div>
+
+        <div style="width:280px;height:600px;border-radius:28px;background:#12203D;box-shadow:0 12px 30px rgba(0,0,0,0.35);overflow:hidden;flex-shrink:0;display:flex;flex-direction:column">
+          <div style="padding:36px 20px 18px;display:flex;justify-content:space-between;align-items:center">
+            <div style="font-family:'Manrope',sans-serif;font-weight:800;font-size:18px;color:#fff">Clientes</div>
+            <div style="font-size:10px;font-weight:700;color:#12203D;background:#8BC53F;padding:4px 9px;border-radius:20px">8/10</div>
+          </div>
+          <div style="padding:16px;display:flex;flex-direction:column;gap:8px;overflow:hidden;position:relative;flex:1">
+            <div style="height:36px;border-radius:9px;background:#1B2A4A;border:1px solid #2B3F63;display:flex;align-items:center;padding:0 12px;font-size:11px;color:#8492B0">Buscar cliente…</div>
+            <div style="display:flex;flex-direction:column;gap:8px;margin-top:4px">
+              <div style="display:flex;gap:10px;align-items:center;background:#1B2A4A;border-radius:10px;padding:10px"><div style="width:34px;height:34px;border-radius:50%;background:#2B3F63;flex-shrink:0"></div><div style="display:flex;flex-direction:column;gap:2px"><div style="font-size:12px;font-weight:700;color:#fff">María Gómez</div><div style="font-size:10px;color:#8492B0">Objetivo: volumen · v3 vigente</div></div></div>
+              <div style="display:flex;gap:10px;align-items:center;background:#1B2A4A;border-radius:10px;padding:10px"><div style="width:34px;height:34px;border-radius:50%;background:#2B3F63;flex-shrink:0"></div><div style="display:flex;flex-direction:column;gap:2px"><div style="font-size:12px;font-weight:700;color:#fff">Carlos Ruiz</div><div style="font-size:10px;color:#8492B0">Objetivo: definición · v1 vigente</div></div></div>
+              <div style="display:flex;gap:10px;align-items:center;background:#1B2A4A;border-radius:10px;padding:10px"><div style="width:34px;height:34px;border-radius:50%;background:#2B3F63;flex-shrink:0"></div><div style="display:flex;flex-direction:column;gap:2px"><div style="font-size:12px;font-weight:700;color:#fff">Ana Torres</div><div style="font-size:10px;color:#8492B0">Objetivo: subir de peso · v2 vigente</div></div></div>
+            </div>
+            <div style="position:absolute;bottom:20px;right:20px;width:44px;height:44px;border-radius:50%;background:#8BC53F;display:flex;align-items:center;justify-content:center;color:#12203D;font-weight:800;font-size:18px">+</div>
+          </div>
+        </div>
+
+        <div style="width:280px;height:600px;border-radius:28px;background:#12203D;box-shadow:0 12px 30px rgba(0,0,0,0.35);overflow:hidden;flex-shrink:0;display:flex;flex-direction:column">
+          <div style="padding:36px 20px 16px;display:flex;flex-direction:column;gap:4px">
+            <div style="font-family:'Manrope',sans-serif;font-weight:800;font-size:17px;color:#fff">María Gómez</div>
+            <div style="font-size:10px;color:#8492B0">28 años · Cliente desde ene. 2026</div>
+          </div>
+          <div style="display:flex;gap:0;padding:0 20px;border-bottom:1px solid #2B3F63">
+            <div style="padding:10px 0;margin-right:16px;font-size:11px;font-weight:700;color:#8BC53F;border-bottom:2px solid #8BC53F">Datos</div>
+            <div style="padding:10px 0;margin-right:16px;font-size:11px;color:#8492B0">Salud</div>
+            <div style="padding:10px 0;font-size:11px;color:#8492B0">Planes</div>
+          </div>
+          <div style="padding:16px;display:flex;flex-direction:column;gap:10px">
+            <div style="background:#1B2A4A;border-radius:10px;padding:12px;display:flex;justify-content:space-between"><div style="font-size:10px;color:#8492B0">Peso</div><div style="font-size:12px;font-weight:700;color:#fff">64.2 kg</div></div>
+            <div style="background:#1B2A4A;border-radius:10px;padding:12px;display:flex;justify-content:space-between"><div style="font-size:10px;color:#8492B0">Estatura</div><div style="font-size:12px;font-weight:700;color:#fff">1.65 m</div></div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px">
+              <span style="font-size:10px;font-weight:600;color:#FF6B5A;background:#3A2430;padding:4px 9px;border-radius:20px">Alergia: mariscos</span>
+              <span style="font-size:10px;font-weight:600;color:#B9C2D6;background:#243252;padding:4px 9px;border-radius:20px">Evita: frutos secos</span>
+              <span style="font-size:10px;font-weight:600;color:#8BC53F;background:#243D22;padding:4px 9px;border-radius:20px">Objetivo: volumen</span>
+            </div>
+          </div>
+        </div>
+
+        <div style="width:320px;height:700px;border-radius:28px;background:#12203D;box-shadow:0 12px 30px rgba(0,0,0,0.35);overflow:hidden;flex-shrink:0;display:flex;flex-direction:column">
+          <div style="padding:36px 20px 18px"><div style="font-family:'Manrope',sans-serif;font-weight:800;font-size:17px;color:#fff">Constructor de plan</div><div style="font-size:10px;color:#8492B0">María Gómez · nueva versión</div></div>
+          <div style="padding:16px;display:flex;flex-direction:column;gap:8px;overflow:hidden">
+            <div style="background:#1B2A4A;border-radius:10px;padding:10px"><div style="font-size:11px;font-weight:700;margin-bottom:4px;color:#fff">Desayuno · 8:00am</div><div style="font-size:10px;color:#8492B0">2 huevos + 1 carbohidrato + fruta</div></div>
+            <div style="background:#1B2A4A;border-radius:10px;padding:10px;border:1px solid #8BC53F"><div style="font-size:11px;font-weight:700;margin-bottom:4px;color:#fff">Almuerzo · 1:00pm</div><div style="font-size:10px;color:#8492B0">200g proteína + carbo + ensalada obligatoria</div></div>
+            <div style="background:#1B2A4A;border-radius:10px;padding:10px"><div style="font-size:11px;font-weight:700;margin-bottom:4px;color:#fff">Suplementos</div><div style="font-size:10px;color:#8492B0">Creatina · Proteína después de 6pm</div></div>
+            <div style="font-size:10px;font-weight:700;color:#8492B0;margin-top:4px">Nota adicional para la IA</div>
+            <div style="background:#1B2A4A;border-radius:10px;border:1px solid #2B3F63;padding:10px;font-size:10px;color:#8492B0;height:56px">Ej: prefiere pollo sobre pescado, evitar lácteos esta semana…</div>
+            <div style="height:42px;border-radius:10px;background:#8BC53F;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;color:#12203D;margin-top:auto">Generar sugerencias con IA</div>
+          </div>
+        </div>
+
+        <div style="width:320px;height:700px;border-radius:28px;background:#12203D;box-shadow:0 12px 30px rgba(0,0,0,0.35);overflow:hidden;flex-shrink:0;display:flex;flex-direction:column">
+          <div style="padding:28px 20px 14px"><div style="font-family:'Manrope',sans-serif;font-weight:800;font-size:17px;color:#fff">Asistente de IA</div><div style="font-size:10px;color:#8492B0">Objetivo: volumen · nota del entrenador aplicada</div></div>
+          <div style="padding:14px 16px;display:flex;flex-direction:column;gap:10px;overflow:hidden">
+            <div style="display:flex;flex-direction:column;gap:5px">
+              <div style="font-size:10px;font-weight:800;color:#8BC53F;text-transform:uppercase;letter-spacing:.03em">Carbohidratos</div>
+              <div style="display:flex;gap:8px;align-items:center;background:#1B2A4A;border-radius:8px;padding:7px 9px"><div style="width:15px;height:15px;border-radius:4px;background:#8BC53F;flex-shrink:0"></div><div style="font-size:10px;color:#DCE1EB">Arroz integral, 150g</div></div>
+              <div style="display:flex;gap:8px;align-items:center;background:#1B2A4A;border-radius:8px;padding:7px 9px"><div style="width:15px;height:15px;border-radius:4px;background:#8BC53F;flex-shrink:0"></div><div style="font-size:10px;color:#DCE1EB">Batata, 200g</div></div>
+              <div style="display:flex;gap:8px;align-items:center;background:#1B2A4A;border-radius:8px;padding:7px 9px"><div style="width:15px;height:15px;border-radius:4px;border:2px solid #2B3F63;flex-shrink:0"></div><div style="font-size:10px;color:#DCE1EB">Quinoa, 120g</div></div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:5px">
+              <div style="font-size:10px;font-weight:800;color:#8BC53F;text-transform:uppercase;letter-spacing:.03em">Proteínas</div>
+              <div style="display:flex;gap:8px;align-items:center;background:#1B2A4A;border-radius:8px;padding:7px 9px"><div style="width:15px;height:15px;border-radius:4px;background:#8BC53F;flex-shrink:0"></div><div style="font-size:10px;color:#DCE1EB">Pechuga de pollo, 200g</div></div>
+              <div style="display:flex;gap:8px;align-items:center;background:#1B2A4A;border-radius:8px;padding:7px 9px"><div style="width:15px;height:15px;border-radius:4px;background:#8BC53F;flex-shrink:0"></div><div style="font-size:10px;color:#DCE1EB">Filete de pescado, 180g</div></div>
+              <div style="display:flex;gap:8px;align-items:center;background:#1B2A4A;border-radius:8px;padding:7px 9px"><div style="width:15px;height:15px;border-radius:4px;border:2px solid #2B3F63;flex-shrink:0"></div><div style="font-size:10px;color:#DCE1EB">Huevos, 3 unidades</div></div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:5px">
+              <div style="font-size:10px;font-weight:800;color:#8BC53F;text-transform:uppercase;letter-spacing:.03em">Vegetales</div>
+              <div style="display:flex;gap:8px;align-items:center;background:#1B2A4A;border-radius:8px;padding:7px 9px"><div style="width:15px;height:15px;border-radius:4px;background:#8BC53F;flex-shrink:0"></div><div style="font-size:10px;color:#DCE1EB">Brócoli</div></div>
+              <div style="display:flex;gap:8px;align-items:center;background:#1B2A4A;border-radius:8px;padding:7px 9px"><div style="width:15px;height:15px;border-radius:4px;background:#8BC53F;flex-shrink:0"></div><div style="font-size:10px;color:#DCE1EB">Lechuga + zanahoria</div></div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:5px">
+              <div style="font-size:10px;font-weight:800;color:#8BC53F;text-transform:uppercase;letter-spacing:.03em">Grasas</div>
+              <div style="display:flex;gap:8px;align-items:center;background:#1B2A4A;border-radius:8px;padding:7px 9px"><div style="width:15px;height:15px;border-radius:4px;background:#8BC53F;flex-shrink:0"></div><div style="font-size:10px;color:#DCE1EB">Aguacate, 100g</div></div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:5px">
+              <div style="font-size:10px;font-weight:800;color:#FF6B5A;text-transform:uppercase;letter-spacing:.03em">Suplementos</div>
+              <div style="display:flex;gap:8px;align-items:center;background:#1B2A4A;border-radius:8px;padding:7px 9px"><div style="width:15px;height:15px;border-radius:4px;background:#8BC53F;flex-shrink:0"></div><div style="font-size:10px;color:#DCE1EB">Creatina, 5g/día</div></div>
+              <div style="display:flex;gap:8px;align-items:center;background:#1B2A4A;border-radius:8px;padding:7px 9px"><div style="width:15px;height:15px;border-radius:4px;border:2px solid #2B3F63;flex-shrink:0"></div><div style="font-size:10px;color:#DCE1EB">Whey protein aislada</div></div>
+            </div>
+            <div style="height:42px;border-radius:10px;background:#8BC53F;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;color:#12203D;margin-top:4px">Generar vista previa del plan</div>
+          </div>
+        </div>
+
+        <div style="width:320px;height:700px;border-radius:28px;background:#12203D;box-shadow:0 12px 30px rgba(0,0,0,0.35);overflow:hidden;flex-shrink:0;display:flex;flex-direction:column">
+          <div style="padding:28px 20px 14px"><div style="font-family:'Manrope',sans-serif;font-weight:800;font-size:17px;color:#fff">Vista previa del plan</div><div style="font-size:10px;color:#8492B0">Generado a partir de tus selecciones</div></div>
+          <div style="padding:14px;display:flex;flex-direction:column;gap:10px;align-items:center;overflow:hidden">
+            <div style="width:280px;background:#fff;border-radius:6px;box-shadow:0 4px 14px rgba(0,0,0,0.3);padding:12px;display:flex;flex-direction:column;gap:6px">
+              <div style="display:flex;align-items:center;gap:8px"><div style="width:20px;height:20px;border-radius:6px;background:#1B2A4A"></div><div style="font-size:9px;font-weight:800;color:#2E2E2E">PLAN NUTRICIONAL — VOLUMEN</div></div>
+              <div style="font-size:7px;color:#8B93A3">María Gómez</div>
+              <div style="display:grid;grid-template-columns:1fr 1.4fr 1.4fr;gap:2px;margin-top:4px">
+                <div style="font-size:6.5px;font-weight:800;color:#8B93A3">COMIDA</div><div style="font-size:6.5px;font-weight:800;color:#8B93A3">OPCIÓN 1</div><div style="font-size:6.5px;font-weight:800;color:#8B93A3">OPCIÓN 2</div>
+                <div style="font-size:7px;font-weight:700;color:#2E2E2E">Desayuno</div><div style="font-size:6.5px;color:#2E2E2E">3 claras + espinaca</div><div style="font-size:6.5px;color:#2E2E2E">Avena + fruta</div>
+                <div style="font-size:7px;font-weight:700;color:#2E2E2E">Almuerzo</div><div style="font-size:6.5px;color:#2E2E2E">Pollo + arroz + ensalada</div><div style="font-size:6.5px;color:#2E2E2E">Pescado + batata</div>
+                <div style="font-size:7px;font-weight:700;color:#2E2E2E">Merienda</div><div style="font-size:6.5px;color:#2E2E2E">Yogur griego + frutos secos</div><div style="font-size:6.5px;color:#2E2E2E">Scoop de proteína</div>
+                <div style="font-size:7px;font-weight:700;color:#2E2E2E">Cena</div><div style="font-size:6.5px;color:#2E2E2E">Bistec + vegetales</div><div style="font-size:6.5px;color:#2E2E2E">Camarones + brócoli</div>
+              </div>
+              <div style="height:1px;background:#EEF0F4;margin:4px 0"></div>
+              <div style="font-size:6.5px;font-weight:800;color:#8B93A3">LISTA DE MERCADO</div>
+              <div style="display:flex;flex-wrap:wrap;gap:3px">
+                <span style="font-size:6px;background:#EAF6D9;color:#4B7A1F;padding:2px 6px;border-radius:10px">Arroz integral</span>
+                <span style="font-size:6px;background:#EAF6D9;color:#4B7A1F;padding:2px 6px;border-radius:10px">Batata</span>
+                <span style="font-size:6px;background:#EAF6D9;color:#4B7A1F;padding:2px 6px;border-radius:10px">Pollo</span>
+                <span style="font-size:6px;background:#EAF6D9;color:#4B7A1F;padding:2px 6px;border-radius:10px">Pescado</span>
+                <span style="font-size:6px;background:#EAF6D9;color:#4B7A1F;padding:2px 6px;border-radius:10px">Brócoli</span>
+                <span style="font-size:6px;background:#EAF6D9;color:#4B7A1F;padding:2px 6px;border-radius:10px">Aguacate</span>
+              </div>
+              <div style="font-size:6.5px;color:#5A6270;margin-top:2px">Suplementos: creatina 5g/día · whey post-entreno</div>
+              <div style="margin-top:auto;font-size:6px;color:#B4B9C3;border-top:1px solid #EEF0F4;padding-top:5px">Generado con CoplanFit · plan de María Gómez, entrenador</div>
+            </div>
+            <div style="display:flex;gap:8px"><div style="width:20px;height:20px;border-radius:6px;background:#1B2A4A;border:1px solid #2B3F63"></div><div style="width:20px;height:20px;border-radius:6px;background:#8BC53F"></div><div style="width:20px;height:20px;border-radius:6px;background:#FF6B5A"></div></div>
+            <div style="height:40px;width:100%;border-radius:10px;background:#8BC53F;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;color:#12203D;margin-top:auto">Exportar PDF</div>
+          </div>
+        </div>
+
+        <div style="width:280px;height:600px;border-radius:28px;background:#12203D;box-shadow:0 12px 30px rgba(0,0,0,0.35);overflow:hidden;flex-shrink:0;display:flex;flex-direction:column">
+          <div style="padding:36px 20px 18px"><div style="font-family:'Manrope',sans-serif;font-weight:800;font-size:17px;color:#fff">Suscripción</div></div>
+          <div style="padding:16px;display:flex;flex-direction:column;gap:10px">
+            <div style="background:#1B2A4A;border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:8px">
+              <div style="display:flex;justify-content:space-between"><div style="font-size:12px;font-weight:700;color:#fff">Paquete 2 · 11–50</div><div style="font-size:12px;font-weight:800;color:#8BC53F">$30/mes</div></div>
+              <div style="height:6px;border-radius:4px;background:#2B3F63"><div style="height:6px;width:64%;border-radius:4px;background:#8BC53F"></div></div>
+              <div style="font-size:10px;color:#8492B0">32 de 50 asesorados</div>
+            </div>
+            <div style="background:#3A2430;border-radius:12px;padding:12px;display:flex;justify-content:space-between;align-items:center"><div style="font-size:11px;color:#FF6B5A;font-weight:600">Pago el 14 ago.</div><div style="font-size:10px;font-weight:700;color:#FF6B5A">2 días</div></div>
+            <div style="background:#1B2A4A;border-radius:10px;padding:10px;display:flex;justify-content:space-between;font-size:11px;color:#DCE1EB"><span>Tarjeta •••• 4821</span><span style="color:#8492B0">Activa</span></div>
+            <div style="height:42px;border-radius:10px;border:2px solid #8BC53F;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;color:#8BC53F;margin-top:auto">Subir de paquete</div>
+          </div>
+        </div>
+
+        <div style="width:280px;height:600px;border-radius:28px;background:#12203D;box-shadow:0 12px 30px rgba(0,0,0,0.35);overflow:hidden;flex-shrink:0;display:flex;flex-direction:column">
+          <div style="padding:36px 20px 18px"><div style="font-family:'Manrope',sans-serif;font-weight:800;font-size:17px;color:#fff">Super Admin</div><div style="font-size:10px;color:#8492B0">Reportes de pago móvil</div></div>
+          <div style="padding:16px;display:flex;flex-direction:column;gap:8px">
+            <div style="background:#1B2A4A;border-radius:10px;padding:10px;display:flex;flex-direction:column;gap:6px"><div style="display:flex;justify-content:space-between"><span style="font-size:11px;font-weight:700;color:#fff">Luis Prado</span><span style="font-size:10px;font-weight:700;color:#FF6B5A">$30.00</span></div><div style="font-size:9px;color:#8492B0">Ref. 004829371</div><div style="display:flex;gap:6px;margin-top:2px"><div style="flex:1;height:30px;border-radius:8px;background:#8BC53F;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#12203D">Validar</div><div style="flex:1;height:30px;border-radius:8px;border:1px solid #2B3F63;display:flex;align-items:center;justify-content:center;font-size:10px;color:#8492B0">Rechazar</div></div></div>
+            <div style="background:#1B2A4A;border-radius:10px;padding:10px;display:flex;flex-direction:column;gap:6px"><div style="display:flex;justify-content:space-between"><span style="font-size:11px;font-weight:700;color:#fff">Sofía Reyes</span><span style="font-size:10px;font-weight:700;color:#FF6B5A">$10.00</span></div><div style="font-size:9px;color:#8492B0">Ref. 004829402</div><div style="display:flex;gap:6px;margin-top:2px"><div style="flex:1;height:30px;border-radius:8px;background:#8BC53F;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#12203D">Validar</div><div style="flex:1;height:30px;border-radius:8px;border:1px solid #2B3F63;display:flex;align-items:center;justify-content:center;font-size:10px;color:#8492B0">Rechazar</div></div></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+
+</section>
+
+</x-dc>
+</body>
+</html>
