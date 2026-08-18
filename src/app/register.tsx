@@ -26,14 +26,26 @@ export default function RegisterScreen() {
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pendingConfirmation, setPendingConfirmation] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const canSubmit = fullName.trim().length > 1 && email.trim().length > 3 && password.length >= 6;
+  const passwordsMatch = password === confirmPassword;
+  const canSubmit =
+    fullName.trim().length > 1 &&
+    email.trim().length > 3 &&
+    password.length >= 6 &&
+    confirmPassword.length >= 6 &&
+    passwordsMatch;
 
   async function handleSubmit() {
+    if (!passwordsMatch) {
+      setError('Las contraseñas no coinciden');
+      return;
+    }
     if (!canSubmit || loading) return;
     setError(null);
     setLoading(true);
@@ -67,16 +79,22 @@ export default function RegisterScreen() {
             <>
               <Input
                 label="Nombre completo"
-                placeholder="Ej: Daniel Baldivés"
+                placeholder="Nombre completo"
                 value={fullName}
-                onChangeText={setFullName}
+                onChangeText={(v) => {
+                  setFullName(v);
+                  if (error) setError(null);
+                }}
                 leftIcon={<User size={s(15)} color={colors.textMuted} />}
               />
               <Input
                 label="Correo electrónico"
                 placeholder="tu@correo.com"
                 value={email}
-                onChangeText={setEmail}
+                onChangeText={(v) => {
+                  setEmail(v);
+                  if (error) setError(null);
+                }}
                 leftIcon={<Mail size={s(15)} color={colors.textMuted} />}
                 autoCapitalize="none"
                 autoComplete="email"
@@ -86,7 +104,10 @@ export default function RegisterScreen() {
                 label="Contraseña"
                 placeholder="Mínimo 6 caracteres"
                 value={password}
-                onChangeText={setPassword}
+                onChangeText={(v) => {
+                  setPassword(v);
+                  if (error) setError(null);
+                }}
                 leftIcon={<Lock size={s(15)} color={colors.textMuted} />}
                 rightIcon={
                   <Pressable
@@ -105,6 +126,35 @@ export default function RegisterScreen() {
                 secureTextEntry={!showPassword}
                 autoComplete="new-password"
               />
+              <Input
+                label="Confirmar contraseña"
+                placeholder="Repite tu contraseña"
+                value={confirmPassword}
+                onChangeText={(v) => {
+                  setConfirmPassword(v);
+                  if (error) setError(null);
+                }}
+                leftIcon={<Lock size={s(15)} color={colors.textMuted} />}
+                rightIcon={
+                  <Pressable
+                    onPress={() => setShowConfirmPassword((v) => !v)}
+                    hitSlop={8}
+                    accessibilityRole="button"
+                    accessibilityLabel={showConfirmPassword ? 'Ocultar contraseña' : 'Ver contraseña'}
+                  >
+                    {showConfirmPassword ? (
+                      <EyeOff size={s(15)} color={colors.textMuted} />
+                    ) : (
+                      <Eye size={s(15)} color={colors.textMuted} />
+                    )}
+                  </Pressable>
+                }
+                secureTextEntry={!showConfirmPassword}
+                autoComplete="new-password"
+              />
+              {confirmPassword.length > 0 && !passwordsMatch && (
+                <Text style={styles.error}>Las contraseñas no coinciden</Text>
+              )}
               {error != null && <Text style={styles.error}>{error}</Text>}
               <Button title="Crear cuenta" onPress={handleSubmit} disabled={!canSubmit} loading={loading} style={styles.cta} />
             </>
