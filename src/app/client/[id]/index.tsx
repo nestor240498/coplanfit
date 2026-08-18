@@ -56,8 +56,6 @@ const EMPTY_MEASUREMENT_FORM: MeasurementFormState = {
   height: '',
   bodyFat: '',
   muscleMass: '',
-  waterPct: '',
-  boneMass: '',
   visceralFat: '',
   bmrKcal: '',
   neck: '',
@@ -85,7 +83,6 @@ const EMPTY_MEASUREMENT_FORM: MeasurementFormState = {
   thighSkin: '',
   calfSkin: '',
   chestSkin: '',
-  midaxillary: '',
 };
 
 export default function ClientDetailScreen() {
@@ -187,8 +184,6 @@ export default function ClientDetailScreen() {
       height: measurement?.height_cm != null ? String(measurement.height_cm) : '',
       bodyFat: measurement?.body_fat_pct != null ? String(measurement.body_fat_pct) : '',
       muscleMass: measurement?.muscle_mass_pct != null ? String(measurement.muscle_mass_pct) : '',
-      waterPct: measurement?.water_pct != null ? String(measurement.water_pct) : '',
-      boneMass: measurement?.bone_mass_kg != null ? String(measurement.bone_mass_kg) : '',
       visceralFat: measurement?.visceral_fat != null ? String(measurement.visceral_fat) : '',
       bmrKcal: measurement?.bmr_kcal != null ? String(measurement.bmr_kcal) : '',
       neck: measurement?.neck_cm != null ? String(measurement.neck_cm) : '',
@@ -221,7 +216,6 @@ export default function ClientDetailScreen() {
       thighSkin: measurement?.thigh_mm != null ? String(measurement.thigh_mm) : '',
       calfSkin: measurement?.calf_mm != null ? String(measurement.calf_mm) : '',
       chestSkin: measurement?.chest_mm != null ? String(measurement.chest_mm) : '',
-      midaxillary: measurement?.midaxillary_mm != null ? String(measurement.midaxillary_mm) : '',
     });
     setIsEditingMeasurements(true);
   }
@@ -247,8 +241,6 @@ export default function ClientDetailScreen() {
         height_cm: heightCm,
         body_fat_pct: num(measurementForm.bodyFat),
         muscle_mass_pct: num(measurementForm.muscleMass),
-        water_pct: num(measurementForm.waterPct),
-        bone_mass_kg: num(measurementForm.boneMass),
         visceral_fat: num(measurementForm.visceralFat),
         bmr_kcal: num(measurementForm.bmrKcal),
         neck_cm: num(measurementForm.neck),
@@ -277,7 +269,6 @@ export default function ClientDetailScreen() {
         thigh_mm: num(measurementForm.thighSkin),
         calf_mm: num(measurementForm.calfSkin),
         chest_mm: num(measurementForm.chestSkin),
-        midaxillary_mm: num(measurementForm.midaxillary),
       });
 
       setMeasurement(created);

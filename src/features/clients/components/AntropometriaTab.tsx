@@ -14,8 +14,6 @@ export type MeasurementFormState = {
   height: string;
   bodyFat: string;
   muscleMass: string;
-  waterPct: string;
-  boneMass: string;
   visceralFat: string;
   bmrKcal: string;
   // Perímetros corporales (cm)
@@ -45,7 +43,6 @@ export type MeasurementFormState = {
   thighSkin: string;
   calfSkin: string;
   chestSkin: string;
-  midaxillary: string;
 };
 
 type Props = {
@@ -103,7 +100,6 @@ export function AntropometriaTab({
         formState.thighSkin,
         formState.calfSkin,
         formState.chestSkin,
-        formState.midaxillary,
       ]
     : [];
   const skinFoldsSum = skinFoldsList.reduce((acc, curr) => {
@@ -139,18 +135,6 @@ export function AntropometriaTab({
           value={formState.muscleMass}
           onChangeText={(v) => onChangeFormState('muscleMass', v)}
           suffix="%"
-        />
-        <InputFieldRow
-          label="Agua corporal"
-          value={formState.waterPct}
-          onChangeText={(v) => onChangeFormState('waterPct', v)}
-          suffix="%"
-        />
-        <InputFieldRow
-          label="Masa ósea"
-          value={formState.boneMass}
-          onChangeText={(v) => onChangeFormState('boneMass', v)}
-          suffix="kg"
         />
         <InputFieldRow
           label="Grasa visceral"
@@ -378,12 +362,6 @@ export function AntropometriaTab({
           onChangeText={(v) => onChangeFormState('chestSkin', v)}
           suffix="mm"
         />
-        <InputFieldRow
-          label="Axilar medio"
-          value={formState.midaxillary}
-          onChangeText={(v) => onChangeFormState('midaxillary', v)}
-          suffix="mm"
-        />
 
         <Text style={styles.hint}>
           Se guardará como una nueva medición completa en el historial del cliente.
@@ -409,14 +387,6 @@ export function AntropometriaTab({
       <Row
         label="Masa muscular"
         value={measurement?.muscle_mass_pct != null ? `${measurement.muscle_mass_pct}%` : '—'}
-      />
-      <Row
-        label="Agua corporal"
-        value={measurement?.water_pct != null ? `${measurement.water_pct}%` : '—'}
-      />
-      <Row
-        label="Masa ósea"
-        value={fmt(measurement?.bone_mass_kg, 'kg', 1)}
       />
       <Row
         label="Grasa visceral"
@@ -492,7 +462,6 @@ export function AntropometriaTab({
       <Row label="Muslo frontal" value={fmt(measurement?.thigh_mm, 'mm')} />
       <Row label="Pantorrilla medial" value={fmt(measurement?.calf_mm, 'mm')} />
       <Row label="Pectoral / Pecho" value={fmt(measurement?.chest_mm, 'mm')} />
-      <Row label="Axilar medio" value={fmt(measurement?.midaxillary_mm, 'mm')} />
 
       <Text style={styles.updatedAt}>
         {measurement != null

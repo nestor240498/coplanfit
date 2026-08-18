@@ -8,8 +8,6 @@ export type MeasurementInput = {
   height_cm?: number | null;
   body_fat_pct?: number | null;
   muscle_mass_pct?: number | null;
-  bone_mass_kg?: number | null;
-  water_pct?: number | null;
   visceral_fat?: number | null;
   bmr_kcal?: number | null;
   // Perímetros corporales (cm)
@@ -40,7 +38,6 @@ export type MeasurementInput = {
   thigh_mm?: number | null;
   calf_mm?: number | null;
   chest_mm?: number | null;
-  midaxillary_mm?: number | null;
 };
 
 export async function listMeasurements(clientId: string): Promise<Measurement[]> {
