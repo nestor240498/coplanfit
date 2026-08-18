@@ -37,6 +37,8 @@ export const radius = {
   button: s(10),
   chip: s(20),
   sheet: s(20),
+  modal: s(16),
+  pill: s(999),
 } as const;
 
 export const spacing = {

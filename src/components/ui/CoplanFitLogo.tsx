@@ -6,7 +6,8 @@ import { fonts } from '@/theme/typography';
 
 type Props = {
   variant?: 'on-navy' | 'on-light';
-  size?: 'sm' | 'md' | 'lg';
+  size?: 'xs' | 'sm' | 'md' | 'lg';
+  scale?: number;
   showText?: boolean;
   style?: ViewStyle;
 };
@@ -19,13 +20,16 @@ type Props = {
 export function CoplanFitLogo({
   variant = 'on-navy',
   size = 'md',
+  scale,
   showText = true,
   style,
 }: Props) {
   const isNavyBg = variant === 'on-navy';
 
-  // Dimensiones según el tamaño
-  const scaleMultiplier = size === 'sm' ? 0.75 : size === 'lg' ? 1.3 : 1;
+  // Dimensiones según el tamaño (xs es 50% de lg)
+  const scaleMultiplier =
+    scale ??
+    (size === 'xs' ? 0.65 : size === 'sm' ? 0.8 : size === 'lg' ? 1.3 : 1);
   const markWidth = s(38 * scaleMultiplier);
   const markHeight = s(26 * scaleMultiplier);
   const boxWidth = s(22 * scaleMultiplier);

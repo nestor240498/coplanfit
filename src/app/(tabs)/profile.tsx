@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 
 import { Button } from '@/components/ui/Button';
+import { AppBackground } from '@/components/ui/AppBackground';
 import { Input } from '@/components/ui/Input';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { useAuth } from '@/features/auth/useAuth';
@@ -121,6 +122,7 @@ export default function ProfileScreen() {
 
   return (
     <View style={styles.screen}>
+      <AppBackground />
       <ScreenHeader title="Perfil" />
 
       {loading ? (

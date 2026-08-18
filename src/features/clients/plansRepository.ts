@@ -24,11 +24,12 @@ export async function listPlanVersions(clientId: string): Promise<PlanVersion[]>
   return withRetry(async () => {
     const { data, error } = await supabase
       .from('plan_versions')
-      .select('id, client_id, version, is_current, created_at')
+      .select('id, client_id, version, is_current, created_at, data')
       .eq('client_id', clientId)
+      .filter('data->>is_draft', 'neq', 'true')
       .order('version', { ascending: false });
     if (error) throw new Error(error.message);
-    return (data ?? []) as PlanVersion[];
+    return (data ?? []).filter((v: any) => v.data?.is_draft !== true) as PlanVersion[];
   });
 }
 
@@ -115,6 +116,7 @@ export async function savePlanDraft(
     .from('plan_versions')
     .select('version')
     .eq('client_id', clientId)
+    .filter('data->>is_draft', 'neq', 'true')
     .order('version', { ascending: false })
     .limit(1)
     .maybeSingle();
@@ -135,15 +137,24 @@ export async function savePlanDraft(
 }
 
 /** Elimina un borrador guardado */
-export async function deletePlanDraft(clientId: string): Promise<void> {
-  const { error } = await supabase
-    .from('plan_versions')
-    .delete()
-    .eq('client_id', clientId)
-    .eq('is_current', false)
-    .filter('data->>is_draft', 'eq', 'true');
+export async function deletePlanDraft(clientId: string, draftId?: string): Promise<void> {
+  if (draftId) {
+    await supabase.from('plan_versions').delete().eq('id', draftId);
+  }
 
-  if (error) throw new Error(error.message);
+  const { data: drafts } = await supabase
+    .from('plan_versions')
+    .select('id, data')
+    .eq('client_id', clientId);
+
+  const draftIds = (drafts ?? [])
+    .filter((d: any) => d.data?.is_draft === true)
+    .map((d: any) => d.id);
+
+  if (draftIds.length > 0) {
+    const { error } = await supabase.from('plan_versions').delete().in('id', draftIds);
+    if (error) throw new Error(error.message);
+  }
 }
 
 /** Crea una nueva versión de plan (vigente), desmarcando la anterior y eliminando cualquier borrador. */

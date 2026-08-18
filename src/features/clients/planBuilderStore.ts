@@ -55,11 +55,15 @@ type PlanBuilderState = {
 
   addMealSlot: (slot: MealSlot) => void;
   removeMealSlot: (id: string) => void;
+  moveMealSlot: (fromIndex: number, toIndex: number) => void;
+  setMealSlots: (slots: MealSlot[]) => void;
   setWaterLiters: (v: string) => void;
 
   addSupplement: (supplement: Supplement) => void;
   updateSupplement: (supplement: Supplement) => void;
   removeSupplement: (id: string) => void;
+  moveSupplement: (fromIndex: number, toIndex: number) => void;
+  setSupplements: (supplements: Supplement[]) => void;
 
   setAiNote: (v: string) => void;
 
@@ -145,6 +149,7 @@ export const usePlanBuilderStore = create<PlanBuilderState>((set, get) => ({
       vegetales: draftData.suggestions?.vegetales ?? defaultSug.vegetales,
       frutas: draftData.suggestions?.frutas ?? defaultSug.frutas,
       grasas: draftData.suggestions?.grasas ?? defaultSug.grasas,
+      lacteos: draftData.suggestions?.lacteos ?? defaultSug.lacteos,
     };
 
     set({
@@ -192,12 +197,30 @@ export const usePlanBuilderStore = create<PlanBuilderState>((set, get) => ({
         mealAssignments: nextAssignments,
       };
     }),
+  setMealSlots: (mealSlots) => set({ mealSlots }),
+  moveMealSlot: (fromIndex, toIndex) =>
+    set((s) => {
+      if (fromIndex < 0 || fromIndex >= s.mealSlots.length || toIndex < 0 || toIndex >= s.mealSlots.length) return s;
+      const next = [...s.mealSlots];
+      const [moved] = next.splice(fromIndex, 1);
+      next.splice(toIndex, 0, moved);
+      return { mealSlots: next };
+    }),
   setWaterLiters: (v) => set({ waterLiters: v }),
 
   addSupplement: (supplement) => set((s) => ({ supplements: [...s.supplements, supplement] })),
   updateSupplement: (supplement) =>
     set((s) => ({ supplements: s.supplements.map((sup) => (sup.id === supplement.id ? supplement : sup)) })),
   removeSupplement: (id) => set((s) => ({ supplements: s.supplements.filter((sup) => sup.id !== id) })),
+  setSupplements: (supplements) => set({ supplements }),
+  moveSupplement: (fromIndex, toIndex) =>
+    set((s) => {
+      if (fromIndex < 0 || fromIndex >= s.supplements.length || toIndex < 0 || toIndex >= s.supplements.length) return s;
+      const next = [...s.supplements];
+      const [moved] = next.splice(fromIndex, 1);
+      next.splice(toIndex, 0, moved);
+      return { supplements: next };
+    }),
 
   setAiNote: (v) => set({ aiNote: v }),
 

@@ -3,6 +3,7 @@ import { Download, Droplets, Pill, Users } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { AppBackground } from '@/components/ui/AppBackground';
 import { Button } from '@/components/ui/Button';
 import { CoplanFitLogo } from '@/components/ui/CoplanFitLogo';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
@@ -10,6 +11,7 @@ import { usePlanBuilderStore } from '@/features/clients/planBuilderStore';
 import { generateAndSharePlanPdf } from '@/features/clients/planPdf';
 import { getPlanVersionById, PlanVersionWithData } from '@/features/clients/plansRepository';
 import { getClient } from '@/features/clients/repository';
+import { Goal } from '@/features/clients/types';
 import { getMyProfile } from '@/features/profile/repository';
 import { Profile } from '@/features/profile/types';
 import { s } from '@/theme/scale';
@@ -19,7 +21,7 @@ import { fonts, fontSizes } from '@/theme/typography';
 export default function PlanPreviewScreen() {
   const { id, versionId } = useLocalSearchParams<{ id: string; versionId?: string }>();
   const router = useRouter();
-  const [client, setClient] = useState<{ full_name: string; goal: string | null } | null>(null);
+  const [client, setClient] = useState<{ full_name: string; goal: Goal | null } | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [savedPlan, setSavedPlan] = useState<PlanVersionWithData | null>(null);
   const [loadingPlan, setLoadingPlan] = useState(Boolean(versionId));
@@ -73,6 +75,7 @@ export default function PlanPreviewScreen() {
 
   return (
     <View style={styles.screen}>
+      <AppBackground />
       <ScreenHeader
         title={pageTitle}
         subtitle={client?.full_name ? `Cliente: ${client.full_name}` : 'Plan nutricional'}
@@ -179,6 +182,7 @@ export default function PlanPreviewScreen() {
                   { key: 'proteinas', label: 'Proteínas' },
                   { key: 'vegetales', label: 'Vegetales / Hortalizas' },
                   { key: 'frutas', label: 'Frutas' },
+                  { key: 'lacteos', label: 'Lácteos' },
                 ].map(({ key, label }) => {
                   const items = (suggestions?.[key as keyof typeof suggestions] ?? []).filter((f) => f && f.checked);
                   if (items.length === 0) return null;

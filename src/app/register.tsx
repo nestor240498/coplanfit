@@ -11,6 +11,7 @@ import {
   View,
 } from 'react-native';
 
+import { AppBackground } from '@/components/ui/AppBackground';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
@@ -50,68 +51,77 @@ export default function RegisterScreen() {
   return (
     <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScreenHeader title="Crear cuenta" subtitle="Tu cuenta de entrenador en CoplanFit" showBack />
-      <ScrollView contentContainerStyle={styles.form} keyboardShouldPersistTaps="handled">
-        {pendingConfirmation ? (
-          <View style={styles.confirmBox}>
-            <Text style={styles.confirmTitle}>Revisa tu correo</Text>
-            <Text style={styles.confirmText}>
-              Te enviamos un enlace de confirmación a {email.trim()}. Después de confirmarlo, inicia sesión.
-            </Text>
-            <Button title="Volver a iniciar sesión" onPress={() => router.back()} />
-          </View>
-        ) : (
-          <>
-            <Input
-              label="Nombre completo"
-              placeholder="Ej: Daniel Baldivés"
-              value={fullName}
-              onChangeText={setFullName}
-              leftIcon={<User size={s(15)} color={colors.textMuted} />}
-            />
-            <Input
-              label="Correo electrónico"
-              placeholder="tu@correo.com"
-              value={email}
-              onChangeText={setEmail}
-              leftIcon={<Mail size={s(15)} color={colors.textMuted} />}
-              autoCapitalize="none"
-              autoComplete="email"
-              keyboardType="email-address"
-            />
-            <Input
-              label="Contraseña"
-              placeholder="Mínimo 6 caracteres"
-              value={password}
-              onChangeText={setPassword}
-              leftIcon={<Lock size={s(15)} color={colors.textMuted} />}
-              rightIcon={
-                <Pressable
-                  onPress={() => setShowPassword((v) => !v)}
-                  hitSlop={8}
-                  accessibilityRole="button"
-                  accessibilityLabel={showPassword ? 'Ocultar contraseña' : 'Ver contraseña'}
-                >
-                  {showPassword ? (
-                    <EyeOff size={s(15)} color={colors.textMuted} />
-                  ) : (
-                    <Eye size={s(15)} color={colors.textMuted} />
-                  )}
-                </Pressable>
-              }
-              secureTextEntry={!showPassword}
-              autoComplete="new-password"
-            />
-            {error != null && <Text style={styles.error}>{error}</Text>}
-            <Button title="Crear cuenta" onPress={handleSubmit} disabled={!canSubmit} loading={loading} style={styles.cta} />
-          </>
-        )}
-      </ScrollView>
+      <View style={styles.body}>
+        <AppBackground />
+
+        <ScrollView contentContainerStyle={styles.form} keyboardShouldPersistTaps="handled">
+          {pendingConfirmation ? (
+            <View style={styles.confirmBox}>
+              <Text style={styles.confirmTitle}>Revisa tu correo</Text>
+              <Text style={styles.confirmText}>
+                Te enviamos un enlace de confirmación a {email.trim()}. Después de confirmarlo, inicia sesión.
+              </Text>
+              <Button title="Volver a iniciar sesión" onPress={() => router.back()} />
+            </View>
+          ) : (
+            <>
+              <Input
+                label="Nombre completo"
+                placeholder="Ej: Daniel Baldivés"
+                value={fullName}
+                onChangeText={setFullName}
+                leftIcon={<User size={s(15)} color={colors.textMuted} />}
+              />
+              <Input
+                label="Correo electrónico"
+                placeholder="tu@correo.com"
+                value={email}
+                onChangeText={setEmail}
+                leftIcon={<Mail size={s(15)} color={colors.textMuted} />}
+                autoCapitalize="none"
+                autoComplete="email"
+                keyboardType="email-address"
+              />
+              <Input
+                label="Contraseña"
+                placeholder="Mínimo 6 caracteres"
+                value={password}
+                onChangeText={setPassword}
+                leftIcon={<Lock size={s(15)} color={colors.textMuted} />}
+                rightIcon={
+                  <Pressable
+                    onPress={() => setShowPassword((v) => !v)}
+                    hitSlop={8}
+                    accessibilityRole="button"
+                    accessibilityLabel={showPassword ? 'Ocultar contraseña' : 'Ver contraseña'}
+                  >
+                    {showPassword ? (
+                      <EyeOff size={s(15)} color={colors.textMuted} />
+                    ) : (
+                      <Eye size={s(15)} color={colors.textMuted} />
+                    )}
+                  </Pressable>
+                }
+                secureTextEntry={!showPassword}
+                autoComplete="new-password"
+              />
+              {error != null && <Text style={styles.error}>{error}</Text>}
+              <Button title="Crear cuenta" onPress={handleSubmit} disabled={!canSubmit} loading={loading} style={styles.cta} />
+            </>
+          )}
+        </ScrollView>
+      </View>
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1, backgroundColor: colors.background },
+  flex: { flex: 1, backgroundColor: colors.navy },
+  body: {
+    flex: 1,
+    position: 'relative',
+    backgroundColor: colors.background,
+  },
   form: {
     padding: spacing.xl,
     gap: spacing.md,
@@ -119,7 +129,7 @@ const styles = StyleSheet.create({
   error: {
     fontFamily: fonts.bodyMedium,
     fontSize: fontSizes.sm,
-    color: colors.danger,
+    color: '#FF6B6B',
   },
   cta: { marginTop: spacing.sm },
   confirmBox: {

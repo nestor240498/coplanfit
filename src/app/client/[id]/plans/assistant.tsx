@@ -15,6 +15,7 @@ import {
   Users,
 } from 'lucide-react-native';
 
+import { AppBackground } from '@/components/ui/AppBackground';
 import { Button } from '@/components/ui/Button';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { AddFoodSheet } from '@/features/clients/components/AddFoodSheet';
@@ -77,6 +78,7 @@ export default function AiAssistantScreen() {
 
   return (
     <View style={styles.screen}>
+      <AppBackground />
       <ScreenHeader
         title="Asistente de IA"
         subtitle={`Objetivo: ${goalLabel}`}
@@ -93,12 +95,7 @@ export default function AiAssistantScreen() {
       <ScrollView contentContainerStyle={styles.body}>
         {FOOD_GROUPS.map((group) => (
           <View key={group} style={styles.group}>
-            <Text
-              style={[
-                styles.groupLabel,
-                group === 'suplementos' && styles.groupLabelDanger,
-              ]}
-            >
+            <Text style={styles.groupLabel}>
               {FOOD_GROUP_LABELS[group]}
             </Text>
             {suggestions[group].map((item) => (

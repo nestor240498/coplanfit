@@ -1,6 +1,7 @@
 import { forwardRef, ReactNode, useState } from 'react';
 import {
   Platform,
+  StyleProp,
   StyleSheet,
   Text,
   TextInput,
@@ -20,10 +21,11 @@ type Props = TextInputProps & {
   leftIcon?: ReactNode;
   rightIcon?: ReactNode;
   containerStyle?: ViewStyle;
+  wrapperStyle?: StyleProp<ViewStyle>;
 };
 
 export const Input = forwardRef<TextInput, Props>(function Input(
-  { label, error, leftIcon, rightIcon, containerStyle, style, onFocus, onBlur, ...rest },
+  { label, error, leftIcon, rightIcon, containerStyle, wrapperStyle, style, onFocus, onBlur, ...rest },
   ref,
 ) {
   const [focused, setFocused] = useState(false);
@@ -36,7 +38,8 @@ export const Input = forwardRef<TextInput, Props>(function Input(
           styles.inputWrapper,
           focused && styles.inputWrapperFocused,
           error != null && styles.inputWrapperError,
-          style,
+          wrapperStyle,
+          style as StyleProp<ViewStyle>,
         ]}
       >
         {leftIcon != null && <View style={styles.iconLeft}>{leftIcon}</View>}
@@ -107,7 +110,7 @@ const styles = StyleSheet.create({
     color: colors.text,
     ...Platform.select({
       web: {
-        outlineStyle: 'none',
+        outlineStyle: 'none' as any,
       },
       default: {},
     }),

@@ -87,8 +87,20 @@ const geminiResponseSchema = {
         required: ['name', 'quantity'],
       },
     },
+    lacteos: {
+      type: 'ARRAY',
+      items: {
+        type: 'OBJECT',
+        properties: {
+          name: { type: 'STRING' },
+          quantity: { type: 'STRING' },
+          reason: { type: 'STRING' },
+        },
+        required: ['name', 'quantity'],
+      },
+    },
   },
-  required: ['carbohidratos', 'proteinas', 'vegetales', 'frutas', 'grasas'],
+  required: ['carbohidratos', 'proteinas', 'vegetales', 'frutas', 'grasas', 'lacteos'],
 };
 
 type RequestBody = {
@@ -195,7 +207,8 @@ REGLAS ESTRICTAS DE CANTIDADES Y UNIDADES (MUY IMPORTANTE):
 3. Para huevos o claras: exprésalos SIEMPRE por cantidad de unidades, NUNCA en mililitros ni gramos (ej. "3 claras", "2 huevos enteros", "1 huevo entero + 3 claras", "4 claras").
 4. Para frutas: usa unidades o gramos (ej. "1 und mediana", "150g").
 5. Para aceites o frutos secos: usa gramos (ej. "10g", "15g", "25g").
-6. Solo genera alimentos para las 5 categorías: carbohidratos, proteinas, vegetales, frutas y grasas (los suplementos ya fueron configurados en el Paso 1).
+6. Para lácteos: usa gramos (ej. "150g yogurt griego", "30g queso bajo en grasa") o mililitros para leche (ej. "200ml").
+7. Solo genera alimentos para las 6 categorías: carbohidratos, proteinas, vegetales, frutas, grasas y lacteos (los suplementos ya fueron configurados en el Paso 1).
 
 VOCABULARIO Y LOCALIZACIÓN (ESPAÑOL LATINOAMÉRICA / VENEZUELA):
 - Usa "Batata" (NUNCA digas "Camote" ni "Boniato").
@@ -205,7 +218,7 @@ VOCABULARIO Y LOCALIZACIÓN (ESPAÑOL LATINOAMÉRICA / VENEZUELA):
 - Usa términos comunes, naturales y ampliamente conocidos en el fitness de la región.
 
 CANTIDAD DE SUGERENCIAS:
-Para cada uno de los 5 grupos (carbohidratos, proteinas, vegetales, grasas, suplementos) sugiere entre 4 y 6 opciones variadas y concretas con sus cantidades claras (salvo en suplementos si no requiere tantos adicionales). Si alguna alergia obliga a evitar un alimento típico, sugiere una alternativa segura y explica el motivo brevemente en "reason". El grupo "suplementos" debe incluir los suplementos ya definidos por el entrenador (con su dosis) más sugerencias adicionales razonables para el objetivo.`;
+Para cada uno de los 6 grupos (carbohidratos, proteinas, vegetales, frutas, grasas, lacteos) sugiere entre 3 y 5 opciones variadas y concretas con sus cantidades claras. Si alguna alergia o intolerancia (como intolerancia a la lactosa) obliga a evitar un alimento típico, sugiere una alternativa segura (ej. lácteos sin lactosa, bebidas vegetales) y explica el motivo brevemente en "reason".`;
 
     const geminiPayload = {
       contents: [

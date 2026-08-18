@@ -13,6 +13,7 @@ import {
 
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { AppBackground } from '@/components/ui/AppBackground';
 import { Button } from '@/components/ui/Button';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { listClients } from '@/features/clients/repository';
@@ -122,6 +123,7 @@ export default function SubscriptionScreen() {
 
   return (
     <View style={styles.screen}>
+      <AppBackground />
       <ScreenHeader title="Suscripción" />
       <ScrollView
         style={styles.scroll}
@@ -132,7 +134,7 @@ export default function SubscriptionScreen() {
         {/* Tarjeta del plan actual */}
         <View style={styles.packageCard}>
           <View style={styles.packageRow}>
-            <View style={{ gap: 2 }}>
+            <View style={styles.packageInfoCol}>
               <View style={styles.badgeNameRow}>
                 <Text style={styles.packageName}>Plan {activePlan.name}</Text>
                 {activePlan.popular && (
@@ -160,7 +162,7 @@ export default function SubscriptionScreen() {
 
         {/* Caja de próximo cobro */}
         <View style={styles.chargeBox}>
-          <View style={{ gap: 2 }}>
+          <View style={styles.cardInfoCol}>
             <Text style={styles.chargeLabel}>Próxima renovación</Text>
             <Text style={styles.chargeDate}>El 15 del próximo mes</Text>
           </View>
@@ -171,7 +173,7 @@ export default function SubscriptionScreen() {
 
         {/* Método de pago */}
         <View style={styles.paymentRow}>
-          <View style={{ gap: 2 }}>
+          <View style={styles.cardInfoCol}>
             <Text style={styles.paymentText}>Tarjeta de crédito / débito</Text>
             <Text style={styles.paymentSub}>Facturación mensual automática</Text>
           </View>
@@ -324,11 +326,22 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
+    gap: s(8),
+  },
+  packageInfoCol: {
+    flex: 1,
+    gap: 2,
+  },
+  cardInfoCol: {
+    flex: 1,
+    gap: 2,
+    marginRight: s(8),
   },
   badgeNameRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: s(6),
+    flexWrap: 'wrap',
   },
   packageName: {
     fontFamily: fonts.heading,
@@ -348,13 +361,15 @@ const styles = StyleSheet.create({
   },
   packageSubtitle: {
     fontFamily: fonts.body,
-    fontSize: s(9.5),
+    fontSize: s(8.5),
     color: colors.textSecondary,
   },
   packagePrice: {
     fontFamily: fonts.heading,
-    fontSize: fontSizes.lg,
+    fontSize: s(14),
     color: colors.navy,
+    flexShrink: 0,
+    marginTop: 1,
   },
   progressTrack: {
     height: s(7),
@@ -374,12 +389,12 @@ const styles = StyleSheet.create({
   },
   usageText: {
     fontFamily: fonts.bodyBold,
-    fontSize: s(9.5),
+    fontSize: s(8.5),
     color: colors.text,
   },
   usagePctText: {
     fontFamily: fonts.body,
-    fontSize: s(9.5),
+    fontSize: s(8.5),
     color: colors.textMuted,
   },
   chargeBox: {
@@ -399,7 +414,7 @@ const styles = StyleSheet.create({
   },
   chargeDate: {
     fontFamily: fonts.body,
-    fontSize: s(9.5),
+    fontSize: s(8.5),
     color: colors.textSecondary,
   },
   chargeStatusBadge: {
@@ -430,7 +445,7 @@ const styles = StyleSheet.create({
   },
   paymentSub: {
     fontFamily: fonts.body,
-    fontSize: s(9.5),
+    fontSize: s(8.5),
     color: colors.textMuted,
   },
   paymentStatus: {
@@ -468,7 +483,7 @@ const styles = StyleSheet.create({
   },
   featureText: {
     fontFamily: fonts.body,
-    fontSize: s(9.5),
+    fontSize: s(8.5),
     color: colors.textSecondary,
   },
   upgradeCta: {
@@ -593,13 +608,13 @@ const styles = StyleSheet.create({
   },
   planCardLimit: {
     fontFamily: fonts.bodyBold,
-    fontSize: s(9.5),
+    fontSize: s(8.5),
     color: colors.navy,
     marginTop: 2,
   },
   planCardPrice: {
     fontFamily: fonts.heading,
-    fontSize: fontSizes.lg,
+    fontSize: s(14),
     color: colors.navy,
   },
   planCardPeriod: {
@@ -627,7 +642,7 @@ const styles = StyleSheet.create({
   },
   planFeatureText: {
     fontFamily: fonts.body,
-    fontSize: s(9.5),
+    fontSize: s(8.5),
     color: colors.text,
   },
 });

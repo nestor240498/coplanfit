@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { AppBackground } from '@/components/ui/AppBackground';
 import { InputFieldRow } from '@/components/ui/FieldRow';
 import { createMeasurement, getLatestMeasurement } from '@/features/clients/measurementsRepository';
 import { s } from '@/theme/scale';
@@ -81,6 +82,7 @@ export default function UpdateMeasurementScreen() {
 
   return (
     <View style={styles.screen}>
+      <AppBackground />
       <View style={[styles.header, { paddingTop: insets.top + s(12) }]}>
         <Text style={styles.title}>Actualizar medición</Text>
         <Text style={styles.subtitle}>Se guardará como nueva entrada en el historial</Text>

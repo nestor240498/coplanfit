@@ -3,6 +3,7 @@ import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { AppBackground } from '@/components/ui/AppBackground';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
@@ -51,6 +52,7 @@ export default function NewClientScreen() {
 
   return (
     <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <AppBackground />
       <ScreenHeader title="Nuevo cliente" showBack />
       <ScrollView contentContainerStyle={[styles.form, { paddingBottom: insets.bottom + s(16) }]} keyboardShouldPersistTaps="handled">
         <Input label="Nombre completo" placeholder="Ej: Carlos Ruiz" value={fullName} onChangeText={setFullName} />

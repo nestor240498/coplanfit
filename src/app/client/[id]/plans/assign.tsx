@@ -13,6 +13,7 @@ import {
   View,
 } from 'react-native';
 
+import { AppBackground } from '@/components/ui/AppBackground';
 import { Button } from '@/components/ui/Button';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { EditMealOptionSheet } from '@/features/clients/components/EditMealOptionSheet';
@@ -115,6 +116,7 @@ export default function MealAssignmentScreen() {
 
   return (
     <View style={styles.screen}>
+      <AppBackground />
       <ScreenHeader
         title="Asignar comidas"
         subtitle={`${clientName} · menú diario`}
@@ -246,6 +248,11 @@ export default function MealAssignmentScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
+  body: {
+    paddingHorizontal: s(16),
+    paddingBottom: s(30),
+    gap: s(10),
+  },
   footer: {
     flexDirection: 'row',
     alignItems: 'center',

@@ -10,12 +10,12 @@ import { fonts, fontSizes } from '@/theme/typography';
 
 import { generateAndSharePlanPdf } from '../planPdf';
 import { getPlanVersionById, PlanVersionWithData } from '../plansRepository';
-import { PlanVersion } from '../types';
+import { Goal, PlanVersion } from '../types';
 
 type Props = {
   clientId: string;
   clientName: string;
-  clientGoal?: string | null;
+  clientGoal?: Goal | null;
   versions: PlanVersion[];
   draft: PlanVersionWithData | null;
   onNewVersion: () => void;
@@ -75,17 +75,6 @@ export function PlanesTab({
     }
   }
 
-  function handleConfirmDeleteDraft() {
-    Alert.alert(
-      'Descartar borrador',
-      '¿Estás seguro de que deseas eliminar este borrador? Se perderán los cambios no guardados.',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        { text: 'Eliminar', style: 'destructive', onPress: onDeleteDraft },
-      ]
-    );
-  }
-
   // Filtrar versiones publicadas (no borradores)
   const publishedVersions = versions.filter((v) => !draft || v.id !== draft.id);
 
@@ -113,7 +102,7 @@ export function PlanesTab({
                 <Text style={styles.resumeBtnText}>Continuar editando</Text>
                 <ArrowRight size={s(13)} color={colors.lime} strokeWidth={2.5} />
               </Pressable>
-              <Pressable onPress={handleConfirmDeleteDraft} style={styles.discardBtn}>
+              <Pressable onPress={onDeleteDraft} style={styles.discardBtn}>
                 <Trash2 size={s(12)} color={colors.danger} />
                 <Text style={styles.discardBtnText}>Descartar borrador</Text>
               </Pressable>
@@ -273,6 +262,10 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  checkboxChecked: {
+    backgroundColor: colors.lime,
+    borderColor: colors.lime,
   },
   checkboxTouch: {
     padding: s(4),

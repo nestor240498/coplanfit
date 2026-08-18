@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 
+import { AppBackground } from '@/components/ui/AppBackground';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { listMeasurements } from '@/features/clients/measurementsRepository';
 import { getClient } from '@/features/clients/repository';
@@ -47,6 +48,7 @@ export default function MeasurementHistoryScreen() {
 
   return (
     <View style={styles.screen}>
+      <AppBackground />
       <ScreenHeader title="Historial completo" subtitle={`${clientName} · antropometría`} showBack />
 
       {measurements === null ? (

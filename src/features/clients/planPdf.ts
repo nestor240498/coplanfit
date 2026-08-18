@@ -22,6 +22,7 @@ const CATEGORY_DISPLAY_ORDER: { key: FoodGroup; label: string }[] = [
   { key: 'proteinas', label: 'Proteínas' },
   { key: 'vegetales', label: 'Vegetales / Hortalizas' },
   { key: 'frutas', label: 'Frutas' },
+  { key: 'lacteos', label: 'Lácteos' },
 ];
 
 export async function generateAndSharePlanPdf({

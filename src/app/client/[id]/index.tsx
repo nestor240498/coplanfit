@@ -12,6 +12,7 @@ import {
   View,
 } from 'react-native';
 
+import { AppBackground } from '@/components/ui/AppBackground';
 import { Button } from '@/components/ui/Button';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { TabBar, TabItem } from '@/components/ui/TabBar';
@@ -164,10 +165,17 @@ export default function ClientDetailScreen() {
   async function handleDeleteDraft() {
     if (!id) return;
     try {
-      await deletePlanDraft(id);
+      const draftIdToDelete = planDraft?.id;
       setPlanDraft(null);
+      usePlanBuilderStore.getState().reset();
+      if (draftIdToDelete) {
+        setPlanVersions((prev) => prev.filter((v) => v.id !== draftIdToDelete));
+      }
+      await deletePlanDraft(id, draftIdToDelete);
+      const updatedVersions = await listPlanVersions(id);
+      setPlanVersions(updatedVersions);
     } catch (e) {
-      Alert.alert('Error al descartar', (e as Error).message);
+      console.error('Error al descartar borrador:', e);
     }
   }
 
@@ -316,6 +324,7 @@ export default function ClientDetailScreen() {
 
   return (
     <View style={styles.screen}>
+      <AppBackground />
       <ScreenHeader
         title={client.full_name}
         subtitle={subtitle}
@@ -512,6 +521,13 @@ const styles = StyleSheet.create({
     backgroundColor: colors.lime,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  centerBox: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: s(20),
+    marginTop: s(20),
   },
 });
 

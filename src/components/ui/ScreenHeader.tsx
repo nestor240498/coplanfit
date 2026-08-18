@@ -14,6 +14,8 @@ type Props = {
   subtitle?: string;
   /** Muestra la flecha de volver */
   showBack?: boolean;
+  /** Muestra el botón de ir al inicio */
+  showHome?: boolean;
   /** Elemento a la derecha del título (badge de cupo, ícono, botón…) */
   right?: ReactNode;
   /** Migas de pan opcionales debajo del título */
@@ -24,6 +26,7 @@ export function ScreenHeader({
   title,
   subtitle,
   showBack,
+  showHome: _showHome,
   right,
   breadcrumbs,
 }: Props) {

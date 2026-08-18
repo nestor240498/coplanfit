@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 
+import { AppBackground } from '@/components/ui/AppBackground';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { getPlanVersionById, PlanVersionWithData } from '@/features/clients/plansRepository';
 import { getClient } from '@/features/clients/repository';
@@ -10,6 +11,20 @@ import { formatDateShort } from '@/lib/format';
 import { s } from '@/theme/scale';
 import { colors } from '@/theme/tokens';
 import { fonts, fontSizes } from '@/theme/typography';
+
+function formatMealValue(val: unknown): string {
+  if (!val) return 'No incluida';
+  if (typeof val === 'string') return val;
+  if (typeof val === 'object' && val !== null) {
+    const obj = val as { option1?: string; option2?: string };
+    const parts = [
+      obj.option1 ? `Opción 1: ${obj.option1}` : null,
+      obj.option2 ? `Opción 2: ${obj.option2}` : null,
+    ].filter(Boolean);
+    return parts.join('\n') || 'No incluida';
+  }
+  return String(val);
+}
 
 /** Mockup ("Comparar planes"): tabla comida-por-comida, resaltado en verde lo que cambió. */
 export default function ComparePlansScreen() {
@@ -30,6 +45,7 @@ export default function ComparePlansScreen() {
   if (client == null || earlier == null || later == null) {
     return (
       <View style={styles.screen}>
+        <AppBackground />
         <ScreenHeader title="Comparar planes" showBack />
         <ActivityIndicator style={styles.spinner} color={colors.navy} />
       </View>
@@ -42,6 +58,7 @@ export default function ComparePlansScreen() {
 
   return (
     <View style={styles.screen}>
+      <AppBackground />
       <ScreenHeader
         title="Comparar planes"
         subtitle={`Versión ${earlier.version} vs. Versión ${later.version} — ${client.full_name}`}
@@ -65,12 +82,12 @@ export default function ComparePlansScreen() {
           mealNames.map((meal) => {
             const before = earlierMeals[meal] ?? null;
             const after = laterMeals[meal] ?? null;
-            const changed = before !== after;
+            const changed = JSON.stringify(before) !== JSON.stringify(after);
             return (
               <View key={meal} style={styles.mealRow}>
                 <Text style={styles.mealLabel}>{meal}</Text>
-                <Text style={styles.mealValue}>{before ?? 'No incluida'}</Text>
-                <Text style={[styles.mealValue, changed && styles.mealValueChanged]}>{after ?? 'No incluida'}</Text>
+                <Text style={styles.mealValue}>{formatMealValue(before)}</Text>
+                <Text style={[styles.mealValue, changed && styles.mealValueChanged]}>{formatMealValue(after)}</Text>
               </View>
             );
           })

@@ -3,6 +3,7 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
 import { ActivityIndicator, FlatList, StyleSheet, Text, View } from 'react-native';
 
+import { AppBackground } from '@/components/ui/AppBackground';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
@@ -58,6 +59,7 @@ export default function ClientsScreen() {
 
   return (
     <View style={styles.screen}>
+      <AppBackground />
       <ScreenHeader title="Clientes" right={<Badge label={`${clients?.length ?? '–'}/${PLAN_LIMIT}`} />} />
 
       <View style={styles.body}>

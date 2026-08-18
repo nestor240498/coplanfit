@@ -44,7 +44,8 @@
           "photosPermission": "CoplanFit necesita acceso a tus fotos para subir el logo de tu negocio."
         }
       ],
-      "expo-sharing"
+      "expo-sharing",
+      "expo-video"
     ],
     "experiments": {
       "typedRoutes": true,

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 
+import { AppBackground } from '@/components/ui/AppBackground';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { getMeasurementById } from '@/features/clients/measurementsRepository';
 import { getClient } from '@/features/clients/repository';
@@ -45,6 +46,7 @@ export default function CompareMeasurementsScreen() {
   if (client == null || earlier == null || later == null) {
     return (
       <View style={styles.screen}>
+        <AppBackground />
         <ScreenHeader title="Comparar mediciones" showBack />
         <ActivityIndicator style={styles.spinner} color={colors.navy} />
       </View>
@@ -53,6 +55,7 @@ export default function CompareMeasurementsScreen() {
 
   return (
     <View style={styles.screen}>
+      <AppBackground />
       <ScreenHeader title="Comparar mediciones" subtitle={client.full_name} showBack />
       <View style={styles.table}>
         <View style={[styles.row, styles.headerRow]}>

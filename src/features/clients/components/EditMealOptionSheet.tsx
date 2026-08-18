@@ -167,12 +167,7 @@ export function EditMealOptionSheet({
 
               return (
                 <View key={group} style={styles.groupSection}>
-                  <Text
-                    style={[
-                      styles.groupLabel,
-                      group === 'suplementos' && styles.groupLabelDanger,
-                    ]}
-                  >
+                  <Text style={styles.groupLabel}>
                     {FOOD_GROUP_LABELS[group]}
                   </Text>
 

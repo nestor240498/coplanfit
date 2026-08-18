@@ -1,8 +1,19 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { AlertTriangle, Check, Droplets, Pill, Plus, Trash2, Users, Utensils } from 'lucide-react-native';
+import {
+  AlertTriangle,
+  Check,
+  Droplets,
+  GripVertical,
+  Pill,
+  Plus,
+  Trash2,
+  Users,
+  Utensils,
+} from 'lucide-react-native';
 import { useEffect, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
+import { AppBackground } from '@/components/ui/AppBackground';
 import { Button } from '@/components/ui/Button';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { AddMealSheet } from '@/features/clients/components/AddMealSheet';
@@ -23,6 +34,76 @@ function scheduleSummary(sup: Supplement): string {
   return sup.schedule;
 }
 
+// Wrapper nativo Web para soportar HTML5 Drag & Drop al 100%
+function DraggableRowWrapper({
+  children,
+  index,
+  isDragging,
+  isDragOver,
+  onDragStart,
+  onDragOver,
+  onDragLeave,
+  onDrop,
+  onDragEnd,
+  style,
+}: {
+  children: React.ReactNode;
+  index: number;
+  isDragging: boolean;
+  isDragOver: boolean;
+  onDragStart: (idx: number, e: any) => void;
+  onDragOver: (idx: number, e: any) => void;
+  onDragLeave: (idx: number) => void;
+  onDrop: (idx: number, e: any) => void;
+  onDragEnd: () => void;
+  style?: any;
+}) {
+  if (Platform.OS === 'web') {
+    return (
+      <div
+        draggable
+        onDragStart={(e) => onDragStart(index, e)}
+        onDragOver={(e) => onDragOver(index, e)}
+        onDragLeave={() => onDragLeave(index)}
+        onDrop={(e) => onDrop(index, e)}
+        onDragEnd={onDragEnd}
+        style={{
+          cursor: 'grab',
+          userSelect: 'none',
+          WebkitUserSelect: 'none',
+          display: 'flex',
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 6,
+          backgroundColor: '#FFFFFF',
+          borderRadius: 8,
+          padding: '6px 8px',
+          border: isDragOver ? '2px solid #8BC53F' : '1px solid #DDE2EA',
+          opacity: isDragging ? 0.4 : 1,
+          transition: 'border 0.15s ease, opacity 0.15s ease',
+          boxSizing: 'border-box',
+          width: '100%',
+        }}
+      >
+        {children}
+      </div>
+    );
+  }
+
+  return (
+    <View
+      style={[
+        styles.row,
+        isDragging && styles.rowDragging,
+        isDragOver && styles.rowDragOver,
+        style,
+      ]}
+    >
+      {children}
+    </View>
+  );
+}
+
 export default function PlanBuilderScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
@@ -33,6 +114,13 @@ export default function PlanBuilderScreen() {
   const [noSupplements, setNoSupplements] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
   const [savingDraft, setSavingDraft] = useState(false);
+
+  // Estados para Drag & Drop visual
+  const [draggingMealIdx, setDraggingMealIdx] = useState<number | null>(null);
+  const [dragOverMealIdx, setDragOverMealIdx] = useState<number | null>(null);
+
+  const [draggingSupIdx, setDraggingSupIdx] = useState<number | null>(null);
+  const [dragOverSupIdx, setDragOverSupIdx] = useState<number | null>(null);
 
   function openSupplementSheet(sup: Supplement | null) {
     setEditingSupplement(sup);
@@ -49,10 +137,12 @@ export default function PlanBuilderScreen() {
     initBuilderForNewPlan,
     addMealSlot,
     removeMealSlot,
+    moveMealSlot,
     setWaterLiters,
     addSupplement,
     updateSupplement,
     removeSupplement,
+    moveSupplement,
     setAiNote,
     generateSuggestions,
     saveDraftToDb,
@@ -75,23 +165,26 @@ export default function PlanBuilderScreen() {
   }
 
   async function handleGenerate() {
-    setValidationError(null);
-    const errors: string[] = [];
-
     if (mealSlots.length === 0) {
-      errors.push('Agrega al menos una comida del día');
+      setValidationError('Debes configurar al menos una comida del día.');
+      return;
     }
-    const waterNum = parseFloat(waterLiters.replace(',', '.'));
-    if (!waterLiters.trim() || isNaN(waterNum) || waterNum <= 0) {
-      errors.push('Indica una hidratación mínima (L/día)');
+    const waterNum = Number(waterLiters.replace(',', '.'));
+    if (!waterLiters.trim() || Number.isNaN(waterNum) || waterNum <= 0) {
+      setValidationError('Debes ingresar los litros de agua objetivo (ej: 2.5).');
+      return;
     }
     if (!noSupplements && supplements.length === 0) {
-      errors.push('Agrega al menos un suplemento o marca "Sin suplementos"');
+      setValidationError('Agrega al menos un suplemento o marca la casilla si el cliente no toma suplementos.');
+      return;
     }
 
-    if (errors.length > 0) {
-      setValidationError(errors.join(' · '));
-      return;
+    setValidationError(null);
+
+    try {
+      await saveDraftToDb(1);
+    } catch {
+      // Si falla guardar borrador en BD no bloqueamos la generación con IA
     }
 
     await generateSuggestions();
@@ -102,9 +195,10 @@ export default function PlanBuilderScreen() {
 
   return (
     <View style={styles.screen}>
+      <AppBackground />
       <ScreenHeader
         title="Constructor de plan"
-        subtitle={`${clientName} · configuración base`}
+        subtitle={`${clientName} · Configuración base`}
         showBack
         showHome
         breadcrumbs={[
@@ -124,17 +218,54 @@ export default function PlanBuilderScreen() {
           </View>
           <Text style={styles.sectionCount}>{mealSlots.length}</Text>
         </View>
-        {mealSlots.map((slot) => (
-          <View key={slot.id} style={styles.row}>
-            <Text style={styles.rowName}>{slot.name}</Text>
-            <View style={styles.timeBadge}>
-              <Text style={styles.timeBadgeText}>{slot.time}</Text>
-            </View>
-            <Pressable accessibilityLabel={`Quitar ${slot.name}`} onPress={() => removeMealSlot(slot.id)} hitSlop={8}>
-              <Trash2 size={s(13)} color={colors.textMuted} />
-            </Pressable>
-          </View>
-        ))}
+        {mealSlots.map((slot, index) => {
+          const isDragging = draggingMealIdx === index;
+          const isDragOver = dragOverMealIdx === index;
+          return (
+            <DraggableRowWrapper
+              key={slot.id}
+              index={index}
+              isDragging={isDragging}
+              isDragOver={isDragOver}
+              onDragStart={(idx, e) => {
+                e.dataTransfer?.setData('text/plain', String(idx));
+                setDraggingMealIdx(idx);
+              }}
+              onDragOver={(idx, e) => {
+                e.preventDefault();
+                if (dragOverMealIdx !== idx) setDragOverMealIdx(idx);
+              }}
+              onDragLeave={(idx) => {
+                if (dragOverMealIdx === idx) setDragOverMealIdx(null);
+              }}
+              onDragEnd={() => {
+                setDraggingMealIdx(null);
+                setDragOverMealIdx(null);
+              }}
+              onDrop={(idx, e) => {
+                e.preventDefault();
+                const fromStr = e.dataTransfer?.getData('text/plain');
+                const fromIdx = fromStr ? parseInt(fromStr, 10) : draggingMealIdx;
+                if (fromIdx !== null && !isNaN(fromIdx) && fromIdx !== idx) {
+                  moveMealSlot(fromIdx, idx);
+                }
+                setDraggingMealIdx(null);
+                setDragOverMealIdx(null);
+              }}
+            >
+              <View style={styles.dragHandleCol}>
+                <GripVertical size={s(14)} color={colors.textMuted} />
+              </View>
+              <Text style={styles.rowName}>{slot.name}</Text>
+              <View style={styles.timeBadge}>
+                <Text style={styles.timeBadgeText}>{slot.time}</Text>
+              </View>
+              <Pressable accessibilityLabel={`Quitar ${slot.name}`} onPress={() => removeMealSlot(slot.id)} hitSlop={8}>
+                <Trash2 size={s(13)} color={colors.textMuted} />
+              </Pressable>
+            </DraggableRowWrapper>
+          );
+        })}
         <Pressable onPress={() => setMealSheetOpen(true)} style={styles.dashedRow}>
           <Plus size={s(13)} color={colors.textSecondary} />
           <Text style={styles.dashedRowText}>Agregar comida</Text>
@@ -188,17 +319,61 @@ export default function PlanBuilderScreen() {
 
         {!noSupplements && (
           <>
-            {supplements.map((sup) => (
-              <Pressable key={sup.id} onPress={() => openSupplementSheet(sup)} style={styles.row}>
-                <View style={styles.rowInfo}>
-                  <Text style={styles.rowName}>{sup.name}</Text>
-                  <Text style={styles.rowMeta}>{sup.dose} · {scheduleSummary(sup)}</Text>
-                </View>
-                <Pressable accessibilityLabel={`Quitar ${sup.name}`} onPress={() => removeSupplement(sup.id)} hitSlop={8}>
-                  <Trash2 size={s(13)} color={colors.textMuted} />
-                </Pressable>
-              </Pressable>
-            ))}
+            {supplements.map((sup, index) => {
+              const isDragging = draggingSupIdx === index;
+              const isDragOver = dragOverSupIdx === index;
+              return (
+                <DraggableRowWrapper
+                  key={sup.id}
+                  index={index}
+                  isDragging={isDragging}
+                  isDragOver={isDragOver}
+                  onDragStart={(idx, e) => {
+                    e.dataTransfer?.setData('text/plain', String(idx));
+                    setDraggingSupIdx(idx);
+                  }}
+                  onDragOver={(idx, e) => {
+                    e.preventDefault();
+                    if (dragOverSupIdx !== idx) setDragOverSupIdx(idx);
+                  }}
+                  onDragLeave={(idx) => {
+                    if (dragOverSupIdx === idx) setDragOverSupIdx(null);
+                  }}
+                  onDragEnd={() => {
+                    setDraggingSupIdx(null);
+                    setDragOverSupIdx(null);
+                  }}
+                  onDrop={(idx, e) => {
+                    e.preventDefault();
+                    const fromStr = e.dataTransfer?.getData('text/plain');
+                    const fromIdx = fromStr ? parseInt(fromStr, 10) : draggingSupIdx;
+                    if (fromIdx !== null && !isNaN(fromIdx) && fromIdx !== idx) {
+                      moveSupplement(fromIdx, idx);
+                    }
+                    setDraggingSupIdx(null);
+                    setDragOverSupIdx(null);
+                  }}
+                >
+                  <View style={styles.dragHandleCol}>
+                    <GripVertical size={s(14)} color={colors.textMuted} />
+                  </View>
+                  <Pressable onPress={() => openSupplementSheet(sup)} style={styles.rowInfo}>
+                    <Text style={styles.rowName}>{sup.name}</Text>
+                    <Text style={styles.rowMeta}>{sup.dose} · {scheduleSummary(sup)}</Text>
+                  </Pressable>
+                  <Pressable
+                    accessibilityLabel={`Quitar ${sup.name}`}
+                    onPress={(e) => {
+                      e.stopPropagation?.();
+                      removeSupplement(sup.id);
+                    }}
+                    hitSlop={8}
+                  >
+                    <Trash2 size={s(13)} color={colors.textMuted} />
+                  </Pressable>
+                </DraggableRowWrapper>
+              );
+            })}
             <Pressable onPress={() => openSupplementSheet(null)} style={styles.dashedRow}>
               <Plus size={s(13)} color={colors.textSecondary} />
               <Text style={styles.dashedRowText}>Agregar suplemento</Text>
@@ -344,6 +519,21 @@ const styles = StyleSheet.create({
   },
   footerBtnMain: {
     flex: 1.4,
+  },
+  dragHandleCol: {
+    paddingHorizontal: s(2),
+    alignItems: 'center',
+    justifyContent: 'center',
+    cursor: 'grab' as any,
+  },
+  rowDragging: {
+    opacity: 0.45,
+    transform: [{ scale: 0.98 }],
+  },
+  rowDragOver: {
+    borderColor: colors.lime,
+    borderWidth: 1.5,
+    backgroundColor: 'rgba(139, 197, 63, 0.08)',
   },
   rowInfo: { flex: 1, gap: 2 },
   rowMeta: { fontFamily: fonts.body, fontSize: fontSizes.label, color: colors.textSecondary },

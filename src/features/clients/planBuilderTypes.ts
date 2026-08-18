@@ -28,7 +28,7 @@ export type Supplement = {
   scheduleDetail?: string;
 };
 
-export const FOOD_GROUPS = ['carbohidratos', 'proteinas', 'vegetales', 'frutas', 'grasas'] as const;
+export const FOOD_GROUPS = ['carbohidratos', 'proteinas', 'vegetales', 'frutas', 'grasas', 'lacteos'] as const;
 export type FoodGroup = (typeof FOOD_GROUPS)[number];
 
 export const FOOD_GROUP_LABELS: Record<FoodGroup, string> = {
@@ -37,6 +37,7 @@ export const FOOD_GROUP_LABELS: Record<FoodGroup, string> = {
   vegetales: 'Vegetales',
   frutas: 'Frutas',
   grasas: 'Grasas',
+  lacteos: 'Lácteos',
 };
 
 export type FoodItem = {
@@ -50,7 +51,7 @@ export type FoodItem = {
 export type FoodSuggestions = Record<FoodGroup, FoodItem[]>;
 
 export function emptySuggestions(): FoodSuggestions {
-  return { carbohidratos: [], proteinas: [], vegetales: [], frutas: [], grasas: [] };
+  return { carbohidratos: [], proteinas: [], vegetales: [], frutas: [], grasas: [], lacteos: [] };
 }
 
 export type MealAssignment = {
