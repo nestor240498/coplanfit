@@ -1,6 +1,6 @@
 import { Image } from 'expo-image';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import { HeartPulse, Pencil, Scale, User, Users, UtensilsCrossed } from 'lucide-react-native';
+import { Dumbbell, HeartPulse, Pencil, Scale, User, Users, UtensilsCrossed } from 'lucide-react-native';
 import { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
@@ -40,16 +40,22 @@ import {
   Measurement,
   PlanVersion,
 } from '@/features/clients/types';
-import { formatDateShort, formatMonthYear } from '@/lib/format';
+import { EntrenamientoTab } from '@/features/workouts/components/EntrenamientoTab';
+import { WorkoutPlanVersion } from '@/features/workouts/types';
+import { useWorkoutBuilderStore } from '@/features/workouts/workoutBuilderStore';
+import { listWorkoutPlanVersions } from '@/features/workouts/workoutsRepository';
+import { calculateAge, formatDateShort, formatMonthYear } from '@/lib/format';
+import { supabase } from '@/lib/supabase';
 import { s } from '@/theme/scale';
 import { colors, radius } from '@/theme/tokens';
 import { fonts, fontSizes } from '@/theme/typography';
 
-const TABS: TabItem<'datos' | 'salud' | 'antropometria' | 'planes'>[] = [
+const TABS: TabItem<'datos' | 'salud' | 'antropometria' | 'planes' | 'entrenamiento'>[] = [
   { key: 'datos', label: 'Datos', icon: User },
   { key: 'salud', label: 'Salud', icon: HeartPulse },
   { key: 'antropometria', label: 'Antropometría', icon: Scale },
-  { key: 'planes', label: 'Planes', icon: UtensilsCrossed },
+  { key: 'planes', label: 'Nutrición', icon: UtensilsCrossed },
+  { key: 'entrenamiento', label: 'Entrenamiento', icon: Dumbbell },
 ];
 
 const EMPTY_MEASUREMENT_FORM: MeasurementFormState = {
@@ -90,12 +96,13 @@ export default function ClientDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
 
-  const [tab, setTab] = useState<'datos' | 'salud' | 'antropometria' | 'planes'>('datos');
+  const [tab, setTab] = useState<'datos' | 'salud' | 'antropometria' | 'planes' | 'entrenamiento'>('datos');
   const [client, setClient] = useState<Client | null>(null);
   const [tags, setTags] = useState<ClientTag[]>([]);
   const [measurement, setMeasurement] = useState<Measurement | null>(null);
   const [planVersions, setPlanVersions] = useState<PlanVersion[]>([]);
   const [planDraft, setPlanDraft] = useState<PlanVersionWithData | null>(null);
+  const [workoutVersions, setWorkoutVersions] = useState<WorkoutPlanVersion[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [editNameOpen, setEditNameOpen] = useState(false);
 
@@ -116,14 +123,16 @@ export default function ClientDetailScreen() {
       getLatestMeasurement(id),
       listPlanVersions(id),
       getPlanDraft(id),
+      listWorkoutPlanVersions(id).catch(() => []),
     ])
-      .then(([c, t, m, pv, draft]) => {
+      .then(([c, t, m, pv, draft, wv]) => {
         if (cancelled) return;
         setClient(c);
         setTags(t);
         setMeasurement(m);
         setPlanVersions(pv);
         setPlanDraft(draft);
+        setWorkoutVersions(wv);
       })
       .catch((e: Error) => {
         if (!cancelled) setError(e.message);
@@ -179,7 +188,32 @@ export default function ClientDetailScreen() {
     }
   }
 
-  function handleTabChange(nextTab: 'datos' | 'salud' | 'antropometria' | 'planes') {
+  function handleResumeWorkoutDraft(draft: WorkoutPlanVersion) {
+    if (!id) return;
+    useWorkoutBuilderStore.getState().initBuilder(
+      id,
+      draft.name.replace(' (Borrador)', ''),
+      draft.data?.weekly_schedule || []
+    );
+    if (draft.data?.notes) {
+      useWorkoutBuilderStore.getState().setNotes(draft.data.notes);
+    }
+    router.push(`/client/${id}/workouts/assistant`);
+  }
+
+  async function handleDeleteWorkoutDraft(draftId: string) {
+    if (!id) return;
+    try {
+      setWorkoutVersions((prev) => prev.filter((v) => v.id !== draftId));
+      await supabase.from('workout_plan_versions').delete().eq('id', draftId);
+      const updated = await listWorkoutPlanVersions(id);
+      setWorkoutVersions(updated);
+    } catch (e) {
+      console.error('Error al descartar borrador de entrenamiento:', e);
+    }
+  }
+
+  function handleTabChange(nextTab: 'datos' | 'salud' | 'antropometria' | 'planes' | 'entrenamiento') {
     if (tab === 'antropometria' && isEditingMeasurements) {
       setIsEditingMeasurements(false);
     }
@@ -309,8 +343,9 @@ export default function ClientDetailScreen() {
     );
   }
 
+  const clientAge = calculateAge(client.birth_date) ?? client.age;
   const subtitle = [
-    client.age != null ? `${client.age} años` : null,
+    clientAge != null ? `${clientAge} años` : null,
     `Cliente desde ${formatMonthYear(client.created_at)}`,
   ]
     .filter(Boolean)
@@ -365,16 +400,22 @@ export default function ClientDetailScreen() {
         {tab === 'datos' && (
           <DatosTab
             client={client}
-            tags={tags}
             latestMeasurementLabel={measurement != null ? formatDateShort(measurement.measured_at) : null}
-            onReloadTags={reloadTags}
             onUpdateClient={handleUpdateClient}
             onViewAnthropometry={() => setTab('antropometria')}
           />
         )}
-        {tab === 'salud' && <SaludTab client={client} onUpdateClient={handleUpdateClient} />}
+        {tab === 'salud' && (
+          <SaludTab
+            client={client}
+            tags={tags}
+            onReloadTags={reloadTags}
+            onUpdateClient={handleUpdateClient}
+          />
+        )}
         {tab === 'antropometria' && (
           <AntropometriaTab
+            client={client}
             measurement={measurement}
             isEditing={isEditingMeasurements}
             formState={measurementForm}
@@ -387,6 +428,9 @@ export default function ClientDetailScreen() {
             clientId={client.id}
             clientName={client.full_name}
             clientGoal={client.goal}
+            tags={tags}
+            onReloadTags={reloadTags}
+            onUpdateClient={handleUpdateClient}
             versions={planVersions}
             draft={planDraft}
             onNewVersion={() => router.push(`/client/${id}/plans/new`)}
@@ -394,6 +438,18 @@ export default function ClientDetailScreen() {
             onDeleteDraft={handleDeleteDraft}
             onCompare={([a, b]) => router.push(`/client/${id}/plans/compare?a=${a}&b=${b}`)}
             onViewVersion={(versionId) => router.push(`/client/${id}/plans/preview?versionId=${versionId}`)}
+          />
+        )}
+        {tab === 'entrenamiento' && (
+          <EntrenamientoTab
+            client={client}
+            tags={tags}
+            versions={workoutVersions}
+            onUpdateClient={handleUpdateClient}
+            onNewWorkoutPlan={() => router.push(`/client/${id}/workouts/new`)}
+            onViewWorkoutPlan={(versionId) => router.push(`/client/${id}/workouts/preview?versionId=${versionId}`)}
+            onResumeDraft={handleResumeWorkoutDraft}
+            onDeleteDraft={handleDeleteWorkoutDraft}
           />
         )}
       </ScrollView>

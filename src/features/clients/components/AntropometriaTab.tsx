@@ -1,12 +1,16 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Download, History } from 'lucide-react-native';
+import { useState } from 'react';
+import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { InputFieldRow } from '@/components/ui/FieldRow';
+import { getMyProfile } from '@/features/profile/repository';
 import { formatDateShort } from '@/lib/format';
 import { s } from '@/theme/scale';
 import { colors, radius } from '@/theme/tokens';
 import { fonts, fontSizes } from '@/theme/typography';
 
-import { Measurement } from '../types';
+import { generateAndShareMeasurementPdf } from '../measurementPdf';
+import { Client, Measurement } from '../types';
 
 export type MeasurementFormState = {
   // Composición corporal
@@ -46,6 +50,7 @@ export type MeasurementFormState = {
 };
 
 type Props = {
+  client: Client;
   measurement: Measurement | null;
   isEditing?: boolean;
   formState?: MeasurementFormState;
@@ -59,12 +64,27 @@ function fmt(value: number | null | undefined, unit: string, decimals = 0): stri
 }
 
 export function AntropometriaTab({
+  client,
   measurement,
   isEditing = false,
   formState,
   onChangeFormState,
   onViewHistory,
 }: Props) {
+  const [exportingPdf, setExportingPdf] = useState(false);
+
+  async function handleExportPdf() {
+    if (!measurement) return;
+    setExportingPdf(true);
+    try {
+      const profile = await getMyProfile();
+      await generateAndShareMeasurementPdf({ client, profile, measurement });
+    } catch (e) {
+      Alert.alert('Error al exportar PDF', (e as Error).message);
+    } finally {
+      setExportingPdf(false);
+    }
+  }
   // Cálculo dinámico en vivo durante la edición
   const editWeightNum = formState ? Number(formState.weight.replace(',', '.')) : NaN;
   const rawHeightNum = formState ? Number(formState.height.replace(',', '.')) : NaN;
@@ -470,9 +490,28 @@ export function AntropometriaTab({
       </Text>
 
       {measurement != null && (
-        <Pressable onPress={onViewHistory}>
-          <Text style={styles.historyLink}>Ver historial completo ›</Text>
-        </Pressable>
+        <View style={styles.actionsBar}>
+          <Pressable
+            accessibilityRole="button"
+            onPress={handleExportPdf}
+            disabled={exportingPdf}
+            style={styles.exportPdfBtn}
+          >
+            {exportingPdf ? (
+              <ActivityIndicator size="small" color="#3B6B11" />
+            ) : (
+              <>
+                <Download size={s(12)} color="#3B6B11" strokeWidth={2.2} />
+                <Text style={styles.exportPdfBtnText}>Descargar reporte en PDF</Text>
+              </>
+            )}
+          </Pressable>
+
+          <Pressable onPress={onViewHistory} style={styles.historyBtn}>
+            <History size={s(12)} color={colors.textSecondary} strokeWidth={2} />
+            <Text style={styles.historyLink}>Ver historial completo ›</Text>
+          </Pressable>
+        </View>
       )}
     </View>
   );
@@ -558,10 +597,47 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     marginTop: s(6),
   },
+  actionsBar: {
+    flexDirection: 'column',
+    gap: s(6),
+    marginTop: s(4),
+    paddingTop: s(8),
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    width: '100%',
+  },
+  exportPdfBtn: {
+    width: '100%',
+    height: s(32),
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: s(5),
+    backgroundColor: '#F4FBEB',
+    borderRadius: radius.button,
+    borderWidth: 1,
+    borderColor: '#D4ECC4',
+  },
+  exportPdfBtnText: {
+    fontFamily: fonts.bodyBold,
+    fontSize: s(9.5),
+    color: '#3B6B11',
+  },
+  historyBtn: {
+    width: '100%',
+    height: s(32),
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: s(5),
+    backgroundColor: colors.surface,
+    borderRadius: radius.button,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
   historyLink: {
     fontFamily: fonts.bodyBold,
-    fontSize: fontSizes.xs,
-    color: colors.success,
-    textAlign: 'right',
+    fontSize: s(9.5),
+    color: colors.textSecondary,
   },
 });

@@ -15,7 +15,7 @@ type Props = {
 
 const palette: Record<ChipVariant, { bg: string; fg: string }> = {
   danger: { bg: colors.dangerBg, fg: colors.danger },
-  neutral: { bg: colors.neutralChipBg, fg: colors.textSecondary },
+  neutral: { bg: colors.navy, fg: colors.surface },
   success: { bg: colors.successBg, fg: colors.success },
 };
 

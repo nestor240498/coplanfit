@@ -12,9 +12,9 @@ import { Input } from '@/components/ui/Input';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { listClients } from '@/features/clients/repository';
 import { Client } from '@/features/clients/types';
-import { formatDateShort, formatGoal } from '@/lib/format';
+import { calculateAge, formatDateShort, formatGoal } from '@/lib/format';
 import { s } from '@/theme/scale';
-import { colors } from '@/theme/tokens';
+import { colors, radius } from '@/theme/tokens';
 import { fonts, fontSizes } from '@/theme/typography';
 
 // TODO: leer el límite del paquete de suscripción cuando exista esa tabla
@@ -112,6 +112,7 @@ function ClientRow({ client, onPress }: { client: Client; onPress: () => void })
   // Últimas medidas formateadas: solo la fecha
   const m = client.latest_measurement;
   const measuresLabel = m?.measured_at ? formatDateShort(m.measured_at) : 'Sin mediciones aún';
+  const age = calculateAge(client.birth_date) ?? client.age;
 
   const initials = client.full_name
     .split(' ')
@@ -130,9 +131,14 @@ function ClientRow({ client, onPress }: { client: Client; onPress: () => void })
         )}
       </View>
       <View style={styles.rowText}>
-        <Text style={styles.name} numberOfLines={1}>
-          {client.full_name}
-        </Text>
+        <View style={styles.nameRow}>
+          <Text style={styles.name} numberOfLines={1}>
+            {client.full_name}
+          </Text>
+          {age != null && (
+            <Text style={styles.ageBadge}>{age} años</Text>
+          )}
+        </View>
         <Text style={styles.meta} numberOfLines={1}>
           <Text style={styles.metaHighlight}>Objetivo:</Text> {goalLabel}
         </Text>
@@ -200,10 +206,28 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
   },
   rowText: { flex: 1, flexDirection: "column", gap: s(2) },
+  nameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: s(6),
+  },
   name: {
+    flex: 1,
     fontFamily: fonts.bodyBold,
     fontSize: fontSizes.base,
     color: colors.text,
+  },
+  ageBadge: {
+    fontFamily: fonts.bodySemi,
+    fontSize: s(9),
+    color: colors.textSecondary,
+    backgroundColor: colors.background,
+    paddingVertical: s(2),
+    paddingHorizontal: s(6),
+    borderRadius: radius.chip,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   meta: {
     fontFamily: fonts.body,

@@ -14,6 +14,18 @@ const KIND_LABELS: Record<TagKind, string> = {
   evita: 'Evita',
 };
 
+const TITLES: Record<TagKind, string> = {
+  condicion: 'Agregar condición médica',
+  alergia: 'Agregar alergia o intolerancia',
+  evita: 'Agregar alimento a evitar',
+};
+
+const PLACEHOLDERS: Record<TagKind, string> = {
+  condicion: 'Ej: Hipertensión, Diabetes...',
+  alergia: 'Ej: Lactosa, Gluten, Mariscos...',
+  evita: 'Ej: Frutos secos, Brócoli, Cerdo...',
+};
+
 const SUGGESTIONS: Record<TagKind, string[]> = {
   condicion: ['Resistencia a la insulina', 'Hipertensión', 'Diabetes tipo 2', 'Hipotiroidismo'],
   alergia: ['Mariscos', 'Lactosa', 'Gluten', 'Frutos secos'],
@@ -26,10 +38,17 @@ type Props = {
   onAdd: (kind: TagKind, label: string) => Promise<void> | void;
   /** Preselecciona el tipo cuando se abre desde una categoría concreta (+ Agregar de "Alergias", etc.) */
   initialKind?: TagKind;
+  /** Si es true, oculta el selector de tipo y fija el tipo a initialKind */
+  hideKindSelector?: boolean;
 };
 
-/** Mockup ("Agregar a la ficha"): pills Condición/Alergia/Evita, buscar, sugeridos. */
-export function AddTagSheet({ visible, onClose, onAdd, initialKind = 'alergia' }: Props) {
+export function AddTagSheet({
+  visible,
+  onClose,
+  onAdd,
+  initialKind = 'alergia',
+  hideKindSelector = true,
+}: Props) {
   const [kind, setKind] = useState<TagKind>(initialKind);
   const [text, setText] = useState('');
   const [saving, setSaving] = useState(false);
@@ -51,25 +70,32 @@ export function AddTagSheet({ visible, onClose, onAdd, initialKind = 'alergia' }
     }
   }
 
+  const title = TITLES[kind] ?? 'Agregar a la ficha';
+  const placeholder = PLACEHOLDERS[kind] ?? 'Ej: Lactosa';
+
   return (
-    <BottomSheet visible={visible} onClose={handleClose} title="Agregar a la ficha">
-      <Text style={styles.label}>Tipo de dato</Text>
-      <View style={styles.pillRow}>
-        {(Object.keys(KIND_LABELS) as TagKind[]).map((k) => {
-          const selected = k === kind;
-          return (
-            <Pressable key={k} onPress={() => setKind(k)} style={[styles.pill, selected && styles.pillSelected]}>
-              <Text style={[styles.pillText, selected && styles.pillTextSelected]}>{KIND_LABELS[k]}</Text>
-            </Pressable>
-          );
-        })}
-      </View>
+    <BottomSheet visible={visible} onClose={handleClose} title={title}>
+      {!hideKindSelector && (
+        <>
+          <Text style={styles.label}>Tipo de dato</Text>
+          <View style={styles.pillRow}>
+            {(Object.keys(KIND_LABELS) as TagKind[]).map((k) => {
+              const selected = k === kind;
+              return (
+                <Pressable key={k} onPress={() => setKind(k)} style={[styles.pill, selected && styles.pillSelected]}>
+                  <Text style={[styles.pillText, selected && styles.pillTextSelected]}>{KIND_LABELS[k]}</Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        </>
+      )}
 
       <Text style={styles.label}>Buscar o escribir</Text>
       <TextInput
         value={text}
         onChangeText={setText}
-        placeholder="Ej: Lactosa"
+        placeholder={placeholder}
         placeholderTextColor={colors.textMuted}
         style={styles.input}
       />

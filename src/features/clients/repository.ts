@@ -1,14 +1,22 @@
 import { supabase } from '@/lib/supabase';
 
+import { EquipmentAccess, TrainingGoal, TrainingLevel } from '../workouts/types';
 import { Client, Goal } from './types';
 
 export type ClientPatch = Partial<{
   full_name: string;
   age: number | null;
+  birth_date: string | null;
   goal: Goal | null;
   avatar_url: string | null;
   notes: string | null;
   medical_notes: string | null;
+  training_goal: TrainingGoal | null;
+  training_level: TrainingLevel | null;
+  equipment_access: EquipmentAccess | null;
+  days_per_week: number | null;
+  session_duration_min: number | null;
+  training_notes: string | null;
 }>;
 
 /**
@@ -18,12 +26,31 @@ export type ClientPatch = Partial<{
 
 export async function listClients(): Promise<Client[]> {
   const { data: clientsData, error: clientsError } = await supabase
-    .from('clients_with_current_plan')
-    .select('*')
+    .from('clients')
+    .select('*, plan_versions(version, is_current)')
     .order('full_name', { ascending: true });
-  if (clientsError) throw new Error(clientsError.message);
 
-  const clients = (clientsData ?? []) as Client[];
+  let clients: Client[];
+
+  if (clientsError) {
+    const { data: fallbackData, error: fallbackError } = await supabase
+      .from('clients_with_current_plan')
+      .select('*')
+      .order('full_name', { ascending: true });
+    if (fallbackError) throw new Error(fallbackError.message);
+    clients = (fallbackData ?? []) as Client[];
+  } else {
+    clients = (clientsData ?? []).map((c) => {
+      const currentPv = Array.isArray(c.plan_versions)
+        ? c.plan_versions.find((pv: { is_current: boolean; version: number }) => pv.is_current)
+        : null;
+      return {
+        ...c,
+        current_plan_version: currentPv ? currentPv.version : null,
+      };
+    }) as Client[];
+  }
+
   if (clients.length === 0) return [];
 
   // Traer las mediciones recientes de estos clientes para mostrar últimas medidas
@@ -63,6 +90,7 @@ export async function createClient(input: {
   full_name: string;
   contact?: string;
   age?: number;
+  birth_date?: string;
   goal?: Goal;
   avatar_url?: string;
 }): Promise<Client> {
@@ -77,6 +105,7 @@ export async function createClient(input: {
       full_name: input.full_name.trim(),
       contact: input.contact?.trim() || null,
       age: input.age ?? null,
+      birth_date: input.birth_date ?? null,
       goal: input.goal ?? null,
       ...(input.avatar_url ? { avatar_url: input.avatar_url } : {}),
     })
@@ -87,9 +116,30 @@ export async function createClient(input: {
 }
 
 export async function getClient(id: string): Promise<Client> {
-  const { data, error } = await supabase.from('clients_with_current_plan').select('*').eq('id', id).single();
-  if (error) throw new Error(error.message);
-  return data as Client;
+  const { data, error } = await supabase
+    .from('clients')
+    .select('*, plan_versions(version, is_current)')
+    .eq('id', id)
+    .single();
+
+  if (error) {
+    const { data: fallback, error: fbErr } = await supabase
+      .from('clients_with_current_plan')
+      .select('*')
+      .eq('id', id)
+      .single();
+    if (fbErr) throw new Error(fbErr.message);
+    return fallback as Client;
+  }
+
+  const currentPlan = Array.isArray(data.plan_versions)
+    ? data.plan_versions.find((pv: { is_current: boolean; version: number }) => pv.is_current)
+    : null;
+
+  return {
+    ...data,
+    current_plan_version: currentPlan ? currentPlan.version : null,
+  } as Client;
 }
 
 export async function updateClient(id: string, patch: ClientPatch): Promise<void> {

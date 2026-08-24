@@ -1,63 +1,110 @@
 import { useState } from 'react';
-import { StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
+import { Chip } from '@/components/ui/Chip';
 import { s } from '@/theme/scale';
 import { colors, radius } from '@/theme/tokens';
 import { fonts, fontSizes } from '@/theme/typography';
 
-import { Client } from '../types';
+import { addTag, removeTag } from '../tagsRepository';
+import { Client, ClientTag, TagKind } from '../types';
+import { AddTagSheet } from './AddTagSheet';
 
 type Props = {
   client: Client;
-  onUpdateClient: (patch: { age?: number | null; medical_notes?: string }) => Promise<void>;
+  tags: ClientTag[];
+  onReloadTags: () => void;
+  onUpdateClient: (patch: { medical_notes?: string }) => Promise<void>;
 };
 
-/** Tab Salud (README): edad, notas médicas generales. */
-export function SaludTab({ client, onUpdateClient }: Props) {
-  const [age, setAge] = useState(client.age != null ? String(client.age) : '');
+export function SaludTab({ client, tags, onReloadTags, onUpdateClient }: Props) {
+  const [sheetKind, setSheetKind] = useState<TagKind | null>(null);
   const [medicalNotes, setMedicalNotes] = useState(client.medical_notes ?? '');
 
-  function handleAgeBlur() {
-    const parsed = age.trim() === '' ? null : Number(age);
-    if (parsed !== client.age) onUpdateClient({ age: parsed });
+  async function handleAddTag(kind: TagKind, label: string) {
+    await addTag(client.id, kind, label);
+    onReloadTags();
+  }
+
+  async function handleRemoveTag(tagId: string) {
+    await removeTag(tagId);
+    onReloadTags();
   }
 
   function handleNotesBlur() {
-    if (medicalNotes !== (client.medical_notes ?? '')) onUpdateClient({ medical_notes: medicalNotes });
+    if (medicalNotes !== (client.medical_notes ?? '')) {
+      onUpdateClient({ medical_notes: medicalNotes });
+    }
   }
+
+  const conditionTags = tags.filter((t) => t.kind === 'condicion');
+  const allergyTags = tags.filter((t) => t.kind === 'alergia');
 
   return (
     <View style={styles.container}>
-      <View style={styles.fieldRow}>
-        <Text style={styles.fieldLabel}>Edad</Text>
-        <TextInput
-          value={age}
-          onChangeText={(v) => setAge(v.replace(/[^0-9]/g, ''))}
-          onEndEditing={handleAgeBlur}
-          keyboardType="number-pad"
-          maxLength={3}
-          placeholder="—"
-          placeholderTextColor={colors.textMuted}
-          style={styles.fieldInput}
-        />
+      {/* Condiciones médicas */}
+      <View style={styles.group}>
+        <Text style={styles.groupLabel}>Condiciones médicas / Patologías</Text>
+        <View style={styles.chipRow}>
+          {conditionTags.map((tag) => (
+            <Chip
+              key={tag.id}
+              label={tag.label}
+              variant="neutral"
+              onRemove={() => handleRemoveTag(tag.id)}
+            />
+          ))}
+          <Pressable onPress={() => setSheetKind('condicion')} style={styles.addChip}>
+            <Text style={styles.addChipText}>+ Agregar</Text>
+          </Pressable>
+        </View>
       </View>
 
-      <Text style={styles.groupLabel}>Notas médicas generales</Text>
+      {/* Alergias / Intolerancias */}
+      <View style={styles.group}>
+        <Text style={styles.groupLabel}>Alergias e Intolerancias</Text>
+        <View style={styles.chipRow}>
+          {allergyTags.map((tag) => (
+            <Chip
+              key={tag.id}
+              label={tag.label}
+              variant="danger"
+              onRemove={() => handleRemoveTag(tag.id)}
+            />
+          ))}
+          <Pressable onPress={() => setSheetKind('alergia')} style={styles.addChip}>
+            <Text style={styles.addChipText}>+ Agregar</Text>
+          </Pressable>
+        </View>
+      </View>
+
+      {/* Notas médicas y lesiones */}
+      <Text style={styles.groupLabel}>Notas médicas, lesiones o limitaciones</Text>
       <TextInput
         value={medicalNotes}
         onChangeText={setMedicalNotes}
         onEndEditing={handleNotesBlur}
         multiline
-        placeholder="Condiciones médicas relevantes, medicación, indicaciones del médico…"
+        placeholder="Condiciones médicas relevantes, medicación, lesiones, cirugías…"
         placeholderTextColor={colors.textMuted}
         style={styles.notes}
       />
+
+      {sheetKind && (
+        <AddTagSheet
+          visible={sheetKind !== null}
+          initialKind={sheetKind}
+          onClose={() => setSheetKind(null)}
+          onAdd={handleAddTag}
+        />
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { padding: s(16), gap: s(10) },
+  group: { gap: s(4) },
   groupLabel: {
     fontFamily: fonts.headingSemi,
     fontSize: fontSizes.label,
@@ -65,26 +112,17 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 0.3,
   },
-  fieldRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: s(6),
-    backgroundColor: colors.surface,
-    borderRadius: radius.input,
-    paddingVertical: s(6),
+  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: s(6) },
+  addChip: {
+    paddingVertical: s(4),
     paddingHorizontal: s(8),
+    borderRadius: radius.chip,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.navy,
+    borderStyle: 'dashed',
+    backgroundColor: 'transparent',
   },
-  fieldLabel: { flex: 1, fontFamily: fonts.body, fontSize: fontSizes.xs, color: colors.text },
-  fieldInput: {
-    fontFamily: fonts.bodyBold,
-    fontSize: fontSizes.xs,
-    color: colors.text,
-    textAlign: 'right',
-    width: s(40),
-    padding: 0,
-  },
+  addChipText: { fontFamily: fonts.bodyBold, fontSize: fontSizes.label, color: colors.navy },
   notes: {
     backgroundColor: colors.surface,
     borderRadius: radius.input,

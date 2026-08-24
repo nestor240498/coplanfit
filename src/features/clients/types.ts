@@ -1,3 +1,5 @@
+import { EquipmentAccess, TrainingGoal, TrainingLevel } from '../workouts/types';
+
 export type Goal = 'volumen' | 'definición' | 'subir de peso' | 'bajar de peso' | 'mantenimiento' | 'recomposición';
 
 export const GOALS: Goal[] = ['volumen', 'definición', 'subir de peso', 'bajar de peso', 'mantenimiento', 'recomposición'];
@@ -8,12 +10,22 @@ export type Client = {
   full_name: string;
   contact: string | null;
   age: number | null;
+  birth_date?: string | null;
   goal: Goal | null;
   avatar_url?: string | null;
   /** Notas libres — tab Datos */
   notes: string | null;
   /** Notas médicas generales — tab Salud */
   medical_notes: string | null;
+
+  /** Perfil de entrenamiento — tab Entrenamiento */
+  training_goal?: TrainingGoal | null;
+  training_level?: TrainingLevel | null;
+  equipment_access?: EquipmentAccess | null;
+  days_per_week?: number | null;
+  session_duration_min?: number | null;
+  training_notes?: string | null;
+
   /** Versión de plan vigente (null si aún no tiene plan) */
   current_plan_version: number | null;
   /** Última medición registrada (opcional en listado) */

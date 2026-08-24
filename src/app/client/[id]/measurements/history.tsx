@@ -1,12 +1,15 @@
+import { Download } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 
 import { AppBackground } from '@/components/ui/AppBackground';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
+import { generateAndShareMeasurementPdf } from '@/features/clients/measurementPdf';
 import { listMeasurements } from '@/features/clients/measurementsRepository';
 import { getClient } from '@/features/clients/repository';
-import { Measurement } from '@/features/clients/types';
+import { Client, Measurement } from '@/features/clients/types';
+import { getMyProfile } from '@/features/profile/repository';
 import { formatDateShort } from '@/lib/format';
 import { s } from '@/theme/scale';
 import { colors, radius } from '@/theme/tokens';
@@ -18,24 +21,25 @@ function summarize(m: Measurement): string {
   const parts = [
     m.weight_kg != null ? `${m.weight_kg} kg` : null,
     m.body_fat_pct != null ? `${m.body_fat_pct}% grasa` : null,
+    m.muscle_mass_pct != null ? `${m.muscle_mass_pct}% masa musc.` : null,
     m.waist_cm != null ? `cintura ${m.waist_cm}cm` : null,
     m.bmi != null ? `IMC ${m.bmi}` : null,
   ].filter(Boolean);
   return parts.join(' · ') || 'Sin datos';
 }
 
-/** Mockup ("Historial completo"): selección máx. 2 vía checkbox, "Comparar seleccionadas (n)". */
 export default function MeasurementHistoryScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
 
-  const [clientName, setClientName] = useState('');
+  const [client, setClient] = useState<Client | null>(null);
   const [measurements, setMeasurements] = useState<Measurement[] | null>(null);
   const [selected, setSelected] = useState<string[]>([]);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
   useEffect(() => {
-    getClient(id).then((c) => setClientName(c.full_name));
-    listMeasurements(id).then(setMeasurements);
+    getClient(id).then(setClient).catch(() => {});
+    listMeasurements(id).then(setMeasurements).catch(() => {});
   }, [id]);
 
   function toggle(measurementId: string) {
@@ -46,10 +50,27 @@ export default function MeasurementHistoryScreen() {
     });
   }
 
+  async function handleDownloadPdf(m: Measurement) {
+    if (!client) return;
+    setDownloadingId(m.id);
+    try {
+      const profile = await getMyProfile();
+      await generateAndShareMeasurementPdf({ client, profile, measurement: m });
+    } catch (e) {
+      Alert.alert('Error al exportar PDF', (e as Error).message);
+    } finally {
+      setDownloadingId(null);
+    }
+  }
+
   return (
     <View style={styles.screen}>
       <AppBackground />
-      <ScreenHeader title="Historial completo" subtitle={`${clientName} · antropometría`} showBack />
+      <ScreenHeader
+        title="Historial completo"
+        subtitle={`${client?.full_name ?? 'Cliente'} · antropometría`}
+        showBack
+      />
 
       {measurements === null ? (
         <ActivityIndicator style={styles.spinner} color={colors.navy} />
@@ -58,25 +79,43 @@ export default function MeasurementHistoryScreen() {
           data={measurements}
           keyExtractor={(m) => m.id}
           contentContainerStyle={styles.list}
-          ListHeaderComponent={<Text style={styles.hint}>Máximo 2 selecciones — desmarca una para elegir otra</Text>}
+          ListHeaderComponent={<Text style={styles.hint}>Selecciona 2 mediciones para compararlas o descarga el PDF individual</Text>}
           ListEmptyComponent={<Text style={styles.empty}>Sin mediciones registradas todavía.</Text>}
           renderItem={({ item }) => {
             const isSelected = selected.includes(item.id);
             const disabled = !isSelected && selected.length >= MAX_SELECTION;
+            const isDownloading = downloadingId === item.id;
+
             return (
-              <Pressable
-                onPress={() => toggle(item.id)}
-                disabled={disabled}
-                style={[styles.row, isSelected && styles.rowSelected, disabled && styles.rowDisabled]}
-              >
-                <View style={[styles.checkbox, isSelected && styles.checkboxChecked]}>
-                  {isSelected && <Text style={styles.checkboxMark}>✓</Text>}
-                </View>
-                <View style={styles.rowText}>
-                  <Text style={styles.rowDate}>{formatDateShort(item.measured_at)}</Text>
-                  <Text style={styles.rowSummary}>{summarize(item)}</Text>
-                </View>
-              </Pressable>
+              <View style={[styles.row, isSelected && styles.rowSelected, disabled && styles.rowDisabled]}>
+                <Pressable
+                  onPress={() => toggle(item.id)}
+                  disabled={disabled}
+                  style={styles.rowMainPressable}
+                >
+                  <View style={[styles.checkbox, isSelected && styles.checkboxChecked]}>
+                    {isSelected && <Text style={styles.checkboxMark}>✓</Text>}
+                  </View>
+                  <View style={styles.rowText}>
+                    <Text style={styles.rowDate}>{formatDateShort(item.measured_at)}</Text>
+                    <Text style={styles.rowSummary}>{summarize(item)}</Text>
+                  </View>
+                </Pressable>
+
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Descargar reporte en PDF"
+                  onPress={() => handleDownloadPdf(item)}
+                  disabled={isDownloading}
+                  style={styles.downloadBtn}
+                >
+                  {isDownloading ? (
+                    <ActivityIndicator size="small" color={colors.navy} />
+                  ) : (
+                    <Download size={s(15)} color={colors.navy} strokeWidth={2.2} />
+                  )}
+                </Pressable>
+              </View>
             );
           }}
           ListFooterComponent={
@@ -111,36 +150,53 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: s(8),
-    backgroundColor: colors.background,
+    justifyContent: 'space-between',
+    backgroundColor: colors.surface,
     borderRadius: radius.input,
     padding: s(9),
     marginBottom: s(8),
+    borderWidth: 1,
+    borderColor: colors.border,
   },
-  rowSelected: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.lime },
+  rowSelected: { borderColor: colors.lime, backgroundColor: '#FAFEF6' },
   rowDisabled: { opacity: 0.5 },
+  rowMainPressable: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: s(8),
+  },
   checkbox: {
-    width: s(16),
-    height: s(16),
+    width: s(18),
+    height: s(18),
     borderRadius: s(4),
     borderWidth: 2,
     borderColor: colors.border,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: colors.surface,
   },
   checkboxChecked: { backgroundColor: colors.lime, borderColor: colors.lime },
-  checkboxMark: { fontFamily: fonts.bodyBold, fontSize: fontSizes.label, color: colors.surface },
+  checkboxMark: { fontFamily: fonts.bodyBold, fontSize: fontSizes.label, color: colors.navy },
   rowText: { flex: 1, gap: 2 },
   rowDate: { fontFamily: fonts.bodyBold, fontSize: fontSizes.xs, color: colors.text },
   rowSummary: { fontFamily: fonts.body, fontSize: fontSizes.label, color: colors.textMuted },
-  compareCta: {
-    height: s(40),
-    borderRadius: radius.button,
+  downloadBtn: {
+    padding: s(8),
+    borderRadius: radius.input,
     backgroundColor: colors.lime,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: s(4),
+    marginLeft: s(8),
+  },
+  compareCta: {
+    height: s(40),
+    borderRadius: radius.button,
+    backgroundColor: colors.navy,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: s(8),
   },
   compareCtaDisabled: { opacity: 0.5 },
-  compareCtaText: { fontFamily: fonts.bodyBold, fontSize: fontSizes.sm, color: colors.navy },
+  compareCtaText: { fontFamily: fonts.bodyBold, fontSize: fontSizes.sm, color: colors.surface },
 });

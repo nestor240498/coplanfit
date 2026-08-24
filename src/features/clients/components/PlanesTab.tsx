@@ -2,20 +2,27 @@ import { ArrowRight, Check, Clock, Download, Eye, Plus, Trash2 } from 'lucide-re
 import { useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { Chip } from '@/components/ui/Chip';
 import { getMyProfile } from '@/features/profile/repository';
-import { formatDateShort } from '@/lib/format';
+import { formatDateShort, formatGoal } from '@/lib/format';
 import { s } from '@/theme/scale';
 import { colors, radius } from '@/theme/tokens';
 import { fonts, fontSizes } from '@/theme/typography';
 
 import { generateAndSharePlanPdf } from '../planPdf';
 import { getPlanVersionById, PlanVersionWithData } from '../plansRepository';
-import { Goal, PlanVersion } from '../types';
+import { addTag, removeTag } from '../tagsRepository';
+import { ClientTag, Goal, PlanVersion } from '../types';
+import { AddTagSheet } from './AddTagSheet';
+import { GoalPickerSheet } from './GoalPickerSheet';
 
 type Props = {
   clientId: string;
   clientName: string;
   clientGoal?: Goal | null;
+  tags: ClientTag[];
+  onReloadTags: () => void;
+  onUpdateClient: (patch: { goal?: Goal }) => Promise<void>;
   versions: PlanVersion[];
   draft: PlanVersionWithData | null;
   onNewVersion: () => void;
@@ -33,10 +40,13 @@ const STEP_NAMES: Record<number, string> = {
   3: 'Asignar comidas',
 };
 
-/** Tab Planes: lista de versiones (vigente resaltada), borrador en progreso si existe, selección máx. 2 para comparar. */
 export function PlanesTab({
+  clientId,
   clientName,
   clientGoal,
+  tags,
+  onReloadTags,
+  onUpdateClient,
   versions,
   draft,
   onNewVersion,
@@ -47,6 +57,8 @@ export function PlanesTab({
 }: Props) {
   const [selected, setSelected] = useState<string[]>([]);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const [goalSheetOpen, setGoalSheetOpen] = useState(false);
+  const [addAvoidOpen, setAddAvoidOpen] = useState(false);
 
   function toggle(id: string) {
     setSelected((prev) => {
@@ -54,6 +66,20 @@ export function PlanesTab({
       if (prev.length >= MAX_SELECTION) return prev;
       return [...prev, id];
     });
+  }
+
+  async function handleAddAvoidTag(_: string, label: string) {
+    await addTag(clientId, 'evita', label);
+    onReloadTags();
+  }
+
+  async function handleRemoveTag(tagId: string) {
+    await removeTag(tagId);
+    onReloadTags();
+  }
+
+  async function handleSelectGoal(goal: Goal) {
+    await onUpdateClient({ goal });
   }
 
   async function handleDownloadVersionPdf(v: PlanVersion) {
@@ -77,10 +103,44 @@ export function PlanesTab({
 
   // Filtrar versiones publicadas (no borradores)
   const publishedVersions = versions.filter((v) => !draft || v.id !== draft.id);
+  const avoidTags = tags.filter((t) => t.kind === 'evita');
 
   return (
     <View style={styles.container}>
       <View style={styles.contentWrap}>
+        {/* Configuración nutricional del cliente (Objetivo y Alimentos a evitar) */}
+        <Pressable onPress={() => setGoalSheetOpen(true)} style={styles.fieldRow}>
+          <Text style={styles.fieldLabel}>Objetivo nutricional</Text>
+          <Text style={styles.fieldValue}>{clientGoal ? formatGoal(clientGoal) : 'Elegir'} ▾</Text>
+        </Pressable>
+
+        <View style={styles.group}>
+          <Text style={styles.groupLabel}>Alimentos a evitar en el plan</Text>
+          <View style={styles.chipRow}>
+            {avoidTags.map((tag) => (
+              <Chip
+                key={tag.id}
+                label={tag.label}
+                variant="neutral"
+                onRemove={() => handleRemoveTag(tag.id)}
+              />
+            ))}
+            <Pressable onPress={() => setAddAvoidOpen(true)} style={styles.addChip}>
+              <Text style={styles.addChipText}>+ Agregar</Text>
+            </Pressable>
+          </View>
+        </View>
+
+        {/* Sección descriptiva de planes */}
+        <View style={styles.headerSection}>
+          <View style={styles.headerTitleRow}>
+            <Text style={styles.tabHeading}>PLANES NUTRICIONALES</Text>
+          </View>
+          <Text style={styles.tabSubtitle}>
+            Pautas de alimentación, objetivo calórico y versiones de dietas del asesorado.
+          </Text>
+        </View>
+
         {/* Tarjeta de borrador pendiente */}
         {draft && (
           <View style={styles.draftCard}>
@@ -110,6 +170,7 @@ export function PlanesTab({
           </View>
         )}
 
+
         <Pressable onPress={onNewVersion} style={styles.newVersionCta}>
           <Plus size={s(14)} color={colors.success} strokeWidth={2.5} />
           <Text style={styles.newVersionText}>Nueva versión del plan</Text>
@@ -119,7 +180,13 @@ export function PlanesTab({
           <Text style={styles.empty}>Aún no hay versiones de plan publicadas para este cliente.</Text>
         ) : (
           <>
-            <Text style={styles.hint}>Máximo 2 selecciones — desmarca una para elegir otra</Text>
+            {selected.length > 0 && (
+              <Text style={styles.hint}>
+                {selected.length === 1
+                  ? 'Selecciona 1 versión más para compararla'
+                  : 'Máximo 2 selecciones — desmarca una para elegir otra'}
+              </Text>
+            )}
             {publishedVersions.map((v) => {
               const isSelected = selected.includes(v.id);
               const disabled = !isSelected && selected.length >= MAX_SELECTION;
@@ -193,17 +260,37 @@ export function PlanesTab({
         )}
       </View>
 
-      {publishedVersions.length > 0 && (
+      {selected.length > 0 && (
         <View style={styles.footerWrap}>
           <Pressable
             disabled={selected.length !== MAX_SELECTION}
             onPress={() => onCompare(selected as [string, string])}
             style={[styles.compareCta, selected.length !== MAX_SELECTION && styles.compareCtaDisabled]}
           >
-            <Text style={styles.compareCtaText}>Comparar seleccionadas ({selected.length})</Text>
+            <Text style={styles.compareCtaText}>
+              {selected.length === MAX_SELECTION
+                ? 'Comparar 2 versiones seleccionadas'
+                : `Selecciona 1 versión más (${selected.length}/${MAX_SELECTION})`}
+            </Text>
           </Pressable>
         </View>
       )}
+
+      {addAvoidOpen && (
+        <AddTagSheet
+          visible={addAvoidOpen}
+          initialKind="evita"
+          onClose={() => setAddAvoidOpen(false)}
+          onAdd={handleAddAvoidTag}
+        />
+      )}
+
+      <GoalPickerSheet
+        visible={goalSheetOpen}
+        value={clientGoal ?? null}
+        onClose={() => setGoalSheetOpen(false)}
+        onSelect={handleSelectGoal}
+      />
     </View>
   );
 }
@@ -217,6 +304,72 @@ const styles = StyleSheet.create({
   },
   contentWrap: {
     gap: s(8),
+  },
+  headerSection: {
+    paddingTop: s(10),
+    marginTop: s(4),
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    gap: s(2),
+  },
+  headerTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: s(6),
+  },
+  tabHeading: {
+    fontFamily: fonts.heading,
+    fontSize: fontSizes.xs,
+    color: colors.navy,
+    letterSpacing: 0.5,
+  },
+  tabSubtitle: {
+    fontFamily: fonts.body,
+    fontSize: fontSizes.label,
+    color: colors.textMuted,
+    lineHeight: s(14),
+  },
+  fieldRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: colors.surface,
+    borderRadius: radius.input,
+    paddingVertical: s(8),
+    paddingHorizontal: s(10),
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  fieldLabel: { fontFamily: fonts.body, fontSize: fontSizes.xs, color: colors.text },
+  fieldValue: { fontFamily: fonts.bodyBold, fontSize: fontSizes.xs, color: colors.navy },
+  group: { gap: s(4) },
+  groupLabel: {
+    fontFamily: fonts.headingSemi,
+    fontSize: fontSizes.label,
+    color: colors.textSecondary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
+  },
+  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: s(6) },
+  addChip: {
+    paddingVertical: s(4),
+    paddingHorizontal: s(8),
+    borderRadius: radius.chip,
+    borderWidth: 1,
+    borderColor: colors.navy,
+    borderStyle: 'dashed',
+    backgroundColor: 'transparent',
+  },
+  addChipText: { fontFamily: fonts.bodyBold, fontSize: fontSizes.label, color: colors.navy },
+  versionsHeaderRow: {
+    marginTop: s(2),
+  },
+  versionsHeading: {
+    fontFamily: fonts.headingSemi,
+    fontSize: fontSizes.label,
+    color: colors.textSecondary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
   },
   footerWrap: {
     marginTop: s(16),
