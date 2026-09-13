@@ -59,6 +59,13 @@ export const MUSCLE_GROUPS: { id: MuscleGroup; label: string }[] = [
   { id: 'gemelos', label: 'Gemelos / Pantorrillas' },
 ];
 
+export type ExerciseStep = {
+  step: number; // 1, 2, 3
+  title: string; // ej: "Posición Inicial & Setup", "Fase Excéntrica", "Fase Concéntrica & Bloqueo"
+  description: string;
+  image_url?: string | null;
+};
+
 export type Exercise = {
   id: string;
   name: string;
@@ -68,6 +75,9 @@ export type Exercise = {
   difficulty: TrainingLevel;
   instructions?: string | null;
   tips?: string | null;
+  images?: string[] | null; // URLs de fotos de los pasos (Paso 1, Paso 2, Paso 3)
+  steps?: ExerciseStep[] | null;
+  image_url?: string | null;
   lottie_url?: string | null;
   is_custom: boolean;
   created_by?: string | null;

@@ -1,6 +1,16 @@
-import { Download } from 'lucide-react-native';
+import { Image } from 'expo-image';
+import { Camera, Download, Maximize2, X } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Alert,
+  Modal,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 
 import { AppBackground } from '@/components/ui/AppBackground';
@@ -90,6 +100,7 @@ export default function CompareMeasurementsScreen() {
   const [earlier, setEarlier] = useState<Measurement | null>(null);
   const [later, setLater] = useState<Measurement | null>(null);
   const [exportingPdf, setExportingPdf] = useState(false);
+  const [selectedPreview, setSelectedPreview] = useState<{ url: string; title: string; date: string } | null>(null);
 
   useEffect(() => {
     Promise.all([getClient(id), getMeasurementById(a), getMeasurementById(b)]).then(([c, ma, mb]) => {
@@ -124,6 +135,8 @@ export default function CompareMeasurementsScreen() {
     );
   }
 
+  const hasAnyPhotos = (earlier.photos && earlier.photos.length > 0) || (later.photos && later.photos.length > 0);
+
   return (
     <View style={styles.screen}>
       <AppBackground />
@@ -133,6 +146,116 @@ export default function CompareMeasurementsScreen() {
         showBack
       />
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        {/* SECCIÓN DE COMPARACIÓN DE FOTOS (UNA DEBAJO DE OTRA) */}
+        {hasAnyPhotos && (
+          <View style={styles.photoComparisonSection}>
+            <View style={styles.photoSectionHeader}>
+              <Camera size={s(15)} color={colors.navy} />
+              <Text style={styles.photoSectionTitle}>EVOLUCIÓN VISUAL (FOTOS)</Text>
+            </View>
+
+            {/* TARJETA 1: MEDICIÓN ANTERIOR (ARRIBA) */}
+            <View style={styles.photoCard}>
+              <View style={styles.photoCardHeader}>
+                <View style={styles.photoStageBadge}>
+                  <Text style={styles.photoStageBadgeText}>INICIAL</Text>
+                </View>
+                <Text style={styles.photoCardDate}>{formatDateShort(earlier.measured_at)}</Text>
+                <Text style={styles.photoCardStats}>
+                  {earlier.weight_kg != null ? `${earlier.weight_kg} kg` : ''}
+                  {earlier.body_fat_pct != null ? ` · ${earlier.body_fat_pct}% grasa` : ''}
+                </Text>
+              </View>
+
+              {earlier.photos && earlier.photos.length > 0 ? (
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.photosScrollList}
+                >
+                  {earlier.photos.map((photoUrl, idx) => (
+                    <Pressable
+                      key={`earlier-${idx}-${photoUrl}`}
+                      onPress={() =>
+                        setSelectedPreview({
+                          url: photoUrl,
+                          title: `Medición Inicial - Foto ${idx + 1}`,
+                          date: formatDateShort(earlier.measured_at),
+                        })
+                      }
+                      style={styles.photoThumbContainer}
+                    >
+                      <Image source={{ uri: photoUrl }} style={styles.photoThumbImg} contentFit="cover" />
+                      <View style={styles.photoThumbOverlay}>
+                        <View style={styles.photoThumbIndex}>
+                          <Text style={styles.photoThumbIndexText}>{idx + 1}</Text>
+                        </View>
+                        <View style={styles.photoThumbZoomIcon}>
+                          <Maximize2 size={s(10)} color={colors.surface} />
+                        </View>
+                      </View>
+                    </Pressable>
+                  ))}
+                </ScrollView>
+              ) : (
+                <View style={styles.noPhotosBox}>
+                  <Text style={styles.noPhotosText}>Sin fotos registradas en esta fecha</Text>
+                </View>
+              )}
+            </View>
+
+            {/* TARJETA 2: MEDICIÓN POSTERIOR (DEBAJO) */}
+            <View style={styles.photoCard}>
+              <View style={styles.photoCardHeader}>
+                <View style={[styles.photoStageBadge, styles.photoStageBadgeLater]}>
+                  <Text style={[styles.photoStageBadgeText, styles.photoStageBadgeTextLater]}>FINAL</Text>
+                </View>
+                <Text style={styles.photoCardDate}>{formatDateShort(later.measured_at)}</Text>
+                <Text style={styles.photoCardStats}>
+                  {later.weight_kg != null ? `${later.weight_kg} kg` : ''}
+                  {later.body_fat_pct != null ? ` · ${later.body_fat_pct}% grasa` : ''}
+                </Text>
+              </View>
+
+              {later.photos && later.photos.length > 0 ? (
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.photosScrollList}
+                >
+                  {later.photos.map((photoUrl, idx) => (
+                    <Pressable
+                      key={`later-${idx}-${photoUrl}`}
+                      onPress={() =>
+                        setSelectedPreview({
+                          url: photoUrl,
+                          title: `Medición Final - Foto ${idx + 1}`,
+                          date: formatDateShort(later.measured_at),
+                        })
+                      }
+                      style={styles.photoThumbContainer}
+                    >
+                      <Image source={{ uri: photoUrl }} style={styles.photoThumbImg} contentFit="cover" />
+                      <View style={styles.photoThumbOverlay}>
+                        <View style={[styles.photoThumbIndex, styles.photoThumbIndexLater]}>
+                          <Text style={styles.photoThumbIndexText}>{idx + 1}</Text>
+                        </View>
+                        <View style={styles.photoThumbZoomIcon}>
+                          <Maximize2 size={s(10)} color={colors.surface} />
+                        </View>
+                      </View>
+                    </Pressable>
+                  ))}
+                </ScrollView>
+              ) : (
+                <View style={styles.noPhotosBox}>
+                  <Text style={styles.noPhotosText}>Sin fotos registradas en esta fecha</Text>
+                </View>
+              )}
+            </View>
+          </View>
+        )}
+
         {METRIC_GROUPS.map((group) => {
           const visibleMetrics = group.metrics.filter(
             (m) => earlier[m.key] != null || later[m.key] != null
@@ -200,6 +323,40 @@ export default function CompareMeasurementsScreen() {
           )}
         </Pressable>
       </ScrollView>
+
+      {/* MODAL DE VISUALIZACIÓN EN PANTALLA COMPLETA */}
+      <Modal
+        visible={selectedPreview != null}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setSelectedPreview(null)}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalHeader}>
+            <View>
+              <Text style={styles.modalTitle}>{selectedPreview?.title}</Text>
+              <Text style={styles.modalSubtitle}>{selectedPreview?.date}</Text>
+            </View>
+            <Pressable
+              onPress={() => setSelectedPreview(null)}
+              style={styles.modalCloseBtn}
+              hitSlop={10}
+            >
+              <X size={s(18)} color={colors.surface} />
+            </Pressable>
+          </View>
+
+          {selectedPreview && (
+            <View style={styles.modalImageContainer}>
+              <Image
+                source={{ uri: selectedPreview.url }}
+                style={styles.modalFullImage}
+                contentFit="contain"
+              />
+            </View>
+          )}
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -213,6 +370,133 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
   spinner: { marginTop: s(24) },
   scrollContent: { padding: s(16), gap: s(12), paddingBottom: s(32) },
+  photoComparisonSection: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.card,
+    padding: s(14),
+    borderWidth: 1,
+    borderColor: colors.border,
+    gap: s(12),
+  },
+  photoSectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: s(8),
+    borderBottomWidth: 1,
+    borderBottomColor: '#EDF2F7',
+    paddingBottom: s(8),
+  },
+  photoSectionTitle: {
+    fontFamily: fonts.heading,
+    fontSize: fontSizes.xs,
+    color: colors.navy,
+    letterSpacing: 0.5,
+  },
+  photoCard: {
+    backgroundColor: '#FAFBFD',
+    borderRadius: radius.card,
+    padding: s(10),
+    borderWidth: 1,
+    borderColor: colors.border,
+    gap: s(8),
+  },
+  photoCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: s(8),
+  },
+  photoStageBadge: {
+    backgroundColor: colors.navy,
+    paddingHorizontal: s(6),
+    paddingVertical: s(2),
+    borderRadius: radius.pill,
+  },
+  photoStageBadgeLater: {
+    backgroundColor: colors.lime,
+  },
+  photoStageBadgeText: {
+    fontFamily: fonts.bodyBold,
+    fontSize: s(7.5),
+    color: colors.surface,
+    letterSpacing: 0.3,
+  },
+  photoStageBadgeTextLater: {
+    color: colors.navy,
+  },
+  photoCardDate: {
+    fontFamily: fonts.bodyBold,
+    fontSize: fontSizes.xs,
+    color: colors.text,
+  },
+  photoCardStats: {
+    fontFamily: fonts.body,
+    fontSize: fontSizes.label,
+    color: colors.textMuted,
+    marginLeft: 'auto',
+  },
+  photosScrollList: {
+    gap: s(10),
+    paddingVertical: s(2),
+  },
+  photoThumbContainer: {
+    width: s(105),
+    height: s(140),
+    borderRadius: radius.card,
+    overflow: 'hidden',
+    backgroundColor: '#000',
+    position: 'relative',
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  photoThumbImg: {
+    width: '100%',
+    height: '100%',
+  },
+  photoThumbOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'space-between',
+    padding: s(6),
+  },
+  photoThumbIndex: {
+    width: s(18),
+    height: s(18),
+    borderRadius: s(9),
+    backgroundColor: colors.navy,
+    alignItems: 'center',
+    justifyContent: 'center',
+    alignSelf: 'flex-start',
+  },
+  photoThumbIndexLater: {
+    backgroundColor: colors.lime,
+  },
+  photoThumbIndexText: {
+    fontFamily: fonts.bodyBold,
+    fontSize: s(7.5),
+    color: colors.surface,
+  },
+  photoThumbZoomIcon: {
+    width: s(20),
+    height: s(20),
+    borderRadius: s(10),
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    alignSelf: 'flex-end',
+  },
+  noPhotosBox: {
+    paddingVertical: s(10),
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  noPhotosText: {
+    fontFamily: fonts.body,
+    fontSize: fontSizes.label,
+    color: colors.textMuted,
+  },
   card: {
     backgroundColor: colors.surface,
     borderRadius: radius.card,
@@ -274,5 +558,47 @@ const styles = StyleSheet.create({
     fontFamily: fonts.bodyBold,
     fontSize: fontSizes.sm,
     color: colors.navy,
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(10, 15, 26, 0.95)',
+    justifyContent: 'space-between',
+    paddingTop: s(40),
+    paddingBottom: s(30),
+    paddingHorizontal: s(16),
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  modalTitle: {
+    fontFamily: fonts.headingSemi,
+    fontSize: fontSizes.base,
+    color: colors.surface,
+  },
+  modalSubtitle: {
+    fontFamily: fonts.body,
+    fontSize: fontSizes.xs,
+    color: '#A0AEC0',
+    marginTop: 2,
+  },
+  modalCloseBtn: {
+    width: s(36),
+    height: s(36),
+    borderRadius: s(18),
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalImageContainer: {
+    flex: 1,
+    marginVertical: s(16),
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalFullImage: {
+    width: '100%',
+    height: '100%',
   },
 });

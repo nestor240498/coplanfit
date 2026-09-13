@@ -38,6 +38,8 @@ export type MeasurementInput = {
   thigh_mm?: number | null;
   calf_mm?: number | null;
   chest_mm?: number | null;
+  // Fotos de progreso
+  photos?: string[] | null;
 };
 
 export async function listMeasurements(clientId: string): Promise<Measurement[]> {
@@ -66,6 +68,37 @@ export async function getLatestMeasurement(clientId: string): Promise<Measuremen
     .maybeSingle();
   if (error) throw new Error(error.message);
   return data as Measurement | null;
+}
+
+/** Sube una foto de progreso a Supabase Storage y retorna su URL pública */
+export async function uploadMeasurementPhoto(clientId: string, localUri: string): Promise<string> {
+  const { data: userData } = await supabase.auth.getUser();
+  const trainerId = userData.user?.id;
+  if (!trainerId) throw new Error('Sesión expirada. Vuelve a iniciar sesión.');
+
+  const ext = localUri.split('.').pop()?.toLowerCase() || 'jpg';
+  const contentType = ext === 'png' ? 'image/png' : 'image/jpeg';
+  const fileName = `${Date.now()}_${Math.random().toString(36).substring(2, 8)}.${ext}`;
+  const path = `${trainerId}/clients/${clientId}/measurements/${fileName}`;
+
+  const response = await fetch(localUri);
+  const arrayBuffer = await response.arrayBuffer();
+
+  const { error: uploadError } = await supabase.storage
+    .from('logos')
+    .upload(path, arrayBuffer, { contentType, upsert: true });
+
+  if (uploadError) {
+    const { error: avatarBucketErr } = await supabase.storage
+      .from('avatars')
+      .upload(path, arrayBuffer, { contentType, upsert: true });
+    if (avatarBucketErr) throw new Error(uploadError.message);
+    const { data } = supabase.storage.from('avatars').getPublicUrl(path);
+    return `${data.publicUrl}?t=${Date.now()}`;
+  }
+
+  const { data } = supabase.storage.from('logos').getPublicUrl(path);
+  return `${data.publicUrl}?t=${Date.now()}`;
 }
 
 /** Crea una nueva entrada en el histórico (append-only, nunca sobrescribe la anterior). */

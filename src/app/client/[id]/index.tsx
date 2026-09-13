@@ -21,7 +21,11 @@ import { DatosTab } from '@/features/clients/components/DatosTab';
 import { EditNameSheet } from '@/features/clients/components/EditNameSheet';
 import { PlanesTab } from '@/features/clients/components/PlanesTab';
 import { SaludTab } from '@/features/clients/components/SaludTab';
-import { createMeasurement, getLatestMeasurement } from '@/features/clients/measurementsRepository';
+import {
+  createMeasurement,
+  getLatestMeasurement,
+  uploadMeasurementPhoto,
+} from '@/features/clients/measurementsRepository';
 import { usePlanBuilderStore } from '@/features/clients/planBuilderStore';
 import {
   deletePlanDraft,
@@ -59,6 +63,7 @@ const TABS: TabItem<'datos' | 'salud' | 'antropometria' | 'planes' | 'entrenamie
 ];
 
 const EMPTY_MEASUREMENT_FORM: MeasurementFormState = {
+  photos: [],
   weight: '',
   height: '',
   bodyFat: '',
@@ -222,6 +227,7 @@ export default function ClientDetailScreen() {
 
   function handleStartEditingMeasurements() {
     setMeasurementForm({
+      photos: measurement?.photos ? [...measurement.photos] : [],
       weight: measurement?.weight_kg != null ? String(measurement.weight_kg) : '',
       height: measurement?.height_cm != null ? String(measurement.height_cm) : '',
       bodyFat: measurement?.body_fat_pct != null ? String(measurement.body_fat_pct) : '',
@@ -262,7 +268,7 @@ export default function ClientDetailScreen() {
     setIsEditingMeasurements(true);
   }
 
-  function handleChangeMeasurementForm(key: keyof MeasurementFormState, value: string) {
+  function handleChangeMeasurementForm(key: keyof MeasurementFormState, value: any) {
     setMeasurementForm((prev) => ({ ...prev, [key]: value }));
   }
 
@@ -275,10 +281,24 @@ export default function ClientDetailScreen() {
         return v.trim() === '' || Number.isNaN(parsed) ? null : parsed;
       }
 
+      // Subir fotos locales a Supabase Storage
+      const photos = measurementForm.photos || [];
+      const uploadedUrls: string[] = [];
+      for (let i = 0; i < photos.length; i++) {
+        const photoUri = photos[i];
+        if (photoUri.startsWith('http://') || photoUri.startsWith('https://')) {
+          uploadedUrls.push(photoUri);
+        } else {
+          const publicUrl = await uploadMeasurementPhoto(id, photoUri);
+          uploadedUrls.push(publicUrl);
+        }
+      }
+
       const rawH = num(measurementForm.height);
       const heightCm = rawH != null ? (rawH > 3 ? rawH : rawH * 100) : null;
 
       const created = await createMeasurement(id, {
+        photos: uploadedUrls.length > 0 ? uploadedUrls : undefined,
         weight_kg: num(measurementForm.weight),
         height_cm: heightCm,
         body_fat_pct: num(measurementForm.bodyFat),

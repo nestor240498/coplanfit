@@ -1,15 +1,17 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Dumbbell, Plus, Sparkles, Trash2, Users } from 'lucide-react-native';
 import { useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { AppBackground } from '@/components/ui/AppBackground';
 import { Button } from '@/components/ui/Button';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { ExercisePickerSheet } from '@/features/workouts/components/ExercisePickerSheet';
+import { WorkoutAiPreloaderModal } from '@/features/workouts/components/WorkoutAiPreloaderModal';
 import { WorkoutStepper } from '@/features/workouts/components/WorkoutStepper';
 import { SingleExerciseExecution, WorkoutBlock } from '@/features/workouts/types';
 import { useWorkoutBuilderStore } from '@/features/workouts/workoutBuilderStore';
+import { supabase } from '@/lib/supabase';
 import { s } from '@/theme/scale';
 import { colors, radius } from '@/theme/tokens';
 import { fonts, fontSizes } from '@/theme/typography';
@@ -55,11 +57,42 @@ export default function WorkoutAssistantScreen() {
     }
   }
 
-  // Generador inteligente / IA con 6 ejercicios por día
+  // Generador con IA (Google Gemini vía Edge Function + fallback algorítmico)
   async function handleGenerateAi() {
     setIsGeneratingAi(true);
     try {
-      await new Promise((resolve) => setTimeout(resolve, 800));
+      // 1. Intentar llamar a la Edge Function de Gemini en Supabase
+      if (id) {
+        try {
+          const { data, error } = await supabase.functions.invoke('generate-workout-suggestions', {
+            body: { clientId: id, scheduleDays: days },
+          });
+
+          if (!error && data?.data?.days && Array.isArray(data.data.days)) {
+            const aiDays = data.data.days.map((aiD: any, dIdx: number) => {
+              const matchedOriginal = days[dIdx] || days[0];
+              return {
+                id: matchedOriginal.id,
+                day_name: aiD.day_name || matchedOriginal.day_name,
+                focus: aiD.focus || matchedOriginal.focus,
+                blocks: (aiD.blocks || []).map((b: any, bIdx: number) => ({
+                  ...b,
+                  id: `gemini-block-${dIdx}-${bIdx}-${Math.random().toString(36).substring(2, 6)}`,
+                })),
+              };
+            });
+
+            setDays(aiDays);
+            Alert.alert('¡Rutina generada con IA! ✨', 'Se han estructurado los 6 ejercicios por día analizando la antropometría, nivel, historial de salud y equipamiento del cliente.');
+            return;
+          }
+        } catch (edgeErr) {
+          console.log('Fallo Edge function de IA, usando motor adaptativo local:', edgeErr);
+        }
+      }
+
+      // 2. Fallback: Generador adaptativo local con 6 ejercicios por día
+      await new Promise((resolve) => setTimeout(resolve, 600));
 
       const updatedDays = days.map((d, dIdx) => {
         let suggestedBlocks: WorkoutBlock[] = [];
@@ -71,28 +104,28 @@ export default function WorkoutAssistantScreen() {
             {
               type: 'single',
               id: `ai-1-${dIdx}`,
-              exercise: { name: 'Press de banca plano con barra', reps: '8-10', rir: '1-2', notes: 'Fuerza base pectoral', weight: '60 kg' },
+              exercise: { name: 'Press de banca plano con barra', reps: '8-10', notes: 'Fuerza base pectoral', weight: '60 kg' },
               sets: 4,
               rest_seconds: 120,
             },
             {
               type: 'single',
               id: `ai-2-${dIdx}`,
-              exercise: { name: 'Press inclinado con mancuernas', reps: '10-12', rir: '1', notes: 'Haz clavicular pectoral', weight: '22 kg' },
+              exercise: { name: 'Press inclinado con mancuernas', reps: '10-12', notes: 'Haz clavicular pectoral', weight: '22 kg' },
               sets: 3,
               rest_seconds: 90,
             },
             {
               type: 'single',
               id: `ai-3-${dIdx}`,
-              exercise: { name: 'Cruces de poleas en polea media / alta', reps: '12-15', rir: '0-1', notes: 'Aislamiento continuo', weight: '15 kg' },
+              exercise: { name: 'Cruces de poleas en polea media / alta', reps: '12-15', notes: 'Aislamiento continuo', weight: '15 kg' },
               sets: 3,
               rest_seconds: 75,
             },
             {
               type: 'single',
               id: `ai-4-${dIdx}`,
-              exercise: { name: 'Press militar de pie con barra o sentado con mancuernas', reps: '8-10', rir: '1-2', notes: 'Deltoides anterior', weight: '18 kg' },
+              exercise: { name: 'Press militar de pie con barra o sentado con mancuernas', reps: '8-10', notes: 'Deltoides anterior', weight: '18 kg' },
               sets: 3,
               rest_seconds: 90,
             },
@@ -103,8 +136,8 @@ export default function WorkoutAssistantScreen() {
               sets: 3,
               rest_seconds: 75,
               exercises: [
-                { name: 'Elevaciones laterales con mancuernas', reps: '12-15', rir: '0-1', notes: 'Deltoides lateral', weight: '10 kg' },
-                { name: 'Extensiones de tríceps en polea alta con cuerda', reps: '12-15', rir: '1', notes: 'Apertura al final', weight: '20 kg' },
+                { name: 'Elevaciones laterales con mancuernas', reps: '12-15', notes: 'Deltoides lateral', weight: '10 kg' },
+                { name: 'Extensiones de tríceps en polea alta con cuerda', reps: '12-15', notes: 'Apertura al final', weight: '20 kg' },
               ],
             },
           ];
@@ -114,28 +147,28 @@ export default function WorkoutAssistantScreen() {
             {
               type: 'single',
               id: `ai-1-${dIdx}`,
-              exercise: { name: 'Dominadas pronas', reps: '8-10', rir: '1-2', notes: 'Amplitud y tracción vertical' },
+              exercise: { name: 'Dominadas pronas', reps: '8-10', notes: 'Amplitud y tracción vertical' },
               sets: 4,
               rest_seconds: 120,
             },
             {
               type: 'single',
               id: `ai-2-${dIdx}`,
-              exercise: { name: 'Remo con barra inclinado (90° o 45°)', reps: '8-10', rir: '1-2', notes: 'Densidad dorsal', weight: '50 kg' },
+              exercise: { name: 'Remo con barra inclinado (90° o 45°)', reps: '8-10', notes: 'Densidad dorsal', weight: '50 kg' },
               sets: 3,
               rest_seconds: 90,
             },
             {
               type: 'single',
               id: `ai-3-${dIdx}`,
-              exercise: { name: 'Remo unilateral con mancuerna en banco', reps: '10-12', rir: '1', notes: 'Aislamiento dorsal', weight: '24 kg' },
+              exercise: { name: 'Remo unilateral con mancuerna en banco', reps: '10-12', notes: 'Aislamiento dorsal', weight: '24 kg' },
               sets: 3,
               rest_seconds: 75,
             },
             {
               type: 'single',
               id: `ai-4-${dIdx}`,
-              exercise: { name: 'Pájaros / Face Pull en polea alta', reps: '15', rir: '1', notes: 'Deltoides posterior y rotadores', weight: '18 kg' },
+              exercise: { name: 'Pájaros / Face Pull en polea alta', reps: '15', notes: 'Deltoides posterior y rotadores', weight: '18 kg' },
               sets: 3,
               rest_seconds: 75,
             },
@@ -146,8 +179,8 @@ export default function WorkoutAssistantScreen() {
               sets: 3,
               rest_seconds: 75,
               exercises: [
-                { name: 'Curl de bíceps con barra Z o mancuernas', reps: '10-12', rir: '1', notes: 'Fase excéntrica lenta', weight: '25 kg' },
-                { name: 'Curl de bíceps martillo con mancuernas', reps: '12', rir: '1', notes: 'Braquial y antebrazo', weight: '12 kg' },
+                { name: 'Curl de bíceps con barra Z o mancuernas', reps: '10-12', notes: 'Fase excéntrica lenta', weight: '25 kg' },
+                { name: 'Curl de bíceps martillo con mancuernas', reps: '12', notes: 'Braquial y antebrazo', weight: '12 kg' },
               ],
             },
           ];
@@ -157,14 +190,14 @@ export default function WorkoutAssistantScreen() {
             {
               type: 'single',
               id: `ai-1-${dIdx}`,
-              exercise: { name: 'Sentadilla libre con barra trasera', reps: '8-10', rir: '2', notes: 'Profundidad paralela', weight: '80 kg' },
+              exercise: { name: 'Sentadilla libre con barra trasera', reps: '8-10', notes: 'Profundidad paralela', weight: '80 kg' },
               sets: 4,
               rest_seconds: 120,
             },
             {
               type: 'single',
               id: `ai-2-${dIdx}`,
-              exercise: { name: 'Prensa de piernas 45°', reps: '10-12', rir: '1-2', notes: 'Cuádriceps general', weight: '140 kg' },
+              exercise: { name: 'Prensa de piernas 45°', reps: '10-12', notes: 'Cuádriceps general', weight: '140 kg' },
               sets: 3,
               rest_seconds: 90,
             },
@@ -175,21 +208,21 @@ export default function WorkoutAssistantScreen() {
               sets: 3,
               rest_seconds: 90,
               exercises: [
-                { name: 'Sentadilla búlgara con mancuernas', reps: '12', rir: '1', notes: 'Unilateral', weight: '14 kg' },
-                { name: 'Peso muerto rumano con barra o mancuernas', reps: '10-12', rir: '1-2', notes: 'Bisagra de cadera', weight: '50 kg' },
+                { name: 'Sentadilla búlgara con mancuernas', reps: '12', notes: 'Unilateral', weight: '14 kg' },
+                { name: 'Peso muerto rumano con barra o mancuernas', reps: '10-12', notes: 'Bisagra de cadera', weight: '50 kg' },
               ],
             },
             {
               type: 'single',
               id: `ai-4-${dIdx}`,
-              exercise: { name: 'Curl femoral tumbado en máquina', reps: '12-15', rir: '1', notes: 'Aislamiento isquios', weight: '35 kg' },
+              exercise: { name: 'Curl femoral tumbado en máquina', reps: '12-15', notes: 'Aislamiento isquios', weight: '35 kg' },
               sets: 3,
               rest_seconds: 60,
             },
             {
               type: 'single',
               id: `ai-5-${dIdx}`,
-              exercise: { name: 'Elevación de talones de pie (Gemelos)', reps: '15-20', rir: '0-1', notes: 'Pausa de 1s arriba', weight: '50 kg' },
+              exercise: { name: 'Elevación de talones de pie (Gemelos)', reps: '15-20', notes: 'Pausa de 1s arriba', weight: '50 kg' },
               sets: 3,
               rest_seconds: 60,
             },
@@ -200,28 +233,28 @@ export default function WorkoutAssistantScreen() {
             {
               type: 'single',
               id: `ai-1-${dIdx}`,
-              exercise: { name: 'Press de banca plano con barra', reps: '8-10', rir: '1-2', notes: 'Pecho', weight: '60 kg' },
+              exercise: { name: 'Press de banca plano con barra', reps: '8-10', notes: 'Pecho', weight: '60 kg' },
               sets: 4,
               rest_seconds: 90,
             },
             {
               type: 'single',
               id: `ai-2-${dIdx}`,
-              exercise: { name: 'Jalón al pecho en polea alta', reps: '10-12', rir: '1', notes: 'Espalda amplitud', weight: '45 kg' },
+              exercise: { name: 'Jalón al pecho en polea alta', reps: '10-12', notes: 'Espalda amplitud', weight: '45 kg' },
               sets: 4,
               rest_seconds: 90,
             },
             {
               type: 'single',
               id: `ai-3-${dIdx}`,
-              exercise: { name: 'Press militar de pie con barra o sentado con mancuernas', reps: '10', rir: '1-2', notes: 'Hombros', weight: '16 kg' },
+              exercise: { name: 'Press militar de pie con barra o sentado con mancuernas', reps: '10', notes: 'Hombros', weight: '16 kg' },
               sets: 3,
               rest_seconds: 75,
             },
             {
               type: 'single',
               id: `ai-4-${dIdx}`,
-              exercise: { name: 'Remo en polea baja con agarre estrecho (gironda)', reps: '12', rir: '1', notes: 'Espalda densidad', weight: '40 kg' },
+              exercise: { name: 'Remo en polea baja con agarre estrecho (gironda)', reps: '12', notes: 'Espalda densidad', weight: '40 kg' },
               sets: 3,
               rest_seconds: 75,
             },
@@ -232,8 +265,8 @@ export default function WorkoutAssistantScreen() {
               sets: 3,
               rest_seconds: 60,
               exercises: [
-                { name: 'Curl de bíceps martillo con mancuernas', reps: '12', rir: '1', notes: 'Bíceps y braquial', weight: '12 kg' },
-                { name: 'Extensiones de tríceps en polea alta con cuerda', reps: '12', rir: '1', notes: 'Tríceps', weight: '20 kg' },
+                { name: 'Curl de bíceps martillo con mancuernas', reps: '12', notes: 'Bíceps y braquial', weight: '12 kg' },
+                { name: 'Extensiones de tríceps en polea alta con cuerda', reps: '12', notes: 'Tríceps', weight: '20 kg' },
               ],
             },
           ];
@@ -286,14 +319,8 @@ export default function WorkoutAssistantScreen() {
           disabled={isGeneratingAi}
           style={styles.aiBtn}
         >
-          {isGeneratingAi ? (
-            <ActivityIndicator size="small" color={colors.surface} />
-          ) : (
-            <Sparkles size={s(14)} color={colors.surface} />
-          )}
-          <Text style={styles.aiBtnText}>
-            {isGeneratingAi ? 'Generando propuesta...' : 'Generar propuesta con IA ✨'}
-          </Text>
+          <Sparkles size={s(12)} color={colors.surface} />
+          <Text style={styles.aiBtnText}>Generar propuesta con IA ✨</Text>
         </Pressable>
       </View>
 
@@ -321,9 +348,7 @@ export default function WorkoutAssistantScreen() {
                 {day.day_name}
               </Text>
               <View style={[styles.countBadge, isActive && styles.countBadgeActive]}>
-                <Text style={[styles.countBadgeText, isActive && styles.countBadgeTextActive]}>
-                  {totalExercises}
-                </Text>
+                <Text style={styles.countBadgeText}>{totalExercises}</Text>
               </View>
             </Pressable>
           );
@@ -419,7 +444,7 @@ export default function WorkoutAssistantScreen() {
                           <View style={styles.subInfoWrap}>
                             <Text style={styles.subExName}>{subEx.name}</Text>
                             <Text style={styles.subExReps}>
-                              {subEx.reps} reps {subEx.weight ? `· ${subEx.weight}` : ''} {subEx.rir ? `· RIR ${subEx.rir}` : ''}
+                              {subEx.reps} reps {subEx.weight ? `· ${subEx.weight}` : ''}
                             </Text>
                           </View>
                           <Pressable
@@ -458,6 +483,9 @@ export default function WorkoutAssistantScreen() {
         )}
       </ScrollView>
 
+      {/* Preloader de Pasos de IA */}
+      <WorkoutAiPreloaderModal visible={isGeneratingAi} />
+
       {/* Sheet para seleccionar ejercicios */}
       <ExercisePickerSheet
         visible={exercisePickerOpen}
@@ -481,8 +509,9 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
   aiBanner: {
     paddingHorizontal: s(16),
-    paddingTop: s(8),
-    paddingBottom: s(4),
+    paddingTop: s(6),
+    paddingBottom: s(6),
+    alignItems: 'center',
   },
   aiBtn: {
     backgroundColor: colors.navy,
@@ -490,12 +519,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: s(6),
-    height: s(36),
-    borderRadius: radius.button,
+    height: s(30),
+    paddingHorizontal: s(14),
+    borderRadius: radius.chip,
+    alignSelf: 'center',
   },
   aiBtnText: {
     fontFamily: fonts.bodyBold,
-    fontSize: fontSizes.xs,
+    fontSize: fontSizes.label,
     color: colors.surface,
   },
   daysBar: {

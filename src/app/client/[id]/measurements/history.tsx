@@ -1,4 +1,4 @@
-import { Download } from 'lucide-react-native';
+import { Camera, Download } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -85,6 +85,7 @@ export default function MeasurementHistoryScreen() {
             const isSelected = selected.includes(item.id);
             const disabled = !isSelected && selected.length >= MAX_SELECTION;
             const isDownloading = downloadingId === item.id;
+            const photoCount = item.photos?.length ?? 0;
 
             return (
               <View style={[styles.row, isSelected && styles.rowSelected, disabled && styles.rowDisabled]}>
@@ -97,7 +98,17 @@ export default function MeasurementHistoryScreen() {
                     {isSelected && <Text style={styles.checkboxMark}>✓</Text>}
                   </View>
                   <View style={styles.rowText}>
-                    <Text style={styles.rowDate}>{formatDateShort(item.measured_at)}</Text>
+                    <View style={styles.dateBadgeRow}>
+                      <Text style={styles.rowDate}>{formatDateShort(item.measured_at)}</Text>
+                      {photoCount > 0 && (
+                        <View style={styles.photoCountBadge}>
+                          <Camera size={s(11)} color={colors.navy} />
+                          <Text style={styles.photoCountText}>
+                            {photoCount} {photoCount === 1 ? 'foto' : 'fotos'}
+                          </Text>
+                        </View>
+                      )}
+                    </View>
                     <Text style={styles.rowSummary}>{summarize(item)}</Text>
                   </View>
                 </Pressable>
@@ -179,7 +190,26 @@ const styles = StyleSheet.create({
   checkboxChecked: { backgroundColor: colors.lime, borderColor: colors.lime },
   checkboxMark: { fontFamily: fonts.bodyBold, fontSize: fontSizes.label, color: colors.navy },
   rowText: { flex: 1, gap: 2 },
+  dateBadgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: s(6),
+  },
   rowDate: { fontFamily: fonts.bodyBold, fontSize: fontSizes.xs, color: colors.text },
+  photoCountBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: s(3),
+    backgroundColor: '#EBF7D4',
+    paddingHorizontal: s(6),
+    paddingVertical: s(1.5),
+    borderRadius: radius.pill,
+  },
+  photoCountText: {
+    fontFamily: fonts.bodyBold,
+    fontSize: fontSizes.label - 1,
+    color: colors.navy,
+  },
   rowSummary: { fontFamily: fonts.body, fontSize: fontSizes.label, color: colors.textMuted },
   downloadBtn: {
     padding: s(8),

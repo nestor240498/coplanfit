@@ -1,5 +1,5 @@
 import { useFocusEffect } from 'expo-router';
-import { Check, Sparkles, Zap } from 'lucide-react-native';
+import { Check, Sparkles, X, Zap } from 'lucide-react-native';
 import { useCallback, useState } from 'react';
 import {
   Alert,
@@ -211,20 +211,22 @@ export default function SubscriptionScreen() {
         transparent
         onRequestClose={() => setModalVisible(false)}
       >
-        <Pressable
-          style={styles.modalOverlay}
-          onPress={() => setModalVisible(false)}
-        >
+        <View style={styles.modalOverlay}>
+          {/* Backdrop para cerrar al tocar fuera */}
           <Pressable
+            style={StyleSheet.absoluteFill}
+            onPress={() => setModalVisible(false)}
+          />
+
+          <View
             style={[
               styles.modalContent,
-              { paddingBottom: insets.bottom + s(0) },
+              { paddingBottom: Math.max(insets.bottom, s(8)) },
             ]}
-            onPress={(e) => e.stopPropagation()}
           >
             {/* Tirador visual */}
             <View style={styles.sheetHandleWrap}>
-              {/* <View style={styles.sheetHandle} /> */}
+              <View style={styles.sheetHandle} />
             </View>
 
             {/* Header del Modal */}
@@ -235,12 +237,21 @@ export default function SubscriptionScreen() {
                   Selecciona el paquete que mejor se adapte a tu volumen de asesorados
                 </Text>
               </View>
+              <Pressable
+                onPress={() => setModalVisible(false)}
+                style={styles.closeBtn}
+                hitSlop={10}
+              >
+                <X size={s(16)} color={colors.textSecondary} />
+              </Pressable>
             </View>
 
             {/* Lista de planes */}
             <ScrollView
               showsVerticalScrollIndicator={false}
               contentContainerStyle={styles.plansList}
+              bounces={true}
+              keyboardShouldPersistTaps="handled"
             >
               {SUBSCRIPTION_PLANS.map((plan) => {
                 const isSelected = plan.id === activePlanId;
@@ -298,8 +309,8 @@ export default function SubscriptionScreen() {
                 );
               })}
             </ScrollView>
-          </Pressable>
-        </Pressable>
+          </View>
+        </View>
       </Modal>
     </View>
   );
@@ -516,7 +527,7 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: radius.sheet,
     borderTopRightRadius: radius.sheet,
     paddingTop: s(4),
-    maxHeight: '88%',
+    maxHeight: '80%',
     width: '100%',
     overflow: 'hidden',
   },
@@ -562,6 +573,7 @@ const styles = StyleSheet.create({
   plansList: {
     padding: s(16),
     gap: s(12),
+    paddingBottom: s(12),
   },
   planCard: {
     backgroundColor: colors.surface,

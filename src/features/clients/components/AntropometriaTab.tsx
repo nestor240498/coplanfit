@@ -1,6 +1,8 @@
-import { Download, History } from 'lucide-react-native';
+import { Image } from 'expo-image';
+import * as ImagePicker from 'expo-image-picker';
+import { Camera, Download, History, ImagePlus, Trash2, X } from 'lucide-react-native';
 import { useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { InputFieldRow } from '@/components/ui/FieldRow';
 import { getMyProfile } from '@/features/profile/repository';
@@ -13,6 +15,8 @@ import { generateAndShareMeasurementPdf } from '../measurementPdf';
 import { Client, Measurement } from '../types';
 
 export type MeasurementFormState = {
+  // Fotos de progreso
+  photos: string[];
   // Composición corporal
   weight: string;
   height: string;
@@ -54,7 +58,7 @@ type Props = {
   measurement: Measurement | null;
   isEditing?: boolean;
   formState?: MeasurementFormState;
-  onChangeFormState?: (key: keyof MeasurementFormState, value: string) => void;
+  onChangeFormState?: (key: keyof MeasurementFormState, value: any) => void;
   onViewHistory: () => void;
 };
 
@@ -72,6 +76,7 @@ export function AntropometriaTab({
   onViewHistory,
 }: Props) {
   const [exportingPdf, setExportingPdf] = useState(false);
+  const [selectedPreview, setSelectedPreview] = useState<{ url: string; title: string; date: string } | null>(null);
 
   async function handleExportPdf() {
     if (!measurement) return;
@@ -85,6 +90,55 @@ export function AntropometriaTab({
       setExportingPdf(false);
     }
   }
+
+  async function handlePickImage(source: 'camera' | 'library') {
+    if (!formState || !onChangeFormState) return;
+    try {
+      if (source === 'camera') {
+        const permission = await ImagePicker.requestCameraPermissionsAsync();
+        if (!permission.granted) {
+          Alert.alert('Permiso requerido', 'Se requiere acceso a la cámara para tomar fotos de progreso.');
+          return;
+        }
+        const result = await ImagePicker.launchCameraAsync({
+          allowsEditing: true,
+          quality: 0.85,
+        });
+        if (!result.canceled && result.assets && result.assets[0]?.uri) {
+          const currentPhotos = formState.photos || [];
+          onChangeFormState('photos', [...currentPhotos, result.assets[0].uri]);
+        }
+      } else {
+        const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (!permission.granted) {
+          Alert.alert('Permiso requerido', 'Se requiere acceso a tus fotos para seleccionarlas.');
+          return;
+        }
+        const result = await ImagePicker.launchImageLibraryAsync({
+          mediaTypes: ['images'],
+          allowsMultipleSelection: true,
+          quality: 0.85,
+        });
+        if (!result.canceled && result.assets && result.assets.length > 0) {
+          const newUris = result.assets.map((a) => a.uri).filter(Boolean);
+          const currentPhotos = formState.photos || [];
+          onChangeFormState('photos', [...currentPhotos, ...newUris]);
+        }
+      }
+    } catch (err) {
+      Alert.alert('Error al seleccionar imagen', (err as Error).message);
+    }
+  }
+
+  function handleRemovePhoto(index: number) {
+    if (!formState || !onChangeFormState) return;
+    const currentPhotos = formState.photos || [];
+    onChangeFormState(
+      'photos',
+      currentPhotos.filter((_, i) => i !== index)
+    );
+  }
+
   // Cálculo dinámico en vivo durante la edición
   const editWeightNum = formState ? Number(formState.weight.replace(',', '.')) : NaN;
   const rawHeightNum = formState ? Number(formState.height.replace(',', '.')) : NaN;
@@ -128,8 +182,71 @@ export function AntropometriaTab({
   }, 0);
 
   if (isEditing && formState && onChangeFormState) {
+    const currentPhotos = formState.photos || [];
+
     return (
       <View style={styles.container}>
+        {/* SECCIÓN FOTOS DE PROGRESO */}
+        <View style={styles.photosSection}>
+          <View style={styles.photosHeader}>
+            <View style={styles.photosHeaderTexts}>
+              <Text style={styles.photosTitle}>Fotos de progreso físico</Text>
+              <Text style={styles.photosSubtitle}>
+                Adjunta fotos (Frontal, Perfil, Espalda) para comparar la evolución visual
+              </Text>
+            </View>
+            <View style={styles.photosCountBadge}>
+              <Text style={styles.photosCountText}>
+                {currentPhotos.length} {currentPhotos.length === 1 ? 'foto' : 'fotos'}
+              </Text>
+            </View>
+          </View>
+
+          {/* Botones de acción */}
+          <View style={styles.photoActionsRow}>
+            <Pressable onPress={() => handlePickImage('camera')} style={styles.photoActionBtn}>
+              <Camera size={s(14)} color={colors.navy} />
+              <Text style={styles.photoActionBtnText}>Tomar Foto</Text>
+            </Pressable>
+            <Pressable
+              onPress={() => handlePickImage('library')}
+              style={[styles.photoActionBtn, styles.photoActionBtnSecondary]}
+            >
+              <ImagePlus size={s(14)} color={colors.navy} />
+              <Text style={styles.photoActionBtnText}>Galería</Text>
+            </Pressable>
+          </View>
+
+          {/* Miniaturas */}
+          {currentPhotos.length > 0 ? (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.thumbnailsRow}
+            >
+              {currentPhotos.map((uri, idx) => (
+                <View key={`${idx}-${uri}`} style={styles.thumbnailCard}>
+                  <Image source={{ uri }} style={styles.thumbnailImg} contentFit="cover" />
+                  <View style={styles.thumbBadge}>
+                    <Text style={styles.thumbBadgeText}>{idx + 1}</Text>
+                  </View>
+                  <Pressable
+                    onPress={() => handleRemovePhoto(idx)}
+                    style={styles.thumbDeleteBtn}
+                    hitSlop={6}
+                  >
+                    <Trash2 size={s(11)} color={colors.surface} />
+                  </Pressable>
+                </View>
+              ))}
+            </ScrollView>
+          ) : (
+            <View style={styles.emptyPhotosBox}>
+              <Text style={styles.emptyPhotosText}>No has añadido fotos para esta medición todavía.</Text>
+            </View>
+          )}
+        </View>
+
         {/* COMPOSICIÓN CORPORAL */}
         <Text style={styles.sectionHeader}>COMPOSICIÓN CORPORAL</Text>
         <InputFieldRow
@@ -393,6 +510,37 @@ export function AntropometriaTab({
   // MODO LECTURA LIMPIA
   return (
     <View style={styles.container}>
+      {/* FOTOS DE PROGRESO DE LA MEDICIÓN ACTUAL (SI EXISTEN) */}
+      {measurement?.photos && measurement.photos.length > 0 && (
+        <View style={styles.photosReadSection}>
+          <Text style={styles.sectionHeader}>FOTOS DE PROGRESO FÍSICO ({measurement.photos.length})</Text>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.readPhotosScroll}
+          >
+            {measurement.photos.map((photoUrl, idx) => (
+              <Pressable
+                key={`read-photo-${idx}-${photoUrl}`}
+                onPress={() =>
+                  setSelectedPreview({
+                    url: photoUrl,
+                    title: `Foto de progreso ${idx + 1}`,
+                    date: formatDateShort(measurement.measured_at),
+                  })
+                }
+                style={styles.readPhotoCard}
+              >
+                <Image source={{ uri: photoUrl }} style={styles.readPhotoImg} contentFit="cover" />
+                <View style={styles.readPhotoBadge}>
+                  <Text style={styles.readPhotoBadgeText}>{idx + 1}</Text>
+                </View>
+              </Pressable>
+            ))}
+          </ScrollView>
+        </View>
+      )}
+
       {/* COMPOSICIÓN CORPORAL */}
       <Text style={styles.sectionHeader}>COMPOSICIÓN CORPORAL</Text>
       <Row label="Peso" value={fmt(measurement?.weight_kg, 'kg', 1)} />
@@ -513,6 +661,40 @@ export function AntropometriaTab({
           </Pressable>
         </View>
       )}
+
+      {/* MODAL FULLSCREEN PREVIEW */}
+      <Modal
+        visible={selectedPreview != null}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setSelectedPreview(null)}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalHeader}>
+            <View>
+              <Text style={styles.modalTitle}>{selectedPreview?.title}</Text>
+              <Text style={styles.modalSubtitle}>{selectedPreview?.date}</Text>
+            </View>
+            <Pressable
+              onPress={() => setSelectedPreview(null)}
+              style={styles.modalCloseBtn}
+              hitSlop={10}
+            >
+              <X size={s(18)} color={colors.surface} />
+            </Pressable>
+          </View>
+
+          {selectedPreview && (
+            <View style={styles.modalImageContainer}>
+              <Image
+                source={{ uri: selectedPreview.url }}
+                style={styles.modalFullImage}
+                contentFit="contain"
+              />
+            </View>
+          )}
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -530,6 +712,175 @@ const styles = StyleSheet.create({
   container: {
     padding: s(16),
     gap: s(7),
+  },
+  photosSection: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.card,
+    padding: s(12),
+    borderWidth: 1,
+    borderColor: colors.border,
+    gap: s(10),
+    marginBottom: s(4),
+  },
+  photosHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: s(8),
+  },
+  photosHeaderTexts: {
+    flex: 1,
+    paddingRight: s(4),
+  },
+  photosTitle: {
+    fontFamily: fonts.headingSemi,
+    fontSize: fontSizes.label,
+    color: colors.navy,
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
+  },
+  photosSubtitle: {
+    fontFamily: fonts.body,
+    fontSize: fontSizes.label,
+    color: colors.textMuted,
+    marginTop: 2,
+  },
+  photosCountBadge: {
+    flexShrink: 0,
+    alignSelf: 'flex-start',
+    backgroundColor: 'rgba(139, 197, 63, 0.2)',
+    paddingHorizontal: s(8),
+    paddingVertical: 2,
+    borderRadius: radius.chip,
+    borderWidth: 1,
+    borderColor: colors.lime,
+  },
+  photosCountText: {
+    fontFamily: fonts.bodyBold,
+    fontSize: s(7.5),
+    color: colors.navy,
+  },
+  photoActionsRow: {
+    flexDirection: 'row',
+    gap: s(8),
+  },
+  photoActionBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: s(6),
+    backgroundColor: colors.lime,
+    paddingVertical: s(8),
+    borderRadius: radius.input,
+  },
+  photoActionBtnSecondary: {
+    backgroundColor: 'rgba(27, 42, 74, 0.06)',
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  photoActionBtnText: {
+    fontFamily: fonts.bodyBold,
+    fontSize: fontSizes.label,
+    color: colors.navy,
+  },
+  thumbnailsRow: {
+    gap: s(10),
+    paddingVertical: s(4),
+  },
+  thumbnailCard: {
+    width: s(72),
+    height: s(96),
+    borderRadius: radius.card,
+    overflow: 'hidden',
+    position: 'relative',
+    backgroundColor: colors.background,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+  },
+  thumbnailImg: {
+    width: '100%',
+    height: '100%',
+  },
+  thumbBadge: {
+    position: 'absolute',
+    top: 4,
+    left: 4,
+    width: s(18),
+    height: s(18),
+    borderRadius: s(9),
+    backgroundColor: colors.navy,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  thumbBadgeText: {
+    fontFamily: fonts.bodyBold,
+    fontSize: s(7.5),
+    color: colors.surface,
+  },
+  thumbDeleteBtn: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+    width: s(20),
+    height: s(20),
+    borderRadius: s(10),
+    backgroundColor: 'rgba(239, 68, 68, 0.9)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emptyPhotosBox: {
+    paddingVertical: s(12),
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    borderColor: colors.border,
+    borderRadius: radius.input,
+    backgroundColor: colors.background,
+  },
+  emptyPhotosText: {
+    fontFamily: fonts.body,
+    fontSize: s(8),
+    color: colors.textMuted,
+  },
+  photosReadSection: {
+    marginBottom: s(4),
+    gap: s(6),
+  },
+  readPhotosScroll: {
+    gap: s(10),
+    paddingVertical: s(4),
+  },
+  readPhotoCard: {
+    width: s(80),
+    height: s(106),
+    borderRadius: radius.card,
+    overflow: 'hidden',
+    position: 'relative',
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  readPhotoImg: {
+    width: '100%',
+    height: '100%',
+  },
+  readPhotoBadge: {
+    position: 'absolute',
+    top: 4,
+    left: 4,
+    width: s(18),
+    height: s(18),
+    borderRadius: s(9),
+    backgroundColor: colors.navy,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  readPhotoBadgeText: {
+    fontFamily: fonts.bodyBold,
+    fontSize: s(7.5),
+    color: colors.surface,
   },
   sectionHeader: {
     fontFamily: fonts.headingSemi,
@@ -639,5 +990,47 @@ const styles = StyleSheet.create({
     fontFamily: fonts.bodyBold,
     fontSize: s(9.5),
     color: colors.textSecondary,
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(10, 15, 26, 0.95)',
+    justifyContent: 'space-between',
+    paddingTop: s(40),
+    paddingBottom: s(30),
+    paddingHorizontal: s(16),
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  modalTitle: {
+    fontFamily: fonts.headingSemi,
+    fontSize: fontSizes.base,
+    color: colors.surface,
+  },
+  modalSubtitle: {
+    fontFamily: fonts.body,
+    fontSize: fontSizes.xs,
+    color: '#A0AEC0',
+    marginTop: 2,
+  },
+  modalCloseBtn: {
+    width: s(36),
+    height: s(36),
+    borderRadius: s(18),
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalImageContainer: {
+    flex: 1,
+    marginVertical: s(16),
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalFullImage: {
+    width: '100%',
+    height: '100%',
   },
 });

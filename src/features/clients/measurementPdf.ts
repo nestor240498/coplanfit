@@ -63,6 +63,24 @@ export async function generateAndShareMeasurementPdf({
 
     const sumFolds = calculateSumFolds(measurement);
 
+    const photosHtml =
+      measurement.photos && measurement.photos.length > 0
+        ? `
+          <div class="section-title">Registro Fotográfico</div>
+          <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; margin-bottom: 8px;">
+            ${measurement.photos
+              .map(
+                (url, idx) => `
+                <div style="width: 105px; height: 135px; border-radius: 6px; overflow: hidden; border: 1px solid #DDE2EA; background: #FAFBFD;">
+                  <img src="${url}" alt="Foto ${idx + 1}" style="width: 100%; height: 100%; object-fit: cover;" />
+                </div>
+              `
+              )
+              .join('')}
+          </div>
+        `
+        : '';
+
     const html = `
       <!DOCTYPE html>
       <html>
@@ -92,11 +110,9 @@ export async function generateAndShareMeasurementPdf({
             }
             
             .page-container {
-              min-height: 277mm;
+              width: 100%;
               display: flex;
               flex-direction: column;
-              justify-content: space-between;
-              padding: 10px;
             }
             
             .header-banner {
@@ -499,6 +515,9 @@ export async function generateAndShareMeasurementPdf({
                   </table>
                 </div>
               </div>
+
+              <!-- FOTOS DE PROGRESO -->
+              ${photosHtml}
             </div>
 
             <!-- FOOTER -->
@@ -703,6 +722,59 @@ export async function generateAndShareMeasurementComparisonPdf({
       .filter(Boolean)
       .join('');
 
+    const comparisonPhotosHtml =
+      (earlier.photos && earlier.photos.length > 0) || (later.photos && later.photos.length > 0)
+        ? `
+          <div class="section-title">Evolución Visual (Fotos de Progreso)</div>
+          <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 6px; margin-bottom: 10px;">
+            ${
+              earlier.photos && earlier.photos.length > 0
+                ? `
+                <div style="background: #FAFBFD; border: 1px solid #DDE2EA; border-radius: 6px; padding: 8px;">
+                  <div style="font-size: 10px; font-weight: 800; color: #1B2A4A; margin-bottom: 6px;">
+                    INICIAL (${formattedDateEarlier})
+                  </div>
+                  <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                    ${earlier.photos
+                      .map(
+                        (url, idx) => `
+                        <div style="width: 95px; height: 125px; border-radius: 4px; overflow: hidden; border: 1px solid #CBD2E0; background: #FFF;">
+                          <img src="${url}" alt="Inicial ${idx + 1}" style="width: 100%; height: 100%; object-fit: cover;" />
+                        </div>
+                      `
+                      )
+                      .join('')}
+                  </div>
+                </div>
+              `
+                : ''
+            }
+            ${
+              later.photos && later.photos.length > 0
+                ? `
+                <div style="background: #FAFBFD; border: 1px solid #DDE2EA; border-radius: 6px; padding: 8px;">
+                  <div style="font-size: 10px; font-weight: 800; color: #1B2A4A; margin-bottom: 6px;">
+                    FINAL (${formattedDateLater})
+                  </div>
+                  <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                    ${later.photos
+                      .map(
+                        (url, idx) => `
+                        <div style="width: 95px; height: 125px; border-radius: 4px; overflow: hidden; border: 1px solid #CBD2E0; background: #FFF;">
+                          <img src="${url}" alt="Final ${idx + 1}" style="width: 100%; height: 100%; object-fit: cover;" />
+                        </div>
+                      `
+                      )
+                      .join('')}
+                  </div>
+                </div>
+              `
+                : ''
+            }
+          </div>
+        `
+        : '';
+
     const html = `
       <!DOCTYPE html>
       <html>
@@ -732,11 +804,9 @@ export async function generateAndShareMeasurementComparisonPdf({
             }
             
             .page-container {
-              min-height: 277mm;
+              width: 100%;
               display: flex;
               flex-direction: column;
-              justify-content: space-between;
-              padding: 10px;
             }
             
             .header-banner {
@@ -996,6 +1066,9 @@ export async function generateAndShareMeasurementComparisonPdf({
 
               <!-- CATEGORIES TABLES -->
               ${categoryTablesHtml}
+
+              <!-- FOTOS DE PROGRESO -->
+              ${comparisonPhotosHtml}
             </div>
 
             <!-- FOOTER -->

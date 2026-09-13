@@ -85,6 +85,8 @@ export type Measurement = {
   thigh_mm?: number | null;
   calf_mm?: number | null;
   chest_mm?: number | null;
+  /** Fotos de progreso asociadas a la medición */
+  photos?: string[] | null;
   /** Calculados server-side (columnas generadas) */
   bmi: number | null;
   waist_hip_ratio: number | null;

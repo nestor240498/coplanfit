@@ -1,5 +1,5 @@
 import { Tabs } from 'expo-router';
-import { CreditCard, User, Users } from 'lucide-react-native';
+import { CreditCard, Dumbbell, User, Users } from 'lucide-react-native';
 
 import { s } from '@/theme/scale';
 import { colors } from '@/theme/tokens';
@@ -34,6 +34,19 @@ export default function TabsLayout() {
           title: 'Clientes',
           tabBarIcon: ({ focused }) => (
             <Users
+              size={s(18)}
+              color={focused ? colors.lime : colors.textMuted}
+              strokeWidth={focused ? 2.5 : 2}
+            />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="exercises"
+        options={{
+          title: 'Ejercicios',
+          tabBarIcon: ({ focused }) => (
+            <Dumbbell
               size={s(18)}
               color={focused ? colors.lime : colors.textMuted}
               strokeWidth={focused ? 2.5 : 2}

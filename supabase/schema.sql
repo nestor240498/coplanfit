@@ -99,6 +99,7 @@ create table public.measurements (
   triceps_mm numeric(4, 1),
   abdominal_mm numeric(4, 1),
   subscapular_mm numeric(4, 1),
+  photos text[] default '{}'::text[],
   -- Calculados server-side como pide el handoff
   bmi numeric(4, 1) generated always as (
     case when height_cm > 0 then round(weight_kg / ((height_cm / 100.0) * (height_cm / 100.0)), 1) end

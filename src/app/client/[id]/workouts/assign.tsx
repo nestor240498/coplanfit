@@ -243,8 +243,8 @@ export default function WorkoutAssignScreen() {
                       <Text style={styles.blockTitle}>{block.exercise.name}</Text>
                     </View>
 
-                    {/* Inputs de series, reps, peso, rir, descanso */}
-                    <View style={styles.paramsGrid}>
+                    {/* Inputs de series, reps, peso y descanso en una sola fila */}
+                    <View style={styles.paramsRow}>
                       <View style={styles.paramBox}>
                         <Text style={styles.paramLabel}>Series</Text>
                         <TextInput
@@ -255,6 +255,8 @@ export default function WorkoutAssignScreen() {
                             })
                           }
                           keyboardType="number-pad"
+                          placeholder="4"
+                          placeholderTextColor={colors.textMuted}
                           style={styles.paramInput}
                         />
                       </View>
@@ -266,33 +268,20 @@ export default function WorkoutAssignScreen() {
                           onChangeText={(v) =>
                             handleUpdateSingleExercise(block.id, 'reps', v)
                           }
-                          placeholder="10-12"
+                          placeholder="8-10"
                           placeholderTextColor={colors.textMuted}
                           style={styles.paramInput}
                         />
                       </View>
 
                       <View style={styles.paramBox}>
-                        <Text style={styles.paramLabel}>Peso / Carga</Text>
+                        <Text style={styles.paramLabel}>Peso</Text>
                         <TextInput
                           value={block.exercise.weight || ''}
                           onChangeText={(v) =>
                             handleUpdateSingleExercise(block.id, 'weight', v)
                           }
-                          placeholder="Ej: 60 kg"
-                          placeholderTextColor={colors.textMuted}
-                          style={styles.paramInput}
-                        />
-                      </View>
-
-                      <View style={styles.paramBox}>
-                        <Text style={styles.paramLabel}>RIR / RPE</Text>
-                        <TextInput
-                          value={block.exercise.rir || ''}
-                          onChangeText={(v) =>
-                            handleUpdateSingleExercise(block.id, 'rir', v)
-                          }
-                          placeholder="1-2"
+                          placeholder="60 kg"
                           placeholderTextColor={colors.textMuted}
                           style={styles.paramInput}
                         />
@@ -315,16 +304,19 @@ export default function WorkoutAssignScreen() {
                       </View>
                     </View>
 
-                    {/* Notas de ejecución */}
-                    <TextInput
-                      value={block.exercise.notes || ''}
-                      onChangeText={(v) =>
-                        handleUpdateSingleExercise(block.id, 'notes', v)
-                      }
-                      placeholder="Instrucciones técnicas (ej: Pausa de 1s en contracción…)"
-                      placeholderTextColor={colors.textMuted}
-                      style={styles.notesInput}
-                    />
+                    {/* Notas / Instrucciones técnicas */}
+                    <View style={styles.notesWrap}>
+                      <Text style={styles.paramLabel}>Instrucciones o notas</Text>
+                      <TextInput
+                        value={block.exercise.notes || ''}
+                        onChangeText={(v) =>
+                          handleUpdateSingleExercise(block.id, 'notes', v)
+                        }
+                        placeholder="Instrucciones técnicas (ej: Pausa de 1s en contracción…)"
+                        placeholderTextColor={colors.textMuted}
+                        style={styles.notesInput}
+                      />
+                    </View>
                   </View>
                 );
               }
@@ -334,10 +326,10 @@ export default function WorkoutAssignScreen() {
                 <View key={block.id} style={styles.supersetCard}>
                   <View style={styles.supersetHeaderRow}>
                     <View style={styles.supersetTag}>
-                      <Text style={styles.supersetTagText}>⚡ SUPERSERIE COMBINADA</Text>
+                      <Text style={styles.supersetTagText}>⚡ SUPERSERIE</Text>
                     </View>
                     <View style={styles.supersetSetsWrap}>
-                      <Text style={styles.supersetSetsLabel}>Series combinadas:</Text>
+                      <Text style={styles.supersetSetsLabel}>Series de la ronda:</Text>
                       <TextInput
                         value={String(block.sets)}
                         onChangeText={(v) =>
@@ -353,58 +345,51 @@ export default function WorkoutAssignScreen() {
 
                   {/* Lista de ejercicios dentro de la superserie */}
                   {block.exercises.map((subEx, sIdx) => (
-                    <View key={sIdx} style={styles.subExerciseRow}>
-                      <View style={styles.subLetterCircle}>
-                        <Text style={styles.subLetterText}>
-                          {String.fromCharCode(65 + sIdx)}
-                        </Text>
-                      </View>
-                      <View style={styles.subExerciseContent}>
+                    <View key={sIdx} style={styles.subExerciseCard}>
+                      <View style={styles.subExTopRow}>
+                        <View style={styles.subLetterCircle}>
+                          <Text style={styles.subLetterText}>
+                            {String.fromCharCode(65 + sIdx)}
+                          </Text>
+                        </View>
                         <Text style={styles.subExerciseName}>{subEx.name}</Text>
-                        <View style={styles.subParamsRow}>
-                          <View style={styles.subParamMiniBox}>
-                            <Text style={styles.subParamLabel}>Peso:</Text>
-                            <TextInput
-                              value={subEx.weight || ''}
-                              onChangeText={(v) =>
-                                handleUpdateSupersetExercise(block.id, sIdx, 'weight', v)
-                              }
-                              placeholder="Ej: 20kg"
-                              placeholderTextColor={colors.textMuted}
-                              style={styles.subParamInput}
-                            />
-                          </View>
-                          <View style={styles.subParamMiniBox}>
-                            <Text style={styles.subParamLabel}>Reps:</Text>
-                            <TextInput
-                              value={subEx.reps}
-                              onChangeText={(v) =>
-                                handleUpdateSupersetExercise(block.id, sIdx, 'reps', v)
-                              }
-                              placeholder="12"
-                              style={styles.subParamInput}
-                            />
-                          </View>
-                          <View style={styles.subParamMiniBox}>
-                            <Text style={styles.subParamLabel}>RIR:</Text>
-                            <TextInput
-                              value={subEx.rir || ''}
-                              onChangeText={(v) =>
-                                handleUpdateSupersetExercise(block.id, sIdx, 'rir', v)
-                              }
-                              placeholder="1"
-                              style={styles.subParamInput}
-                            />
-                          </View>
+                        <Pressable
+                          hitSlop={8}
+                          onPress={() => removeExerciseFromSuperset(activeDay.id, block.id, sIdx)}
+                          style={styles.deleteSubExBtn}
+                        >
+                          <Trash2 size={s(13)} color={colors.danger} />
+                        </Pressable>
+                      </View>
+
+                      {/* Inputs en 2 columnas: Repeticiones y Peso */}
+                      <View style={styles.subParamsGrid}>
+                        <View style={styles.subParamCol}>
+                          <Text style={styles.subParamLabel}>Repeticiones</Text>
+                          <TextInput
+                            value={subEx.reps}
+                            onChangeText={(v) =>
+                              handleUpdateSupersetExercise(block.id, sIdx, 'reps', v)
+                            }
+                            placeholder="12-15"
+                            placeholderTextColor={colors.textMuted}
+                            style={styles.subParamInput}
+                          />
+                        </View>
+
+                        <View style={styles.subParamCol}>
+                          <Text style={styles.subParamLabel}>Peso / Carga</Text>
+                          <TextInput
+                            value={subEx.weight || ''}
+                            onChangeText={(v) =>
+                              handleUpdateSupersetExercise(block.id, sIdx, 'weight', v)
+                            }
+                            placeholder="Ej: 10 kg"
+                            placeholderTextColor={colors.textMuted}
+                            style={styles.subParamInput}
+                          />
                         </View>
                       </View>
-                      <Pressable
-                        hitSlop={8}
-                        onPress={() => removeExerciseFromSuperset(activeDay.id, block.id, sIdx)}
-                        style={styles.deleteSubExBtn}
-                      >
-                        <Trash2 size={s(12)} color={colors.danger} />
-                      </Pressable>
                     </View>
                   ))}
 
@@ -412,17 +397,19 @@ export default function WorkoutAssignScreen() {
                     <Text style={styles.supersetRestLabel}>
                       Descanso tras completar ronda:
                     </Text>
-                    <TextInput
-                      value={String(block.rest_seconds)}
-                      onChangeText={(v) =>
-                        updateBlock(activeDay.id, block.id, {
-                          rest_seconds: parseInt(v.replace(/\D/g, ''), 10) || 90,
-                        })
-                      }
-                      keyboardType="number-pad"
-                      style={styles.supersetRestInput}
-                    />
-                    <Text style={styles.supersetSecText}>segundos</Text>
+                    <View style={styles.supersetRestInputWrap}>
+                      <TextInput
+                        value={String(block.rest_seconds)}
+                        onChangeText={(v) =>
+                          updateBlock(activeDay.id, block.id, {
+                            rest_seconds: parseInt(v.replace(/\D/g, ''), 10) || 90,
+                          })
+                        }
+                        keyboardType="number-pad"
+                        style={styles.supersetRestInput}
+                      />
+                      <Text style={styles.supersetSecText}>seg</Text>
+                    </View>
                   </View>
                 </View>
               );
@@ -549,7 +536,7 @@ const styles = StyleSheet.create({
     fontSize: fontSizes.xs,
     color: colors.text,
   },
-  paramsGrid: {
+  paramsRow: {
     flexDirection: 'row',
     gap: s(6),
   },
@@ -562,18 +549,22 @@ const styles = StyleSheet.create({
     fontSize: s(8),
     color: colors.textMuted,
     textTransform: 'uppercase',
+    textAlign: 'center',
   },
   paramInput: {
     backgroundColor: colors.background,
     borderRadius: radius.input,
     borderWidth: 1,
     borderColor: colors.border,
-    height: s(28),
-    paddingHorizontal: s(6),
+    height: s(32),
+    paddingHorizontal: s(4),
     fontFamily: fonts.bodyBold,
     fontSize: fontSizes.xs,
     color: colors.navy,
     textAlign: 'center',
+  },
+  notesWrap: {
+    gap: s(2),
   },
   notesInput: {
     backgroundColor: colors.background,
@@ -581,7 +572,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     paddingHorizontal: s(8),
-    paddingVertical: s(4),
+    paddingVertical: s(6),
     fontFamily: fonts.body,
     fontSize: fontSizes.label,
     color: colors.textSecondary,
@@ -598,6 +589,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    gap: s(6),
   },
   supersetTag: {
     backgroundColor: colors.navy,
@@ -626,7 +618,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.input,
     borderWidth: 1,
     borderColor: colors.border,
-    width: s(28),
+    width: s(32),
     height: s(24),
     fontFamily: fonts.bodyBold,
     fontSize: fontSizes.xs,
@@ -634,86 +626,92 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     padding: 0,
   },
-  subExerciseRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: s(8),
+  subExerciseCard: {
     backgroundColor: colors.background,
     borderRadius: radius.input,
-    padding: s(6),
+    padding: s(8),
+    gap: s(6),
+  },
+  subExTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: s(6),
   },
   subLetterCircle: {
-    width: s(16),
-    height: s(16),
-    borderRadius: s(8),
+    width: s(18),
+    height: s(18),
+    borderRadius: s(9),
     backgroundColor: colors.lime,
     alignItems: 'center',
     justifyContent: 'center',
   },
   subLetterText: {
     fontFamily: fonts.bodyBold,
-    fontSize: s(7.5),
+    fontSize: s(8),
     color: colors.navy,
   },
-  deleteSubExBtn: {
-    padding: s(4),
-  },
-  subExerciseContent: {
-    flex: 1,
-    gap: s(3),
-  },
   subExerciseName: {
+    flex: 1,
     fontFamily: fonts.bodyBold,
     fontSize: fontSizes.xs,
     color: colors.text,
   },
-  subParamsRow: {
+  deleteSubExBtn: {
+    padding: s(2),
+  },
+  subParamsGrid: {
     flexDirection: 'row',
     gap: s(8),
   },
-  subParamMiniBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: s(4),
+  subParamCol: {
+    flex: 1,
+    gap: s(2),
   },
   subParamLabel: {
     fontFamily: fonts.body,
-    fontSize: fontSizes.label,
+    fontSize: s(8),
     color: colors.textMuted,
+    textTransform: 'uppercase',
   },
   subParamInput: {
     backgroundColor: colors.surface,
     borderRadius: radius.input,
     borderWidth: 1,
     borderColor: colors.border,
-    width: s(45),
-    height: s(20),
+    height: s(28),
+    paddingHorizontal: s(6),
     fontFamily: fonts.bodyBold,
     fontSize: fontSizes.label,
     color: colors.navy,
     textAlign: 'center',
-    padding: 0,
   },
   supersetRestRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: s(4),
-    paddingTop: s(4),
+    justifyContent: 'space-between',
+    paddingTop: s(6),
     borderTopWidth: 1,
     borderTopColor: colors.border,
+    gap: s(6),
   },
   supersetRestLabel: {
+    flex: 1,
     fontFamily: fonts.body,
     fontSize: fontSizes.label,
     color: colors.textMuted,
+  },
+  supersetRestInputWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: s(4),
   },
   supersetRestInput: {
     backgroundColor: colors.background,
     borderRadius: radius.input,
     borderWidth: 1,
     borderColor: colors.border,
-    width: s(36),
-    height: s(22),
+    width: s(38),
+    height: s(24),
     fontFamily: fonts.bodyBold,
     fontSize: fontSizes.label,
     color: colors.navy,
