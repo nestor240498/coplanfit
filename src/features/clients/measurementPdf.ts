@@ -4,6 +4,7 @@ import { Alert, Platform } from 'react-native';
 
 import { Profile } from '@/features/profile/types';
 import { formatDateShort, formatGoal } from '@/lib/format';
+import { resolveMediaUrls } from '@/lib/storage';
 import { isChangeFavorable } from '@/lib/measurementTrends';
 import { Client, Measurement } from './types';
 
@@ -11,6 +12,8 @@ type GenerateMeasurementPdfOptions = {
   client: Pick<Client, 'full_name' | 'goal' | 'age'>;
   profile: Profile | null;
   measurement: Measurement;
+  /** Fotos de progreso (confidenciales): solo si el entrenador lo activa. */
+  includePhotos?: boolean;
 };
 
 type GenerateMeasurementComparisonPdfOptions = {
@@ -18,6 +21,8 @@ type GenerateMeasurementComparisonPdfOptions = {
   profile: Profile | null;
   earlier: Measurement;
   later: Measurement;
+  /** Fotos de progreso (confidenciales): solo si el entrenador lo activa. */
+  includePhotos?: boolean;
 };
 
 function fmt(value: number | null | undefined, unit = '', decimals = 0): string {
@@ -47,6 +52,7 @@ export async function generateAndShareMeasurementPdf({
   client,
   profile,
   measurement,
+  includePhotos = false,
 }: GenerateMeasurementPdfOptions): Promise<void> {
   try {
     const formattedDate = formatDateShort(measurement.measured_at);
@@ -62,13 +68,15 @@ export async function generateAndShareMeasurementPdf({
       : `<div class="trainer-logo-placeholder">${businessName.charAt(0) || 'C'}</div>`;
 
     const sumFolds = calculateSumFolds(measurement);
+    // Fotos del bucket privado: URLs firmadas temporales para que el PDF pueda cargarlas
+    const photoUrls = includePhotos ? await resolveMediaUrls(measurement.photos) : [];
 
     const photosHtml =
-      measurement.photos && measurement.photos.length > 0
+      photoUrls.length > 0
         ? `
           <div class="section-title">Registro Fotográfico</div>
           <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; margin-bottom: 8px;">
-            ${measurement.photos
+            ${photoUrls
               .map(
                 (url, idx) => `
                 <div style="width: 105px; height: 135px; border-radius: 6px; overflow: hidden; border: 1px solid #DDE2EA; background: #FAFBFD;">
@@ -637,10 +645,14 @@ export async function generateAndShareMeasurementComparisonPdf({
   profile,
   earlier,
   later,
+  includePhotos = false,
 }: GenerateMeasurementComparisonPdfOptions): Promise<void> {
   try {
     const formattedDateEarlier = formatDateShort(earlier.measured_at);
     const formattedDateLater = formatDateShort(later.measured_at);
+    const [earlierPhotos, laterPhotos] = includePhotos
+      ? await Promise.all([resolveMediaUrls(earlier.photos), resolveMediaUrls(later.photos)])
+      : [[], []];
     const goalUpper = (client.goal ? formatGoal(client.goal) : 'CONTROLADO').toUpperCase();
     const trainerName = (profile?.full_name || 'Entrenador Personal').toUpperCase();
     const businessName = (profile?.business_name || 'CoplanFit Coach').toUpperCase();
@@ -723,19 +735,19 @@ export async function generateAndShareMeasurementComparisonPdf({
       .join('');
 
     const comparisonPhotosHtml =
-      (earlier.photos && earlier.photos.length > 0) || (later.photos && later.photos.length > 0)
+      earlierPhotos.length > 0 || laterPhotos.length > 0
         ? `
           <div class="section-title">Evolución Visual (Fotos de Progreso)</div>
           <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 6px; margin-bottom: 10px;">
             ${
-              earlier.photos && earlier.photos.length > 0
+              earlierPhotos.length > 0
                 ? `
                 <div style="background: #FAFBFD; border: 1px solid #DDE2EA; border-radius: 6px; padding: 8px;">
                   <div style="font-size: 10px; font-weight: 800; color: #1B2A4A; margin-bottom: 6px;">
                     INICIAL (${formattedDateEarlier})
                   </div>
                   <div style="display: flex; flex-wrap: wrap; gap: 8px;">
-                    ${earlier.photos
+                    ${earlierPhotos
                       .map(
                         (url, idx) => `
                         <div style="width: 95px; height: 125px; border-radius: 4px; overflow: hidden; border: 1px solid #CBD2E0; background: #FFF;">
@@ -750,14 +762,14 @@ export async function generateAndShareMeasurementComparisonPdf({
                 : ''
             }
             ${
-              later.photos && later.photos.length > 0
+              laterPhotos.length > 0
                 ? `
                 <div style="background: #FAFBFD; border: 1px solid #DDE2EA; border-radius: 6px; padding: 8px;">
                   <div style="font-size: 10px; font-weight: 800; color: #1B2A4A; margin-bottom: 6px;">
                     FINAL (${formattedDateLater})
                   </div>
                   <div style="display: flex; flex-wrap: wrap; gap: 8px;">
-                    ${later.photos
+                    ${laterPhotos
                       .map(
                         (url, idx) => `
                         <div style="width: 95px; height: 125px; border-radius: 4px; overflow: hidden; border: 1px solid #CBD2E0; background: #FFF;">

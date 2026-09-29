@@ -12,10 +12,15 @@ import {
 } from 'react-native';
 
 import { AppBackground } from '@/components/ui/AppBackground';
+import { Button } from '@/components/ui/Button';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { getClient } from '@/features/clients/repository';
 import { Client } from '@/features/clients/types';
+import { getMyProfile } from '@/features/profile/repository';
+import { getExercises } from '@/features/workouts/exerciseService';
+import { formatPrescription, targetFieldLabel } from '@/features/workouts/prescription';
 import { WorkoutPlanVersion } from '@/features/workouts/types';
+import { shareWorkoutPdf } from '@/features/workouts/workoutPdf';
 import { getWorkoutPlanVersionById } from '@/features/workouts/workoutsRepository';
 import { s } from '@/theme/scale';
 import { colors, radius } from '@/theme/tokens';
@@ -28,6 +33,20 @@ export default function WorkoutPreviewScreen() {
   const [version, setVersion] = useState<WorkoutPlanVersion | null>(null);
   const [activeDayIndex, setActiveDayIndex] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [exporting, setExporting] = useState(false);
+
+  async function handleDownloadPdf() {
+    if (!client || !version) return;
+    setExporting(true);
+    try {
+      const [profile, bank] = await Promise.all([getMyProfile().catch(() => null), getExercises()]);
+      await shareWorkoutPdf({ client, profile, version, bank });
+    } catch (e) {
+      Alert.alert('No se pudo generar el PDF', (e as Error).message);
+    } finally {
+      setExporting(false);
+    }
+  }
 
   useEffect(() => {
     if (!id || !versionId) return;
@@ -133,8 +152,8 @@ export default function WorkoutPreviewScreen() {
                         <Text style={styles.metaValue}>{block.sets}</Text>
                       </View>
                       <View style={styles.metaItem}>
-                        <Text style={styles.metaLabel}>Reps</Text>
-                        <Text style={styles.metaValue}>{block.exercise.reps}</Text>
+                        <Text style={styles.metaLabel}>{targetFieldLabel(block.exercise.metric)}</Text>
+                        <Text style={styles.metaValue}>{formatPrescription(block.exercise)}</Text>
                       </View>
                       {block.exercise.weight ? (
                         <View style={styles.metaItem}>
@@ -155,7 +174,7 @@ export default function WorkoutPreviewScreen() {
                     </View>
 
                     {block.exercise.notes ? (
-                      <Text style={styles.exerciseNotes}>💡 {block.exercise.notes}</Text>
+                      <Text style={styles.exerciseNotes}>{block.exercise.notes}</Text>
                     ) : null}
                   </View>
                 );
@@ -165,7 +184,7 @@ export default function WorkoutPreviewScreen() {
               return (
                 <View key={block.id} style={styles.supersetCard}>
                   <View style={styles.supersetHeader}>
-                    <Text style={styles.supersetTag}>⚡ SUPERSERIE COMBINADA ({block.sets} SERIES)</Text>
+                    <Text style={styles.supersetTag}>SUPERSERIE · {block.sets} RONDAS</Text>
                   </View>
 
                   {block.exercises.map((subEx, sIdx) => (
@@ -178,7 +197,7 @@ export default function WorkoutPreviewScreen() {
                       <View style={styles.subExInfo}>
                         <Text style={styles.subExName}>{subEx.name}</Text>
                         <Text style={styles.subExReps}>
-                          {subEx.reps} reps {subEx.weight ? `· ${subEx.weight}` : ''} {subEx.rir ? `· RIR ${subEx.rir}` : ''}
+                          {formatPrescription(subEx)} {subEx.weight ? `· ${subEx.weight}` : ''} {subEx.rir ? `· RIR ${subEx.rir}` : ''}
                         </Text>
                       </View>
                     </View>
@@ -200,6 +219,15 @@ export default function WorkoutPreviewScreen() {
           </>
         )}
       </ScrollView>
+
+      <View style={styles.footer}>
+        <Button
+          title={exporting ? 'Generando PDF…' : 'Descargar PDF'}
+          onPress={handleDownloadPdf}
+          loading={exporting}
+          variant="secondary"
+        />
+      </View>
     </View>
   );
 }
@@ -240,6 +268,13 @@ const styles = StyleSheet.create({
     color: colors.surface,
   },
   scroll: { flex: 1 },
+  footer: {
+    padding: s(14),
+    paddingBottom: s(24),
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    backgroundColor: colors.surface,
+  },
   scrollContent: { padding: s(16), gap: s(10), paddingBottom: s(40) },
   dayHeader: {
     gap: s(2),

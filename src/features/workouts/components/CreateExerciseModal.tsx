@@ -1,25 +1,16 @@
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
-import {
-  Camera,
-  Check,
-  CheckCircle2,
-  Dumbbell,
-  Globe,
-  Plus,
-  Sparkles,
-  Trash2,
-  X,
-} from 'lucide-react-native';
+import { Camera, CheckCircle2, Dumbbell, Globe, Plus, Sparkles, Trash2, Video, X } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
-  Switch,
   Text,
   TextInput,
   View,
@@ -29,259 +20,271 @@ import { Button } from '@/components/ui/Button';
 import { s } from '@/theme/scale';
 import { colors, radius } from '@/theme/tokens';
 import { fonts, fontSizes } from '@/theme/typography';
-import { generateExerciseAiDetails } from '../exerciseAiAssistant';
+import { classifyExercise, generateExerciseAiDetails } from '../exerciseAiAssistant';
+import { findSimilarExercises, matchesExerciseQuery } from '../exerciseSearch';
 import {
   createExercise,
   getCurrentUserRole,
   updateExercise,
   uploadExerciseImage,
+  uploadExerciseVideo,
 } from '../exerciseService';
-import { Exercise, MUSCLE_GROUPS, MuscleGroup, TRAINING_LEVELS, TrainingLevel } from '../types';
+import {
+  Exercise,
+  EXERCISE_EQUIPMENT,
+  EXERCISE_METRICS,
+  EXERCISE_TYPES,
+  ExerciseMetric,
+  ExerciseType,
+  equipmentLabel,
+  exerciseTypeLabel,
+  LATERALITIES,
+  Laterality,
+  metricLabel,
+  MOVEMENT_PATTERNS,
+  MovementPattern,
+  MUSCLE_GROUPS,
+  MuscleGroup,
+  muscleLabel,
+  TRAINING_LEVELS,
+  TrainingLevel,
+} from '../types';
 import { ExerciseImageCarousel } from './ExerciseImageCarousel';
-
-const EQUIPMENT_LIST = [
-  { id: 'barra', label: 'Barra' },
-  { id: 'mancuernas', label: 'Mancuernas' },
-  { id: 'polea', label: 'Polea' },
-  { id: 'maquina', label: 'Máquina' },
-  { id: 'peso_corporal', label: 'Peso Corporal' },
-  { id: 'bandas', label: 'Bandas' },
-];
+import { ExerciseVideo } from './ExerciseVideo';
+import { FieldLabel, FormSection, MultiChoice, SingleChoice, TextListInput } from './ExerciseFormControls';
 
 type Props = {
   visible: boolean;
   onClose: () => void;
   onSaved: (exercise: Exercise) => void;
+  /** Ejercicio a editar. */
   initialExercise?: Exercise | null;
+  /** Valores iniciales para uno nuevo (crear variante o duplicar un oficial como propio). */
+  template?: Partial<Exercise> | null;
+  /** Banco actual: avisa de duplicados y permite elegir de qué ejercicio es variante. */
+  existingExercises?: Exercise[];
 };
 
-/**
- * Convierte un texto de instrucciones en un array de pasos individuales
- */
+type FormState = {
+  name: string;
+  muscleGroup: MuscleGroup;
+  secondaryMuscles: MuscleGroup[];
+  equipment: string;
+  extraEquipment: string[];
+  difficulty: TrainingLevel;
+  exerciseType: ExerciseType | null;
+  metric: ExerciseMetric;
+  laterality: Laterality;
+  pattern: MovementPattern | null;
+  steps: string[];
+  tips: string;
+  cues: string[];
+  contraindications: string[];
+  aliases: string[];
+  parentId: string | null;
+  images: string[];
+  videoPath: string | null;
+};
+
+/** Convierte un texto de instrucciones ("1. … 2. …") en pasos individuales. */
 function parseInstructionsToSteps(text?: string | null): string[] {
   if (!text || !text.trim()) return [];
-  // Dividir por saltos de línea O por números de pasos "1. " "2. " "3. "
   const rawParts = text
-    .split(/(?:[\r\n]+|(?<=\s|^)(?=\d+[\.\)]\s))/g)
-    .map((p) => p.replace(/^\d+[\.\)]\s*/, '').trim())
+    .split(/(?:[\r\n]+|(?<=\s|^)(?=\d+[.)]\s))/g)
+    .map((p) => p.replace(/^\d+[.)]\s*/, '').trim())
     .filter((p) => p.length > 0);
-
   return rawParts.length > 0 ? rawParts : [text.trim()];
 }
 
-export function CreateExerciseModal({ visible, onClose, onSaved, initialExercise }: Props) {
-  const [name, setName] = useState('');
-  const [muscleGroup, setMuscleGroup] = useState<MuscleGroup>('pecho');
-  const [equipment, setEquipment] = useState('mancuernas');
-  const [difficulty, setDifficulty] = useState<TrainingLevel>('intermedio');
-  const [instructionSteps, setInstructionSteps] = useState<string[]>([]);
-  const [tips, setTips] = useState('');
-  const [images, setImages] = useState<string[]>([]);
-  const [activeImageIndex, setActiveImageIndex] = useState(0);
+function formFrom(ex: Partial<Exercise> | null | undefined): FormState {
+  const images =
+    Array.isArray(ex?.images) && ex.images.length > 0 ? ex.images : ex?.image_url ? [ex.image_url] : [];
+  return {
+    name: ex?.name ?? '',
+    muscleGroup: ex?.muscle_group ?? 'pecho',
+    secondaryMuscles: ex?.secondary_muscles ?? [],
+    equipment: ex?.equipment ?? 'mancuernas',
+    extraEquipment: ex?.extra_equipment ?? [],
+    difficulty: ex?.difficulty ?? 'intermedio',
+    exerciseType: ex?.exercise_type ?? null,
+    metric: ex?.metric ?? 'reps_peso',
+    laterality: ex?.laterality ?? 'bilateral',
+    pattern: ex?.movement_pattern ?? null,
+    steps: parseInstructionsToSteps(ex?.instructions),
+    tips: ex?.tips ?? '',
+    cues: ex?.cues ?? [],
+    contraindications: ex?.contraindications ?? [],
+    aliases: ex?.aliases ?? [],
+    parentId: ex?.parent_id ?? null,
+    images,
+    videoPath: ex?.video_path ?? null,
+  };
+}
 
-  // Opciones múltiples de qué diseñar con IA
-  const [aiGenerateInstructions, setAiGenerateInstructions] = useState(true);
-  const [aiGenerateTips, setAiGenerateTips] = useState(true);
-
-  const [aiBannerMessage, setAiBannerMessage] = useState<string | null>(null);
-  const [generatingAi, setGeneratingAi] = useState(false);
-  const [uploadingImage, setUploadingImage] = useState(false);
-  const [isGlobal, setIsGlobal] = useState(false);
+export function CreateExerciseModal({
+  visible,
+  onClose,
+  onSaved,
+  initialExercise,
+  template,
+  existingExercises = [],
+}: Props) {
+  const [form, setForm] = useState<FormState>(() => formFrom(initialExercise ?? template));
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+  const [classifying, setClassifying] = useState(false);
+  const [aiFilled, setAiFilled] = useState(false);
+  const [generatingTechnique, setGeneratingTechnique] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [uploadingVideo, setUploadingVideo] = useState(false);
+  const [activeImageIndex, setActiveImageIndex] = useState(0);
+  const [parentQuery, setParentQuery] = useState('');
   const [saving, setSaving] = useState(false);
 
   const isEditing = Boolean(initialExercise);
-  const isAiReady = Boolean(
-    name.trim() &&
-    muscleGroup &&
-    equipment &&
-    difficulty &&
-    (aiGenerateInstructions || aiGenerateTips)
-  );
+  const set = <K extends keyof FormState>(key: K, value: FormState[K]) => setForm((f) => ({ ...f, [key]: value }));
 
-  const missingAiField = !name.trim()
-    ? 'Falta el nombre del ejercicio para habilitar el botón.'
-    : !muscleGroup
-    ? 'Falta seleccionar el grupo muscular principal.'
-    : !equipment
-    ? 'Falta seleccionar el equipamiento necesario.'
-    : !difficulty
-    ? 'Falta seleccionar el nivel de dificultad.'
-    : !aiGenerateInstructions && !aiGenerateTips
-    ? 'Marca al menos una casilla (Instrucciones o Consejos).'
-    : null;
+  // Al abrir (o cambiar el ejercicio/plantilla) se reinicia el formulario durante el render,
+  // el patrón recomendado por React en lugar de un efecto
+  const [openedWith, setOpenedWith] = useState({ visible, initialExercise, template });
+  if (
+    openedWith.visible !== visible ||
+    openedWith.initialExercise !== initialExercise ||
+    openedWith.template !== template
+  ) {
+    setOpenedWith({ visible, initialExercise, template });
+    if (visible) {
+      setForm(formFrom(initialExercise ?? template));
+      setAiFilled(false);
+      setActiveImageIndex(0);
+      setParentQuery('');
+    }
+  }
 
   useEffect(() => {
-    if (visible) {
-      getCurrentUserRole().then((res) => {
-        setIsSuperAdmin(res.isSuperAdmin);
+    if (visible) getCurrentUserRole().then((res) => setIsSuperAdmin(res.isSuperAdmin));
+  }, [visible]);
 
-        if (initialExercise) {
-          setName(initialExercise.name || '');
-          setMuscleGroup(initialExercise.muscle_group || 'pecho');
-          setEquipment(initialExercise.equipment || 'mancuernas');
-          setDifficulty(initialExercise.difficulty || 'intermedio');
-          setInstructionSteps(parseInstructionsToSteps(initialExercise.instructions));
-          setTips(initialExercise.tips || '');
-          const loadedImages = Array.isArray(initialExercise.images) && initialExercise.images.length > 0
-            ? initialExercise.images
-            : initialExercise.image_url
-            ? [initialExercise.image_url]
-            : [];
-          setImages(loadedImages);
-          setActiveImageIndex(0);
-          setAiBannerMessage(null);
-          setIsGlobal(!initialExercise.is_custom);
-        } else {
-          setName('');
-          setMuscleGroup('pecho');
-          setEquipment('mancuernas');
-          setDifficulty('intermedio');
-          setInstructionSteps([]);
-          setTips('');
-          setImages([]);
-          setActiveImageIndex(0);
-          setAiBannerMessage(null);
-          setIsGlobal(res.isSuperAdmin);
-        }
-      });
-    }
-  }, [visible, initialExercise]);
+  const selfId = initialExercise?.id;
+  const similarExercises =
+    !isEditing && form.name.trim().length >= 3 ? findSimilarExercises(form.name, existingExercises, selfId) : [];
+  const parentExercise = existingExercises.find((ex) => ex.id === form.parentId) ?? null;
+  const parentResults =
+    parentQuery.trim().length >= 2
+      ? existingExercises.filter((ex) => ex.id !== selfId && matchesExerciseQuery(ex, parentQuery)).slice(0, 5)
+      : [];
 
-  const [aiCounter, setAiCounter] = useState(0);
+  const classificationSummary = [
+    muscleLabel(form.muscleGroup),
+    equipmentLabel(form.equipment),
+    exerciseTypeLabel(form.exerciseType),
+    metricLabel(form.metric),
+  ]
+    .filter(Boolean)
+    .join(' · ');
+  const techniqueSummary =
+    form.steps.length + form.cues.length > 0
+      ? `${form.steps.length} pasos · ${form.cues.length} indicaciones`
+      : 'Sin técnica todavía';
+  const safetySummary =
+    [
+      form.contraindications.length ? `${form.contraindications.length} contraindicaciones` : '',
+      form.aliases.length ? `${form.aliases.length} sinónimos` : '',
+    ]
+      .filter(Boolean)
+      .join(' · ') || 'Opcional';
 
-  // Funciones para manipular el repeater de pasos de instrucciones
-  function handleUpdateStep(index: number, text: string) {
-    setInstructionSteps((prev) => {
-      const next = [...prev];
-      next[index] = text;
-      return next;
-    });
-  }
-
-  function handleAddStep() {
-    setInstructionSteps((prev) => [...prev, '']);
-  }
-
-  function handleRemoveStep(index: number) {
-    setInstructionSteps((prev) => prev.filter((_, i) => i !== index));
-  }
-
-  // Diseñar con IA requiriendo todo el contexto necesario
-  async function handleGenerateAi() {
-    const missing: string[] = [];
-    if (!name.trim()) missing.push('Nombre del ejercicio');
-    if (!muscleGroup) missing.push('Grupo muscular principal');
-    if (!equipment) missing.push('Equipamiento necesario');
-    if (!difficulty) missing.push('Nivel de dificultad');
-
-    if (missing.length > 0) {
-      Alert.alert(
-        'Contexto requerido para IA',
-        `Para que IA diseñe la técnica y consejos con el contexto adecuado, por favor completa primero:\n\n• ${missing.join('\n• ')}`
-      );
-      return;
-    }
-
-    if (!aiGenerateInstructions && !aiGenerateTips) {
-      Alert.alert(
-        'Selecciona una opción',
-        'Por favor marca al menos una casilla (Instrucciones o Consejos) para diseñar con IA.'
-      );
-      return;
-    }
-
-    setGeneratingAi(true);
+  async function handleClassify() {
+    if (form.name.trim().length < 3) return;
+    setClassifying(true);
     try {
-      const currentFullInstructions = instructionSteps
-        .map((st, i) => `${i + 1}. ${st}`)
-        .join('\n\n');
-
-      const aiData = await generateExerciseAiDetails(
-        name,
-        muscleGroup,
-        equipment,
-        difficulty,
-        currentFullInstructions,
-        tips,
-        {
-          instructions: aiGenerateInstructions,
-          tips: aiGenerateTips,
-          images: false,
-          customSteps: instructionSteps.filter(Boolean),
-        }
-      );
-
-      if (aiGenerateInstructions) {
-        if (Array.isArray(aiData.steps) && aiData.steps.length > 0) {
-          const formattedSteps = aiData.steps.map((st: any) => {
-            const title = st.title ? `${st.title}: ` : '';
-            return `${title}${st.description || ''}`.trim() || st.description || '';
-          }).filter(Boolean);
-
-          if (formattedSteps.length > 0) {
-            setInstructionSteps(formattedSteps);
-          } else if (aiData.instructions) {
-            setInstructionSteps(parseInstructionsToSteps(aiData.instructions));
-          }
-        } else if (aiData.instructions) {
-          setInstructionSteps(parseInstructionsToSteps(aiData.instructions));
-        }
-      }
-
-      if (aiGenerateTips && aiData.tips) {
-        setTips(aiData.tips);
-      }
-
-      setAiCounter((c) => c + 1);
-
-      const generatedParts = [
-        aiGenerateInstructions ? 'instrucciones' : '',
-        aiGenerateTips ? 'consejos' : '',
-      ].filter(Boolean).join(' y ');
-
-      setAiBannerMessage(`¡${generatedParts.charAt(0).toUpperCase() + generatedParts.slice(1)} generados con IA para "${name.trim()}"! ✨`);
+      const ai = await classifyExercise(form.name);
+      setForm((f) => ({
+        ...f,
+        muscleGroup: ai.muscle_group,
+        secondaryMuscles: ai.secondary_muscles,
+        equipment: ai.equipment,
+        extraEquipment: ai.extra_equipment,
+        exerciseType: ai.exercise_type,
+        metric: ai.metric,
+        laterality: ai.laterality,
+        pattern: ai.movement_pattern,
+        difficulty: ai.difficulty,
+        // Lo que el entrenador ya escribió no se pisa
+        cues: f.cues.length ? f.cues : ai.cues,
+        contraindications: f.contraindications.length ? f.contraindications : ai.contraindications,
+        aliases: f.aliases.length ? f.aliases : ai.aliases,
+      }));
+      setAiFilled(true);
+    } catch (e) {
+      Alert.alert('No se pudo completar con IA', (e as Error).message);
     } finally {
-      setGeneratingAi(false);
+      setClassifying(false);
     }
   }
 
-  // Subir foto desde la galería o archivos
+  async function runTechniqueGeneration() {
+    setGeneratingTechnique(true);
+    try {
+      const ai = await generateExerciseAiDetails(
+        form.name,
+        form.muscleGroup,
+        form.equipment,
+        form.difficulty,
+        '',
+        '',
+        { instructions: true, tips: true, images: false }
+      );
+      const steps =
+        Array.isArray(ai.steps) && ai.steps.length > 0
+          ? ai.steps.map((st) => `${st.title ? `${st.title}: ` : ''}${st.description ?? ''}`.trim()).filter(Boolean)
+          : parseInstructionsToSteps(ai.instructions);
+      setForm((f) => ({ ...f, steps: steps.length ? steps : f.steps, tips: ai.tips || f.tips }));
+    } catch (e) {
+      Alert.alert('No se pudo redactar la técnica', (e as Error).message);
+    } finally {
+      setGeneratingTechnique(false);
+    }
+  }
+
+  function handleGenerateTechnique() {
+    if (form.name.trim().length < 3) {
+      Alert.alert('Falta el nombre', 'Escribe el nombre del ejercicio para que la IA redacte la técnica.');
+      return;
+    }
+    if (form.steps.length > 0 || form.tips.trim()) {
+      Alert.alert('¿Reemplazar la técnica?', 'La IA sustituirá los pasos y consejos que ya tienes.', [
+        { text: 'Cancelar', style: 'cancel' },
+        { text: 'Reemplazar', onPress: runTechniqueGeneration },
+      ]);
+      return;
+    }
+    runTechniqueGeneration();
+  }
+
   async function handlePickImage(replaceIndex?: number) {
     try {
       const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!permission.granted) {
-        Alert.alert(
-          'Permiso requerido',
-          'Necesitas autorizar el acceso a tus fotos para subir una imagen del paso.'
-        );
+        Alert.alert('Permiso requerido', 'Autoriza el acceso a tus fotos para subir una imagen del ejercicio.');
         return;
       }
-
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ['images'],
         allowsEditing: true,
         aspect: [4, 3],
         quality: 0.85,
       });
+      if (result.canceled || !result.assets[0]?.uri) return;
 
-      if (!result.canceled && result.assets && result.assets[0]?.uri) {
-        setUploadingImage(true);
-        const uploadedUrl = await uploadExerciseImage(result.assets[0].uri);
-
-        setImages((prev) => {
-          if (typeof replaceIndex === 'number' && replaceIndex >= 0 && replaceIndex < prev.length) {
-            const updated = [...prev];
-            updated[replaceIndex] = uploadedUrl;
-            return updated;
-          }
-          const next = [...prev, uploadedUrl];
-          setActiveImageIndex(next.length - 1);
-          return next;
-        });
-
-        setAiCounter((c) => c + 1);
-      }
+      setUploadingImage(true);
+      const uploadedUrl = await uploadExerciseImage(result.assets[0].uri);
+      setForm((f) => {
+        const images = [...f.images];
+        if (replaceIndex !== undefined && replaceIndex < images.length) images[replaceIndex] = uploadedUrl;
+        else images.push(uploadedUrl);
+        return { ...f, images };
+      });
+      if (replaceIndex === undefined) setActiveImageIndex(form.images.length);
     } catch (err) {
       Alert.alert('Error al subir imagen', (err as Error).message);
     } finally {
@@ -289,954 +292,739 @@ export function CreateExerciseModal({ visible, onClose, onSaved, initialExercise
     }
   }
 
-  // Eliminar una imagen del carrusel
-  function handleRemoveImage(index: number) {
-    setImages((prev) => {
-      const next = prev.filter((_, i) => i !== index);
-      if (activeImageIndex >= next.length) {
-        setActiveImageIndex(Math.max(0, next.length - 1));
+  async function handlePickVideo(source: 'camera' | 'library') {
+    try {
+      const permission =
+        source === 'camera'
+          ? await ImagePicker.requestCameraPermissionsAsync()
+          : await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permission.granted) {
+        Alert.alert('Permiso requerido', 'Autoriza el acceso para añadir el vídeo del ejercicio.');
+        return;
       }
-      return next;
-    });
-    setAiCounter((c) => c + 1);
+      const options: ImagePicker.ImagePickerOptions = {
+        mediaTypes: ['videos'],
+        allowsEditing: true,
+        videoMaxDuration: 30,
+        videoQuality: ImagePicker.UIImagePickerControllerQualityType.Medium,
+        videoExportPreset: ImagePicker.VideoExportPreset.H264_1280x720,
+      };
+      const result =
+        source === 'camera'
+          ? await ImagePicker.launchCameraAsync(options)
+          : await ImagePicker.launchImageLibraryAsync(options);
+      const asset = result.canceled ? null : result.assets[0];
+      if (!asset?.uri) return;
+      if (asset.duration && asset.duration > 31_000) {
+        Alert.alert('Vídeo demasiado largo', 'Recórtalo a 30 segundos como máximo: basta con 2 o 3 repeticiones.');
+        return;
+      }
+
+      setUploadingVideo(true);
+      const path = await uploadExerciseVideo(asset.uri, asset.mimeType);
+      set('videoPath', path);
+    } catch (err) {
+      Alert.alert('Error al subir el vídeo', (err as Error).message);
+    } finally {
+      setUploadingVideo(false);
+    }
+  }
+
+  function handleRemoveImage(index: number) {
+    setForm((f) => ({ ...f, images: f.images.filter((_, i) => i !== index) }));
+    setActiveImageIndex((i) => Math.max(0, Math.min(i, form.images.length - 2)));
   }
 
   async function handleSave() {
-    if (!name.trim()) {
-      Alert.alert('Campo requerido', 'Por favor ingresa el nombre del ejercicio.');
+    if (form.name.trim().length < 2) {
+      Alert.alert('Falta el nombre', 'Escribe el nombre del ejercicio.');
       return;
     }
 
-    const resolvedInstructions = instructionSteps
-      .filter((st) => st.trim().length > 0)
-      .map((st, i) => `${i + 1}. ${st.trim()}`)
-      .join('\n\n');
+    const input = {
+      name: form.name.trim(),
+      muscle_group: form.muscleGroup,
+      secondary_muscles: form.secondaryMuscles.filter((m) => m !== form.muscleGroup),
+      equipment: form.equipment,
+      extra_equipment: form.extraEquipment.filter((e) => e !== form.equipment),
+      difficulty: form.difficulty,
+      exercise_type: form.exerciseType,
+      metric: form.metric,
+      laterality: form.laterality,
+      movement_pattern: form.pattern,
+      instructions: form.steps
+        .filter((st) => st.trim())
+        .map((st, i) => `${i + 1}. ${st.trim()}`)
+        .join('\n\n'),
+      tips: form.tips,
+      cues: form.cues,
+      contraindications: form.contraindications,
+      aliases: form.aliases,
+      parent_id: form.parentId,
+      video_path: form.videoPath,
+      images: form.images.length > 0 ? form.images : null,
+      image_url: form.images[0] ?? '',
+      // Un superadmin crea ejercicios oficiales; al editar se respeta el origen del ejercicio
+      is_global: isSuperAdmin && (initialExercise ? !initialExercise.is_custom : true),
+    };
 
     setSaving(true);
     try {
-      let result: Exercise;
-
-      if (isEditing && initialExercise) {
-        result = await updateExercise(initialExercise.id, {
-          name: name.trim(),
-          muscle_group: muscleGroup,
-          equipment,
-          difficulty,
-          instructions: resolvedInstructions || undefined,
-          tips: tips.trim() || undefined,
-          images: images.length > 0 ? images : undefined,
-          image_url: images[0] || undefined,
-          is_global: isSuperAdmin ? true : isGlobal,
-        });
-
-        Alert.alert('¡Ejercicio actualizado! ✅', 'Los cambios se han guardado correctamente.');
-      } else {
-        result = await createExercise({
-          name: name.trim(),
-          muscle_group: muscleGroup,
-          equipment,
-          difficulty,
-          instructions: resolvedInstructions || undefined,
-          tips: tips.trim() || undefined,
-          images: images.length > 0 ? images : undefined,
-          image_url: images[0] || undefined,
-          is_global: isSuperAdmin ? true : isGlobal,
-        });
-
-        Alert.alert(
-          '¡Ejercicio guardado! 🎉',
-          isSuperAdmin || isGlobal
-            ? 'Se ha añadido al catálogo oficial de CoplanFit para todos los entrenadores.'
-            : 'Se ha guardado en tus ejercicios personalizados.'
-        );
-      }
-
+      const result =
+        isEditing && initialExercise ? await updateExercise(initialExercise.id, input) : await createExercise(input);
       onSaved(result);
       onClose();
     } catch (err) {
-      Alert.alert('Error al guardar', (err as Error).message);
+      Alert.alert('No se pudo guardar', (err as Error).message);
     } finally {
       setSaving(false);
     }
   }
 
+  // Una variante llega con el nombre vacío; «Hacer mi versión» llega con el nombre del oficial
+  const title = isEditing
+    ? 'Editar ejercicio'
+    : template?.parent_id
+      ? template.name
+        ? 'Mi versión del ejercicio'
+        : 'Nueva variante'
+      : 'Nuevo ejercicio';
+
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <View style={styles.overlay}>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.overlay}>
         <View style={styles.sheet}>
-          {/* Header */}
           <View style={styles.header}>
             <View style={styles.titleWrap}>
               <View style={styles.iconWrap}>
                 <Dumbbell size={s(16)} color={colors.navy} />
               </View>
               <View>
-                <Text style={styles.title}>
-                  {isEditing ? 'Editar Ejercicio' : 'Crear Nuevo Ejercicio'}
-                </Text>
+                <Text style={styles.title}>{title}</Text>
                 <Text style={styles.subtitle}>
-                  {isSuperAdmin
-                    ? '🌍 Catálogo Oficial CoplanFit'
-                    : 'Para tu banco de entrenamiento'}
+                  {isSuperAdmin ? 'Catálogo oficial CoplanFit' : 'Para tu banco de ejercicios'}
                 </Text>
               </View>
             </View>
-            <Pressable onPress={onClose} style={styles.closeBtn} hitSlop={10}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Cerrar"
+              onPress={onClose}
+              style={styles.closeBtn}
+            >
               <X size={s(18)} color={colors.textSecondary} />
             </Pressable>
           </View>
 
-          <ScrollView style={styles.body} contentContainerStyle={styles.bodyContent} showsVerticalScrollIndicator={false}>
-            {/* Banner de confirmación de IA */}
-            {aiBannerMessage && (
-              <View style={styles.aiNotificationBanner}>
-                <CheckCircle2 size={s(16)} color={colors.navy} />
-                <Text style={styles.aiNotificationText}>{aiBannerMessage}</Text>
-              </View>
-            )}
-
-            {/* Opción Super Admin: Catálogo Oficial */}
+          <ScrollView
+            style={styles.body}
+            contentContainerStyle={styles.bodyContent}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
             {isSuperAdmin && (
               <View style={styles.adminBanner}>
-                <View style={styles.adminInfo}>
-                  <Globe size={s(16)} color={colors.navy} />
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.adminTitle}>Catálogo Oficial CoplanFit</Text>
-                    <Text style={styles.adminDesc}>
-                      Este ejercicio se guardará directamente en el catálogo oficial y estará disponible para todos los entrenadores.
-                    </Text>
-                  </View>
-                </View>
-                <View style={styles.adminBadgeOficial}>
-                  <Text style={styles.adminBadgeOficialText}>Oficial</Text>
-                </View>
+                <Globe size={s(14)} color={colors.navy} />
+                <Text style={styles.adminText}>
+                  Se guardará en el catálogo oficial, visible para todos los entrenadores.
+                </Text>
               </View>
             )}
 
-            {/* Nombre */}
-            <View style={styles.field}>
-              <Text style={styles.label}>NOMBRE DEL EJERCICIO *</Text>
+            {/* Nombre + alta rápida con IA */}
+            <View>
+              <FieldLabel>Nombre del ejercicio *</FieldLabel>
               <TextInput
-                value={name}
-                onChangeText={(val) => {
-                  setName(val);
-                  setAiBannerMessage(null);
-                }}
-                placeholder="Ej: Press francés en banco plano con barra Z"
+                value={form.name}
+                onChangeText={(val) => set('name', val)}
+                placeholder="Ej: Sentadilla goblet con kettlebell"
                 placeholderTextColor={colors.textMuted}
                 style={styles.input}
+                returnKeyType="done"
+                onSubmitEditing={() => !isEditing && handleClassify()}
               />
-            </View>
-
-            {/* Grupo Muscular */}
-            <View style={styles.field}>
-              <Text style={styles.label}>GRUPO MUSCULAR PRINCIPAL *</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipsRow}>
-                {MUSCLE_GROUPS.map((m) => {
-                  const isActive = muscleGroup === m.id;
-                  return (
-                    <Pressable
-                      key={m.id}
-                      onPress={() => setMuscleGroup(m.id)}
-                      style={[styles.chip, isActive && styles.chipActive]}
-                    >
-                      <Text style={[styles.chipText, isActive && styles.chipTextActive]}>
-                        {m.label}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </ScrollView>
-            </View>
-
-            {/* Equipamiento */}
-            <View style={styles.field}>
-              <Text style={styles.label}>EQUIPAMIENTO NECESARIO *</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipsRow}>
-                {EQUIPMENT_LIST.map((eq) => {
-                  const isActive = equipment === eq.id;
-                  return (
-                    <Pressable
-                      key={eq.id}
-                      onPress={() => setEquipment(eq.id)}
-                      style={[styles.chip, isActive && styles.chipActive]}
-                    >
-                      <Text style={[styles.chipText, isActive && styles.chipTextActive]}>
-                        {eq.label}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </ScrollView>
-            </View>
-
-            {/* Dificultad */}
-            <View style={styles.field}>
-              <Text style={styles.label}>NIVEL DE DIFICULTAD</Text>
-              <View style={styles.diffRow}>
-                {TRAINING_LEVELS.map((lvl) => {
-                  const isActive = difficulty === lvl.id;
-                  return (
-                    <Pressable
-                      key={lvl.id}
-                      onPress={() => setDifficulty(lvl.id)}
-                      style={[styles.diffBtn, isActive && styles.diffBtnActive]}
-                    >
-                      <Text style={[styles.diffBtnText, isActive && styles.diffBtnTextActive]}>
-                        {lvl.label}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
-            </View>
-
-            {/* Panel de Generación con IA y Checks Múltiples */}
-            <View style={styles.aiControlCard}>
-              <View style={styles.aiControlHeader}>
-                <View style={styles.aiControlTitleRow}>
-                  <View style={styles.aiIconBadge}>
-                    <Sparkles size={s(12)} color={colors.navy} />
-                  </View>
-                  <Text style={styles.aiControlTitle}>ASISTENTE DE DISEÑO CON IA</Text>
-                </View>
-              </View>
-
-              <Text style={styles.aiControlSubtitle}>
-                Usa el nombre, grupo muscular, equipamiento y dificultad especificados arriba para que Gemini redacte la técnica y consejos con contexto biomecánico preciso.
-              </Text>
-
-              {/* Checkboxes de opciones IA */}
-              <View style={styles.checksRow}>
+              {!isEditing && (
                 <Pressable
-                  onPress={() => setAiGenerateInstructions((v) => !v)}
-                  style={[styles.checkChip, aiGenerateInstructions && styles.checkChipActive]}
+                  accessibilityRole="button"
+                  onPress={handleClassify}
+                  disabled={form.name.trim().length < 3 || classifying}
+                  style={[styles.aiBtn, (form.name.trim().length < 3 || classifying) && styles.aiBtnDisabled]}
                 >
-                  <View style={[styles.checkboxBox, aiGenerateInstructions && styles.checkboxBoxActive]}>
-                    {aiGenerateInstructions && <Check size={s(10)} color={colors.navy} strokeWidth={3} />}
-                  </View>
-                  <Text style={[styles.checkChipText, aiGenerateInstructions && styles.checkChipTextActive]}>
-                    Instrucciones
-                  </Text>
-                </Pressable>
-
-                <Pressable
-                  onPress={() => setAiGenerateTips((v) => !v)}
-                  style={[styles.checkChip, aiGenerateTips && styles.checkChipActive]}
-                >
-                  <View style={[styles.checkboxBox, aiGenerateTips && styles.checkboxBoxActive]}>
-                    {aiGenerateTips && <Check size={s(10)} color={colors.navy} strokeWidth={3} />}
-                  </View>
-                  <Text style={[styles.checkChipText, aiGenerateTips && styles.checkChipTextActive]}>
-                    Consejos
-                  </Text>
-                </Pressable>
-              </View>
-
-              {/* Botón de Generar con IA */}
-              <Pressable
-                onPress={handleGenerateAi}
-                disabled={!isAiReady || generatingAi}
-                style={[
-                  styles.aiMainActionBtn,
-                  (!isAiReady || generatingAi) && styles.aiMainActionBtnDisabled,
-                ]}
-              >
-                {generatingAi ? (
-                  <>
+                  {classifying ? (
                     <ActivityIndicator size="small" color={colors.navy} />
-                    <Text style={styles.aiMainActionBtnText}>Diseñando con IA…</Text>
-                  </>
-                ) : (
-                  <>
-                    <Sparkles
-                      size={s(13)}
-                      color={isAiReady ? colors.navy : colors.textMuted}
-                    />
-                    <Text
-                      style={[
-                        styles.aiMainActionBtnText,
-                        !isAiReady && styles.aiMainActionBtnTextDisabled,
-                      ]}
-                    >
-                      Diseñar con IA ✨
+                  ) : (
+                    <Sparkles size={s(14)} color={colors.navy} />
+                  )}
+                  <Text style={styles.aiBtnText}>
+                    {classifying ? 'Analizando el ejercicio…' : 'Completar datos con IA'}
+                  </Text>
+                </Pressable>
+              )}
+              {aiFilled && (
+                <View style={styles.aiFilledBanner} accessibilityLiveRegion="polite">
+                  <CheckCircle2 size={s(14)} color={colors.success} />
+                  <Text style={styles.aiFilledText}>
+                    La IA propuso la clasificación, las indicaciones y los sinónimos. Revísalos antes de guardar.
+                  </Text>
+                </View>
+              )}
+              {similarExercises.length > 0 && (
+                <View style={styles.duplicateBox} accessibilityLiveRegion="polite">
+                  <Text style={styles.duplicateTitle}>Ya tienes ejercicios parecidos en el banco:</Text>
+                  {similarExercises.map((ex) => (
+                    <Text key={ex.id} style={styles.duplicateItem} numberOfLines={1}>
+                      • {ex.name}
                     </Text>
-                  </>
-                )}
-              </Pressable>
-
-              {/* Mensaje indicador si faltan campos para habilitar */}
-              {!isAiReady && missingAiField && (
-                <View style={styles.aiMissingWarningRow}>
-                  <Text style={styles.aiMissingWarningText}>
-                    * {missingAiField}
+                  ))}
+                  <Text style={styles.duplicateHint}>
+                    Si es el mismo movimiento con otro agarre, equipo o posición, guárdalo igualmente y márcalo abajo en «¿Es una variante?».
                   </Text>
                 </View>
               )}
             </View>
 
-            {/* Repeater de Instrucciones Paso a Paso */}
-            <View style={styles.field}>
-              <View style={styles.labelWithAction}>
-                <Text style={styles.label}>INSTRUCCIONES DE EJECUCIÓN (PASO A PASO)</Text>
-                <Text style={styles.stepsCountText}>{instructionSteps.length} Pasos</Text>
+            <FormSection title="Clasificación" summary={classificationSummary} defaultOpen={!isEditing}>
+              <View>
+                <FieldLabel>Músculo principal</FieldLabel>
+                <SingleChoice
+                  options={MUSCLE_GROUPS}
+                  value={form.muscleGroup}
+                  onChange={(m) =>
+                    setForm((f) => ({
+                      ...f,
+                      muscleGroup: m,
+                      secondaryMuscles: f.secondaryMuscles.filter((sec) => sec !== m),
+                    }))
+                  }
+                />
+              </View>
+              <View>
+                <FieldLabel>Músculos secundarios</FieldLabel>
+                <MultiChoice
+                  options={MUSCLE_GROUPS.filter((m) => m.id !== form.muscleGroup)}
+                  values={form.secondaryMuscles}
+                  onChange={(v) => set('secondaryMuscles', v)}
+                />
+              </View>
+              <View>
+                <FieldLabel>Equipo principal</FieldLabel>
+                <SingleChoice options={EXERCISE_EQUIPMENT} value={form.equipment} onChange={(v) => set('equipment', v)} />
+              </View>
+              <View>
+                <FieldLabel>Equipo adicional</FieldLabel>
+                <MultiChoice
+                  options={EXERCISE_EQUIPMENT.filter((e) => e.id !== form.equipment)}
+                  values={form.extraEquipment}
+                  onChange={(v) => set('extraEquipment', v)}
+                />
+              </View>
+              <View>
+                <FieldLabel>Tipo</FieldLabel>
+                <SingleChoice options={EXERCISE_TYPES} value={form.exerciseType} onChange={(v) => set('exerciseType', v)} />
+              </View>
+              <View>
+                <FieldLabel>Cómo se mide</FieldLabel>
+                <SingleChoice options={EXERCISE_METRICS} value={form.metric} onChange={(v) => set('metric', v)} />
+                <Text style={styles.hint}>
+                  Ejemplo: {EXERCISE_METRICS.find((m) => m.id === form.metric)?.hint}
+                </Text>
+              </View>
+              <View>
+                <FieldLabel>Lateralidad</FieldLabel>
+                <SingleChoice options={LATERALITIES} value={form.laterality} onChange={(v) => set('laterality', v)} />
+                <Text style={styles.hint}>
+                  {form.laterality === 'bilateral'
+                    ? 'Bilateral: con los dos lados a la vez (press banca). Unilateral: un lado cada vez (zancada búlgara). Alternado: se alternan lados en la misma serie (curl alterno).'
+                    : `En las rutinas las repeticiones se indicarán «${LATERALITIES.find((l) => l.id === form.laterality)?.suffix}».`}
+                </Text>
+              </View>
+              <View>
+                <FieldLabel>Patrón de movimiento</FieldLabel>
+                <SingleChoice options={MOVEMENT_PATTERNS} value={form.pattern} onChange={(v) => set('pattern', v)} />
+                <Text style={styles.hint}>
+                  El tipo de movimiento (empujar, tirar, sentadilla…). Sirve para proponer alternativas equivalentes
+                  en las rutinas.
+                </Text>
+              </View>
+              <View>
+                <FieldLabel>Nivel técnico</FieldLabel>
+                <SingleChoice options={TRAINING_LEVELS} value={form.difficulty} onChange={(v) => set('difficulty', v)} />
+              </View>
+            </FormSection>
+
+            <FormSection title="Técnica" summary={techniqueSummary}>
+              <Pressable
+                accessibilityRole="button"
+                onPress={handleGenerateTechnique}
+                disabled={generatingTechnique}
+                style={[styles.aiBtn, generatingTechnique && styles.aiBtnDisabled]}
+              >
+                {generatingTechnique ? (
+                  <ActivityIndicator size="small" color={colors.navy} />
+                ) : (
+                  <Sparkles size={s(14)} color={colors.navy} />
+                )}
+                <Text style={styles.aiBtnText}>
+                  {generatingTechnique ? 'Redactando técnica…' : 'Redactar pasos y consejos con IA'}
+                </Text>
+              </Pressable>
+
+              <View>
+                <FieldLabel>Pasos de ejecución</FieldLabel>
+                <View style={styles.stepsList}>
+                  {form.steps.map((stepText, idx) => (
+                    <View key={idx} style={styles.stepRow}>
+                      <View style={styles.stepNum}>
+                        <Text style={styles.stepNumText}>{idx + 1}</Text>
+                      </View>
+                      <TextInput
+                        value={stepText}
+                        onChangeText={(val) => set('steps', form.steps.map((st, i) => (i === idx ? val : st)))}
+                        placeholder={`Paso ${idx + 1}…`}
+                        placeholderTextColor={colors.textMuted}
+                        multiline
+                        style={styles.stepInput}
+                      />
+                      <Pressable
+                        accessibilityRole="button"
+                        accessibilityLabel={`Quitar paso ${idx + 1}`}
+                        onPress={() => set('steps', form.steps.filter((_, i) => i !== idx))}
+                        style={styles.iconBtn}
+                      >
+                        <Trash2 size={s(14)} color={colors.danger} />
+                      </Pressable>
+                    </View>
+                  ))}
+                  <Pressable
+                    accessibilityRole="button"
+                    onPress={() => set('steps', [...form.steps, ''])}
+                    style={styles.addRowBtn}
+                  >
+                    <Plus size={s(13)} color={colors.navy} />
+                    <Text style={styles.addRowText}>{form.steps.length === 0 ? 'Añadir primer paso' : 'Añadir paso'}</Text>
+                  </Pressable>
+                </View>
               </View>
 
-              <View style={styles.repeaterList}>
-                {instructionSteps.map((stepText, idx) => (
-                  <View key={idx} style={styles.repeaterItem}>
-                    <View style={styles.repeaterNumBadge}>
-                      <Text style={styles.repeaterNumText}>{idx + 1}</Text>
-                    </View>
-                    <TextInput
-                      value={stepText}
-                      onChangeText={(val) => handleUpdateStep(idx, val)}
-                      placeholder={`Instrucciones del paso ${idx + 1}...`}
-                      placeholderTextColor={colors.textMuted}
-                      multiline
-                      style={styles.repeaterInput}
-                    />
+              <View>
+                <FieldLabel>Consejos y errores a evitar</FieldLabel>
+                <TextInput
+                  value={form.tips}
+                  onChangeText={(v) => set('tips', v)}
+                  placeholder="Ej: No bloquees las rodillas al final del movimiento."
+                  placeholderTextColor={colors.textMuted}
+                  multiline
+                  style={[styles.input, styles.textarea]}
+                />
+              </View>
+
+              <View>
+                <FieldLabel>Indicaciones de sala</FieldLabel>
+                <Text style={styles.hintTop}>Frases cortas que le dices al cliente mientras lo hace.</Text>
+                <TextListInput
+                  values={form.cues}
+                  onChange={(v) => set('cues', v)}
+                  placeholder="Ej: pecho arriba"
+                />
+              </View>
+            </FormSection>
+
+            <FormSection title="Seguridad y búsqueda" summary={safetySummary}>
+              <View>
+                <FieldLabel>Evitar o adaptar si el cliente tiene</FieldLabel>
+                <TextListInput
+                  values={form.contraindications}
+                  onChange={(v) => set('contraindications', v)}
+                  placeholder="Ej: hernia discal lumbar"
+                />
+                <Text style={styles.hint}>
+                  Al armar una rutina se avisará si coincide con las condiciones de salud del cliente.
+                </Text>
+              </View>
+              <View>
+                <FieldLabel>Otros nombres (sinónimos)</FieldLabel>
+                <TextListInput
+                  values={form.aliases}
+                  onChange={(v) => set('aliases', v)}
+                  placeholder="Ej: goblet squat"
+                />
+              </View>
+            </FormSection>
+
+            <FormSection
+              title="¿Es una variante?"
+              summary={parentExercise ? `Variante de ${parentExercise.name}` : 'No es variante de otro ejercicio'}
+            >
+              <Text style={styles.hint}>
+                Una variante es el mismo movimiento con otro agarre, equipo o posición. Ej.: «Sentadilla goblet» es
+                variante de «Sentadilla». Si la enlazas, la app la sugerirá como alternativa en las rutinas.
+              </Text>
+              {parentExercise ? (
+                <View style={styles.parentSelected}>
+                  <Text style={styles.parentName} numberOfLines={1}>
+                    {parentExercise.name}
+                  </Text>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Quitar ejercicio base"
+                    onPress={() => set('parentId', null)}
+                    style={styles.iconBtn}
+                  >
+                    <X size={s(14)} color={colors.textSecondary} />
+                  </Pressable>
+                </View>
+              ) : (
+                <View>
+                  <TextInput
+                    value={parentQuery}
+                    onChangeText={setParentQuery}
+                    placeholder="Busca el ejercicio base (ej: sentadilla)"
+                    placeholderTextColor={colors.textMuted}
+                    style={styles.input}
+                  />
+                  {parentResults.map((ex) => (
                     <Pressable
-                      onPress={() => handleRemoveStep(idx)}
-                      style={styles.repeaterDeleteBtn}
-                      hitSlop={8}
+                      key={ex.id}
+                      accessibilityRole="button"
+                      onPress={() => {
+                        set('parentId', ex.id);
+                        setParentQuery('');
+                      }}
+                      style={styles.parentOption}
                     >
-                      <Trash2 size={s(13)} color={colors.danger} />
+                      <Text style={styles.parentOptionText} numberOfLines={1}>
+                        {ex.name}
+                      </Text>
+                      <Text style={styles.parentOptionMeta}>{muscleLabel(ex.muscle_group)}</Text>
+                    </Pressable>
+                  ))}
+                </View>
+              )}
+            </FormSection>
+
+            <FormSection title="Vídeo" summary={form.videoPath ? 'Vídeo demostrativo añadido' : 'Sin vídeo'}>
+              {form.videoPath ? (
+                <>
+                  <ExerciseVideo videoRef={form.videoPath} height={s(170)} />
+                  <Pressable
+                    accessibilityRole="button"
+                    onPress={() => set('videoPath', null)}
+                    style={styles.removeMediaBtn}
+                  >
+                    <Trash2 size={s(13)} color={colors.danger} />
+                    <Text style={styles.removeMediaText}>Quitar vídeo</Text>
+                  </Pressable>
+                </>
+              ) : (
+                <>
+                  <Text style={styles.hint}>
+                    Graba 2 o 3 repeticiones (máximo 30 segundos). Se reproduce en bucle y sin sonido.
+                  </Text>
+                  <View style={styles.videoBtnsRow}>
+                    <Pressable
+                      accessibilityRole="button"
+                      onPress={() => handlePickVideo('camera')}
+                      disabled={uploadingVideo}
+                      style={styles.videoBtn}
+                    >
+                      {uploadingVideo ? (
+                        <ActivityIndicator size="small" color={colors.navy} />
+                      ) : (
+                        <Video size={s(15)} color={colors.navy} />
+                      )}
+                      <Text style={styles.videoBtnText}>{uploadingVideo ? 'Subiendo…' : 'Grabar'}</Text>
+                    </Pressable>
+                    <Pressable
+                      accessibilityRole="button"
+                      onPress={() => handlePickVideo('library')}
+                      disabled={uploadingVideo}
+                      style={styles.videoBtn}
+                    >
+                      <Camera size={s(15)} color={colors.navy} />
+                      <Text style={styles.videoBtnText}>Elegir de la galería</Text>
                     </Pressable>
                   </View>
-                ))}
+                </>
+              )}
+            </FormSection>
 
-                <Pressable onPress={handleAddStep} style={styles.addStepButton}>
-                  <Plus size={s(13)} color={colors.navy} />
-                  <Text style={styles.addStepButtonText}>
-                    {instructionSteps.length === 0
-                      ? 'Añadir primer paso de ejecución'
-                      : 'Añadir otro paso de ejecución'}
-                  </Text>
-                </Pressable>
-              </View>
-            </View>
-
-            {/* Tips y Errores Comunes */}
-            <View style={styles.field}>
-              <Text style={styles.label}>CONSEJOS Y ERRORES A EVITAR (TIPS)</Text>
-              <TextInput
-                value={tips}
-                onChangeText={setTips}
-                placeholder="Ej: Mantén los codos pegados al torso para evitar sobrecarga en los hombros."
-                placeholderTextColor={colors.textMuted}
-                multiline
-                numberOfLines={3}
-                style={[styles.input, styles.textareaSmall]}
-              />
-            </View>
-
-            {/* Carrusel y Gestión de Fotos de los Pasos */}
-            <View style={styles.field}>
-              <View style={styles.labelWithAction}>
-                <Text style={styles.label}>FOTOS DE LOS PASOS (CARRUSEL)</Text>
-                {images.length > 0 && (
-                  <Text style={styles.activeStepHint}>
-                    Paso {activeImageIndex + 1} de {images.length}
-                  </Text>
-                )}
-              </View>
-
-              {/* Vista previa del Carrusel Sincronizado */}
-              <ExerciseImageCarousel
-                key={`${name}-${muscleGroup}-${aiCounter}-${images.length}`}
-                images={images}
-                exerciseName={name || 'Ejercicio'}
-                muscleGroup={muscleGroup}
-                height={s(165)}
-                activeIndex={activeImageIndex}
-                onIndexChange={setActiveImageIndex}
-              />
-
-              {/* Fila de Miniaturas de Pasos + Botón "+" para Nuevo Paso */}
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.thumbsRow}
-              >
-                {images.map((imgUrl, idx) => {
-                  const isSelected = idx === activeImageIndex;
-                  return (
+            <FormSection title="Fotos" summary={form.images.length ? `${form.images.length} fotos` : 'Sin fotos'}>
+              {form.images.length > 0 && (
+                <ExerciseImageCarousel
+                  images={form.images}
+                  exerciseName={form.name || 'Ejercicio'}
+                  muscleGroup={form.muscleGroup}
+                  height={s(165)}
+                  activeIndex={activeImageIndex}
+                  onIndexChange={setActiveImageIndex}
+                />
+              )}
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.thumbsRow}>
+                {form.images.map((imgUrl, idx) => (
+                  <Pressable
+                    key={`${idx}-${imgUrl}`}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Ver foto ${idx + 1}`}
+                    onPress={() => setActiveImageIndex(idx)}
+                    style={[styles.thumbBox, idx === activeImageIndex && styles.thumbBoxActive]}
+                  >
+                    <Image source={{ uri: imgUrl }} style={styles.thumbImg} contentFit="cover" />
                     <Pressable
-                      key={idx}
-                      onPress={() => setActiveImageIndex(idx)}
-                      style={[styles.thumbBox, isSelected && styles.thumbBoxActive]}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Quitar foto ${idx + 1}`}
+                      onPress={() => handleRemoveImage(idx)}
+                      style={styles.thumbRemoveBtn}
+                      hitSlop={10}
                     >
-                      <Image source={{ uri: imgUrl }} style={styles.thumbImg} contentFit="cover" />
-                      <View style={[styles.thumbBadge, isSelected && styles.thumbBadgeActive]}>
-                        <Text style={[styles.thumbBadgeText, isSelected && styles.thumbBadgeTextActive]}>
-                          {idx + 1}
-                        </Text>
-                      </View>
-                      <Pressable
-                        onPress={() => handleRemoveImage(idx)}
-                        style={styles.thumbRemoveBtn}
-                        hitSlop={6}
-                      >
-                        <Trash2 size={s(9)} color={colors.surface} />
-                      </Pressable>
+                      <Trash2 size={s(10)} color={colors.surface} />
                     </Pressable>
-                  );
-                })}
-
-                {/* Tarjeta con signo "+" para Añadir Nuevo Paso */}
+                  </Pressable>
+                ))}
                 <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Añadir foto"
                   onPress={() => handlePickImage()}
                   disabled={uploadingImage}
-                  style={styles.addStepThumbCard}
-                >
-                  <View style={styles.addStepIconCircle}>
-                    <Plus size={s(16)} color={colors.navy} />
-                  </View>
-                  <Text style={styles.addStepThumbText}>Nuevo Paso</Text>
-                </Pressable>
-              </ScrollView>
-
-              {/* Botón de acción para el paso activo o subir foto */}
-              <View style={styles.imageActionButtons}>
-                <Pressable
-                  onPress={() => handlePickImage(images.length > 0 ? activeImageIndex : undefined)}
-                  disabled={uploadingImage}
-                  style={styles.addImageBtn}
+                  style={styles.addThumb}
                 >
                   {uploadingImage ? (
                     <ActivityIndicator size="small" color={colors.navy} />
                   ) : (
-                    <Camera size={s(13)} color={colors.navy} />
+                    <Camera size={s(16)} color={colors.navy} />
                   )}
-                  <Text style={styles.addImageBtnText}>
-                    {uploadingImage
-                      ? 'Subiendo foto…'
-                      : images.length > 0
-                      ? `Cambiar foto (Paso ${activeImageIndex + 1})`
-                      : 'Subir foto del paso'}
-                  </Text>
+                  <Text style={styles.addThumbText}>{uploadingImage ? 'Subiendo…' : 'Añadir foto'}</Text>
                 </Pressable>
-              </View>
-            </View>
+              </ScrollView>
+            </FormSection>
           </ScrollView>
 
-              {/* Footer */}
-              <View style={styles.footer}>
-                <Button
-                  title={
-                    saving
-                      ? 'Guardando…'
-                      : isEditing
-                      ? 'Guardar cambios'
-                      : isGlobal
-                      ? 'Guardar como ejercicio global'
-                      : 'Guardar ejercicio'
-                  }
-                  onPress={handleSave}
-                  loading={saving}
-                />
-              </View>
-            </View>
+          <View style={styles.footer}>
+            <Button
+              title={saving ? 'Guardando…' : isEditing ? 'Guardar cambios' : 'Guardar ejercicio'}
+              onPress={handleSave}
+              loading={saving}
+            />
           </View>
-        </Modal>
-      );
-    }
+        </View>
+      </KeyboardAvoidingView>
+    </Modal>
+  );
+}
 
-    const styles = StyleSheet.create({
-      overlay: {
-        flex: 1,
-        backgroundColor: 'rgba(15, 23, 42, 0.65)',
-        justifyContent: 'flex-end',
-      },
-      sheet: {
-        backgroundColor: colors.surface,
-        borderTopLeftRadius: radius.card,
-        borderTopRightRadius: radius.card,
-        maxHeight: '82%',
-        display: 'flex',
-      },
+const styles = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(15, 23, 42, 0.65)',
+    justifyContent: 'flex-end',
+  },
+  sheet: {
+    backgroundColor: colors.background,
+    borderTopLeftRadius: radius.sheet,
+    borderTopRightRadius: radius.sheet,
+    maxHeight: '92%',
+  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: s(20),
-    paddingTop: s(18),
-    paddingBottom: s(12),
+    paddingHorizontal: s(16),
+    paddingTop: s(14),
+    paddingBottom: s(10),
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
+    backgroundColor: colors.surface,
+    borderTopLeftRadius: radius.sheet,
+    borderTopRightRadius: radius.sheet,
   },
-  titleWrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: s(10),
-  },
+  titleWrap: { flexDirection: 'row', alignItems: 'center', gap: s(10) },
   iconWrap: {
-    width: s(36),
-    height: s(36),
-    borderRadius: s(18),
+    width: s(34),
+    height: s(34),
+    borderRadius: s(17),
     backgroundColor: colors.lime,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  title: {
-    fontFamily: fonts.heading,
-    fontSize: fontSizes.base,
-    color: colors.navy,
-  },
-  subtitle: {
-    fontFamily: fonts.body,
-    fontSize: fontSizes.label,
-    color: colors.textSecondary,
-  },
-  closeBtn: {
-    padding: s(4),
-  },
-  body: {
-    flexGrow: 0,
-  },
-  bodyContent: {
-    padding: s(20),
-    gap: s(14),
-  },
-  aiNotificationBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: s(8),
-    backgroundColor: 'rgba(139, 197, 63, 0.2)',
-    borderWidth: 1,
-    borderColor: colors.lime,
-    borderRadius: radius.card,
-    padding: s(10),
-  },
-  aiNotificationText: {
-    flex: 1,
-    fontFamily: fonts.bodyBold,
-    fontSize: s(8.5),
-    color: colors.navy,
-  },
+  title: { fontFamily: fonts.heading, fontSize: fontSizes.base, color: colors.navy },
+  subtitle: { fontFamily: fonts.body, fontSize: fontSizes.xs, color: colors.textSecondary },
+  closeBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
+  body: { flexGrow: 0 },
+  bodyContent: { padding: s(14), gap: s(10) },
   adminBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: 'rgba(139, 197, 63, 0.15)',
-    borderWidth: 1,
-    borderColor: colors.lime,
-    borderRadius: radius.card,
-    padding: s(12),
-    gap: s(10),
-  },
-  adminInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: s(10),
-    flex: 1,
-  },
-  adminTitle: {
-    fontFamily: fonts.bodyBold,
-    fontSize: fontSizes.xs,
-    color: colors.navy,
-  },
-  adminDesc: {
-    fontFamily: fonts.body,
-    fontSize: s(8.5),
-    color: colors.textSecondary,
-  },
-  adminBadgeOficial: {
-    backgroundColor: colors.lime,
-    paddingHorizontal: s(8),
-    paddingVertical: s(4),
-    borderRadius: radius.pill,
-  },
-  adminBadgeOficialText: {
-    fontFamily: fonts.bodyBold,
-    fontSize: fontSizes.label,
-    color: colors.navy,
-  },
-  aiControlCard: {
-    backgroundColor: 'rgba(139, 197, 63, 0.12)',
-    borderWidth: 1,
-    borderColor: colors.lime,
-    borderRadius: radius.card,
-    padding: s(12),
-    gap: s(10),
-  },
-  aiControlHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  aiControlTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: s(6),
-  },
-  aiIconBadge: {
-    width: s(22),
-    height: s(22),
-    borderRadius: s(11),
-    backgroundColor: colors.lime,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  aiControlTitle: {
-    fontFamily: fonts.bodyBold,
-    fontSize: s(8.5),
-    color: colors.navy,
-    letterSpacing: 0.5,
-  },
-  aiControlSubtitle: {
-    fontFamily: fonts.body,
-    fontSize: s(8),
-    color: colors.textSecondary,
-    lineHeight: s(12),
-  },
-  checksRow: {
-    flexDirection: 'row',
-    gap: s(6),
-    flexWrap: 'wrap',
-  },
-  checkChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: s(6),
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    paddingHorizontal: s(10),
-    paddingVertical: s(6),
-    borderRadius: radius.chip,
-  },
-  checkChipActive: {
-    borderColor: colors.lime,
-    backgroundColor: 'rgba(139, 197, 63, 0.22)',
-  },
-  checkboxBox: {
-    width: s(14),
-    height: s(14),
-    borderRadius: s(3),
-    borderWidth: 1,
-    borderColor: colors.textMuted,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.surface,
-  },
-  checkboxBoxActive: {
-    backgroundColor: colors.lime,
-    borderColor: colors.lime,
-  },
-  checkChipText: {
-    fontFamily: fonts.body,
-    fontSize: s(8),
-    color: colors.textSecondary,
-  },
-  checkChipTextActive: {
-    fontFamily: fonts.bodyBold,
-    color: colors.navy,
-  },
-  aiMainActionBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: s(6),
-    backgroundColor: colors.lime,
-    paddingVertical: s(9),
-    borderRadius: radius.input,
-    shadowColor: colors.lime,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 2,
-    marginTop: s(2),
-  },
-  aiMainActionBtnDisabled: {
-    backgroundColor: 'rgba(27, 42, 74, 0.08)',
-    shadowOpacity: 0,
-    elevation: 0,
-  },
-  aiMainActionBtnText: {
-    fontFamily: fonts.bodyBold,
-    fontSize: fontSizes.xs,
-    color: colors.navy,
-  },
-  aiMainActionBtnTextDisabled: {
-    color: colors.textMuted,
-    fontFamily: fonts.bodyBold,
-  },
-  aiMissingWarningRow: {
-    paddingHorizontal: s(2),
-    marginTop: s(1),
-  },
-  aiMissingWarningText: {
-    fontFamily: fonts.body,
-    fontSize: s(7.8),
-    color: '#DC2626',
-    lineHeight: s(11),
-  },
-  field: {
-    gap: s(4),
-  },
-  label: {
-    fontFamily: fonts.bodyBold,
-    fontSize: s(8.5),
-    color: colors.textMuted,
-    textTransform: 'uppercase',
-  },
-  labelWithAction: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  stepsCountText: {
-    fontFamily: fonts.bodyBold,
-    fontSize: s(8),
-    color: colors.navy,
-  },
-  activeStepHint: {
-    fontFamily: fonts.bodyBold,
-    fontSize: s(8),
-    color: colors.navy,
-  },
-  input: {
-    backgroundColor: colors.background,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.input,
-    paddingHorizontal: s(12),
-    height: s(40),
-    fontFamily: fonts.body,
-    fontSize: fontSizes.xs,
-    color: colors.text,
-  },
-  textareaSmall: {
-    minHeight: s(72),
-    paddingTop: s(10),
-    paddingHorizontal: s(12),
-    textAlignVertical: 'top',
-    fontSize: fontSizes.xs,
-    lineHeight: s(14),
-  },
-  chipsRow: {
-    gap: s(6),
-    paddingVertical: s(2),
-  },
-  chip: {
-    paddingHorizontal: s(10),
-    paddingVertical: s(6),
-    borderRadius: radius.chip,
-    backgroundColor: colors.background,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  chipActive: {
-    backgroundColor: colors.navy,
-    borderColor: colors.navy,
-  },
-  chipText: {
-    fontFamily: fonts.body,
-    fontSize: fontSizes.label,
-    color: colors.textSecondary,
-  },
-  chipTextActive: {
-    fontFamily: fonts.bodyBold,
-    color: colors.surface,
-  },
-  diffRow: {
-    flexDirection: 'row',
     gap: s(8),
-  },
-  diffBtn: {
-    flex: 1,
-    paddingVertical: s(8),
-    borderRadius: radius.input,
-    backgroundColor: colors.background,
-    borderWidth: 1,
-    borderColor: colors.border,
-    alignItems: 'center',
-  },
-  diffBtnActive: {
-    backgroundColor: colors.navy,
-    borderColor: colors.navy,
-  },
-  diffBtnText: {
-    fontFamily: fonts.body,
-    fontSize: fontSizes.label,
-    color: colors.textSecondary,
-  },
-  diffBtnTextActive: {
-    fontFamily: fonts.bodyBold,
-    color: colors.surface,
-  },
-  repeaterList: {
-    gap: s(8),
-  },
-  repeaterItem: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: s(10),
-    backgroundColor: colors.background,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.card,
     padding: s(10),
+    borderRadius: radius.card,
+    backgroundColor: colors.successBg,
   },
-  repeaterNumBadge: {
+  adminText: { flex: 1, fontFamily: fonts.bodyMedium, fontSize: fontSizes.xs, color: colors.navy },
+  input: {
+    minHeight: 44,
+    paddingHorizontal: s(10),
+    paddingVertical: s(8),
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.input,
+    backgroundColor: colors.surface,
+    fontFamily: fonts.body,
+    fontSize: fontSizes.base,
+    color: colors.text,
+  },
+  textarea: { minHeight: 72, textAlignVertical: 'top' },
+  hint: { fontFamily: fonts.body, fontSize: fontSizes.xs, color: colors.textSecondary, marginTop: s(4) },
+  hintTop: { fontFamily: fonts.body, fontSize: fontSizes.xs, color: colors.textSecondary, marginBottom: s(6) },
+  aiBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: s(8),
+    minHeight: 44,
+    marginTop: s(8),
+    borderRadius: radius.button,
+    backgroundColor: colors.lime,
+  },
+  aiBtnDisabled: { opacity: 0.45 },
+  aiBtnText: { fontFamily: fonts.bodyBold, fontSize: fontSizes.sm, color: colors.navy },
+  aiFilledBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: s(8),
+    marginTop: s(8),
+    padding: s(10),
+    borderRadius: radius.input,
+    backgroundColor: colors.successBg,
+  },
+  aiFilledText: { flex: 1, fontFamily: fonts.bodyMedium, fontSize: fontSizes.xs, color: colors.success },
+  duplicateBox: {
+    marginTop: s(8),
+    padding: s(10),
+    gap: s(2),
+    borderRadius: radius.input,
+    backgroundColor: colors.neutralChipBg,
+  },
+  duplicateTitle: { fontFamily: fonts.bodySemi, fontSize: fontSizes.xs, color: colors.navy },
+  duplicateItem: { fontFamily: fonts.body, fontSize: fontSizes.xs, color: colors.text },
+  duplicateHint: { fontFamily: fonts.body, fontSize: fontSizes.xs, color: colors.textSecondary, marginTop: s(2) },
+  stepsList: { gap: s(6) },
+  stepRow: { flexDirection: 'row', alignItems: 'flex-start', gap: s(6) },
+  stepNum: {
     width: s(22),
     height: s(22),
+    marginTop: s(9),
     borderRadius: s(11),
     backgroundColor: colors.navy,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: s(2),
   },
-  repeaterNumText: {
-    fontFamily: fonts.bodyBold,
-    fontSize: s(8.5),
-    color: colors.surface,
-  },
-  repeaterInput: {
+  stepNumText: { fontFamily: fonts.bodyBold, fontSize: fontSizes.xs, color: colors.surface },
+  stepInput: {
     flex: 1,
+    minHeight: 44,
+    paddingHorizontal: s(10),
+    paddingVertical: s(8),
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.input,
+    backgroundColor: colors.surface,
     fontFamily: fonts.body,
-    fontSize: fontSizes.xs,
+    fontSize: fontSizes.sm,
     color: colors.text,
-    minHeight: s(52),
-    textAlignVertical: 'top',
-    paddingTop: s(2),
-    paddingBottom: s(2),
-    lineHeight: s(14),
   },
-  repeaterDeleteBtn: {
-    padding: s(4),
-    marginTop: s(2),
-  },
-  addStepButton: {
+  iconBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
+  addRowBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: s(6),
-    paddingVertical: s(8),
+    minHeight: 44,
     borderWidth: 1,
     borderStyle: 'dashed',
-    borderColor: colors.navy,
-    borderRadius: radius.card,
-    backgroundColor: 'rgba(27, 42, 74, 0.03)',
-  },
-  addStepButtonText: {
-    fontFamily: fonts.bodyBold,
-    fontSize: fontSizes.label,
-    color: colors.navy,
-  },
-  thumbsRow: {
-    gap: s(8),
-    paddingVertical: s(4),
-    alignItems: 'center',
-  },
-  thumbBox: {
-    width: s(54),
-    height: s(54),
-    borderRadius: radius.card,
-    overflow: 'hidden',
-    position: 'relative',
-    borderWidth: 1.5,
     borderColor: colors.border,
-    backgroundColor: colors.background,
+    borderRadius: radius.input,
   },
-  thumbBoxActive: {
-    borderColor: colors.lime,
-    borderWidth: 2.5,
-    shadowColor: colors.lime,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.8,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  thumbImg: {
-    width: '100%',
-    height: '100%',
-  },
-  thumbBadge: {
-    position: 'absolute',
-    top: 2,
-    left: 2,
-    width: s(15),
-    height: s(15),
-    borderRadius: s(7.5),
-    backgroundColor: 'rgba(27, 42, 74, 0.85)',
+  addRowText: { fontFamily: fonts.bodySemi, fontSize: fontSizes.xs, color: colors.navy },
+  parentSelected: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    paddingLeft: s(10),
+    borderRadius: radius.input,
+    backgroundColor: colors.successBg,
   },
-  thumbBadgeActive: {
-    backgroundColor: colors.lime,
+  parentName: { flex: 1, fontFamily: fonts.bodySemi, fontSize: fontSizes.sm, color: colors.navy },
+  parentOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: s(8),
+    minHeight: 44,
+    paddingHorizontal: s(4),
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
   },
-  thumbBadgeText: {
-    fontFamily: fonts.bodyBold,
-    fontSize: s(7.5),
-    color: colors.surface,
+  parentOptionText: { flex: 1, fontFamily: fonts.bodyMedium, fontSize: fontSizes.sm, color: colors.text },
+  parentOptionMeta: { fontFamily: fonts.body, fontSize: fontSizes.xs, color: colors.textSecondary },
+  thumbsRow: { gap: s(8), paddingVertical: s(2) },
+  thumbBox: {
+    width: s(56),
+    height: s(56),
+    borderRadius: radius.input,
+    overflow: 'hidden',
+    borderWidth: 2,
+    borderColor: 'transparent',
   },
-  thumbBadgeTextActive: {
-    color: colors.navy,
-  },
+  thumbBoxActive: { borderColor: colors.lime },
+  thumbImg: { width: '100%', height: '100%' },
   thumbRemoveBtn: {
     position: 'absolute',
-    top: 2,
-    right: 2,
-    width: s(16),
-    height: s(16),
-    borderRadius: s(8),
-    backgroundColor: 'rgba(239, 68, 68, 0.9)',
+    top: s(3),
+    right: s(3),
+    width: s(18),
+    height: s(18),
+    borderRadius: s(9),
+    backgroundColor: 'rgba(27, 42, 74, 0.8)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  addStepThumbCard: {
-    width: s(54),
-    height: s(54),
-    borderRadius: radius.card,
-    borderWidth: 1.5,
+  addThumb: {
+    width: s(56),
+    height: s(56),
+    borderRadius: radius.input,
+    borderWidth: 1,
     borderStyle: 'dashed',
-    borderColor: colors.navy,
-    backgroundColor: 'rgba(27, 42, 74, 0.04)',
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 2,
+    gap: s(2),
   },
-  addStepIconCircle: {
-    width: s(22),
-    height: s(22),
-    borderRadius: s(11),
-    backgroundColor: colors.lime,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  addStepThumbText: {
-    fontFamily: fonts.bodyBold,
-    fontSize: s(6.5),
-    color: colors.navy,
-    textAlign: 'center',
-  },
-  imageActionButtons: {
-    flexDirection: 'row',
-    gap: s(8),
-    marginTop: s(4),
-  },
-  addImageBtn: {
+  addThumbText: { fontFamily: fonts.body, fontSize: fontSizes.label, color: colors.navy },
+  videoBtnsRow: { flexDirection: 'row', gap: s(8) },
+  videoBtn: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: s(6),
-    paddingVertical: s(8),
+    minHeight: 44,
     borderRadius: radius.input,
-    backgroundColor: 'rgba(139, 197, 63, 0.15)',
     borderWidth: 1,
-    borderColor: colors.lime,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
   },
-  addImageBtnText: {
-    fontFamily: fonts.bodyBold,
-    fontSize: fontSizes.label,
-    color: colors.navy,
+  videoBtnText: { fontFamily: fonts.bodySemi, fontSize: fontSizes.xs, color: colors.navy },
+  removeMediaBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: s(6),
+    minHeight: 44,
   },
+  removeMediaText: { fontFamily: fonts.bodySemi, fontSize: fontSizes.xs, color: colors.danger },
   footer: {
-    paddingHorizontal: s(20),
-    paddingTop: s(10),
+    padding: s(14),
     paddingBottom: s(24),
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    backgroundColor: colors.surface,
   },
 });

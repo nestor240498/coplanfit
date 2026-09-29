@@ -8,7 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppBackground } from '@/components/ui/AppBackground';
 import { InputFieldRow } from '@/components/ui/FieldRow';
-import { createMeasurement, getLatestMeasurement, uploadMeasurementPhoto } from '@/features/clients/measurementsRepository';
+import { createMeasurement, getLatestMeasurement, uploadMeasurementPhotos } from '@/features/clients/measurementsRepository';
 import { s } from '@/theme/scale';
 import { colors, radius, spacing } from '@/theme/tokens';
 import { fonts, fontSizes } from '@/theme/typography';
@@ -107,18 +107,9 @@ export default function UpdateMeasurementScreen() {
     setSaving(true);
     setError(null);
     try {
-      // Subir fotos locales a Supabase Storage
-      const uploadedUrls: string[] = [];
-      for (let i = 0; i < photos.length; i++) {
-        const photoUri = photos[i];
-        if (photoUri.startsWith('http://') || photoUri.startsWith('https://')) {
-          uploadedUrls.push(photoUri);
-        } else {
-          setSavingStatus(`Subiendo foto ${i + 1} de ${photos.length}…`);
-          const publicUrl = await uploadMeasurementPhoto(id, photoUri);
-          uploadedUrls.push(publicUrl);
-        }
-      }
+      const uploadedUrls = await uploadMeasurementPhotos(id, photos, (current, total) =>
+        setSavingStatus(`Subiendo foto ${current} de ${total}…`)
+      );
 
       setSavingStatus('Guardando medición…');
       await createMeasurement(id, {

@@ -15,7 +15,7 @@ import {
 import { s } from '@/theme/scale';
 import { colors, radius } from '@/theme/tokens';
 import { fonts } from '@/theme/typography';
-import { MuscleGroup } from '../types';
+import { MuscleGroup, muscleLabel } from '../types';
 
 type Props = {
   images?: string[] | null;
@@ -103,7 +103,7 @@ export function ExerciseImageCarousel({
           <Text style={styles.placeholderTitle}>{exerciseName}</Text>
           <View style={styles.placeholderBadge}>
             <Text style={styles.placeholderBadgeText}>
-              ENFOQUE: {muscleGroup.toUpperCase()}
+              Enfoque: {muscleLabel(muscleGroup)}
             </Text>
           </View>
         </View>

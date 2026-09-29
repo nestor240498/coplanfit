@@ -5,6 +5,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 
 import { AppBackground } from '@/components/ui/AppBackground';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
+import { IncludePhotosToggle } from '@/features/clients/components/IncludePhotosToggle';
 import { generateAndShareMeasurementPdf } from '@/features/clients/measurementPdf';
 import { listMeasurements } from '@/features/clients/measurementsRepository';
 import { getClient } from '@/features/clients/repository';
@@ -36,6 +37,7 @@ export default function MeasurementHistoryScreen() {
   const [measurements, setMeasurements] = useState<Measurement[] | null>(null);
   const [selected, setSelected] = useState<string[]>([]);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const [includePhotos, setIncludePhotos] = useState(false);
 
   useEffect(() => {
     getClient(id).then(setClient).catch(() => {});
@@ -55,7 +57,7 @@ export default function MeasurementHistoryScreen() {
     setDownloadingId(m.id);
     try {
       const profile = await getMyProfile();
-      await generateAndShareMeasurementPdf({ client, profile, measurement: m });
+      await generateAndShareMeasurementPdf({ client, profile, measurement: m, includePhotos });
     } catch (e) {
       Alert.alert('Error al exportar PDF', (e as Error).message);
     } finally {
@@ -79,7 +81,14 @@ export default function MeasurementHistoryScreen() {
           data={measurements}
           keyExtractor={(m) => m.id}
           contentContainerStyle={styles.list}
-          ListHeaderComponent={<Text style={styles.hint}>Selecciona 2 mediciones para compararlas o descarga el PDF individual</Text>}
+          ListHeaderComponent={
+            <View style={styles.header}>
+              <Text style={styles.hint}>Selecciona 2 mediciones para compararlas o descarga el PDF individual</Text>
+              {measurements.some((m) => (m.photos?.length ?? 0) > 0) && (
+                <IncludePhotosToggle value={includePhotos} onChange={setIncludePhotos} />
+              )}
+            </View>
+          }
           ListEmptyComponent={<Text style={styles.empty}>Sin mediciones registradas todavía.</Text>}
           renderItem={({ item }) => {
             const isSelected = selected.includes(item.id);
@@ -150,7 +159,8 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
   spinner: { marginTop: s(24) },
   list: { padding: s(16), gap: s(8) },
-  hint: { fontFamily: fonts.body, fontSize: fontSizes.label, color: colors.textMuted, marginBottom: s(8) },
+  header: { gap: s(8), marginBottom: s(8) },
+  hint: { fontFamily: fonts.body, fontSize: fontSizes.label, color: colors.textMuted },
   empty: {
     fontFamily: fonts.body,
     fontSize: fontSizes.sm,

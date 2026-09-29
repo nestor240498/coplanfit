@@ -1,4 +1,3 @@
-import { Image } from 'expo-image';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { Dumbbell, HeartPulse, Pencil, Scale, User, Users, UtensilsCrossed } from 'lucide-react-native';
 import { useCallback, useState } from 'react';
@@ -12,6 +11,7 @@ import {
   View,
 } from 'react-native';
 
+import { StorageImage } from '@/components/ui/StorageImage';
 import { AppBackground } from '@/components/ui/AppBackground';
 import { Button } from '@/components/ui/Button';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
@@ -24,7 +24,7 @@ import { SaludTab } from '@/features/clients/components/SaludTab';
 import {
   createMeasurement,
   getLatestMeasurement,
-  uploadMeasurementPhoto,
+  uploadMeasurementPhotos,
 } from '@/features/clients/measurementsRepository';
 import { usePlanBuilderStore } from '@/features/clients/planBuilderStore';
 import {
@@ -281,18 +281,7 @@ export default function ClientDetailScreen() {
         return v.trim() === '' || Number.isNaN(parsed) ? null : parsed;
       }
 
-      // Subir fotos locales a Supabase Storage
-      const photos = measurementForm.photos || [];
-      const uploadedUrls: string[] = [];
-      for (let i = 0; i < photos.length; i++) {
-        const photoUri = photos[i];
-        if (photoUri.startsWith('http://') || photoUri.startsWith('https://')) {
-          uploadedUrls.push(photoUri);
-        } else {
-          const publicUrl = await uploadMeasurementPhoto(id, photoUri);
-          uploadedUrls.push(publicUrl);
-        }
-      }
+      const uploadedUrls = await uploadMeasurementPhotos(id, measurementForm.photos || []);
 
       const rawH = num(measurementForm.height);
       const heightCm = rawH != null ? (rawH > 3 ? rawH : rawH * 100) : null;
@@ -397,7 +386,7 @@ export default function ClientDetailScreen() {
           >
             <View style={styles.headerAvatar}>
               {client.avatar_url ? (
-                <Image source={{ uri: client.avatar_url }} style={styles.headerAvatarImg} contentFit="cover" />
+                <StorageImage mediaRef={client.avatar_url} style={styles.headerAvatarImg} contentFit="cover" />
               ) : (
                 <Text style={styles.headerAvatarInitials}>{initials || 'C'}</Text>
               )}

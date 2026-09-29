@@ -15,12 +15,19 @@ import { AppBackground } from '@/components/ui/AppBackground';
 import { Button } from '@/components/ui/Button';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { WorkoutStepper } from '@/features/workouts/components/WorkoutStepper';
+import { lateralitySuffix, targetFieldLabel } from '@/features/workouts/prescription';
 import { SingleExerciseExecution } from '@/features/workouts/types';
 import { useWorkoutBuilderStore } from '@/features/workouts/workoutBuilderStore';
 import { supabase } from '@/lib/supabase';
 import { s } from '@/theme/scale';
 import { colors, radius } from '@/theme/tokens';
 import { fonts, fontSizes } from '@/theme/typography';
+
+/** «Reps», «Reps (por lado)», «Tiempo»… según cómo se mide el ejercicio. */
+function targetLabel(ex: SingleExerciseExecution): string {
+  const suffix = lateralitySuffix(ex.laterality);
+  return suffix ? `${targetFieldLabel(ex.metric)} (${suffix})` : targetFieldLabel(ex.metric);
+}
 
 export default function WorkoutAssignScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -262,7 +269,7 @@ export default function WorkoutAssignScreen() {
                       </View>
 
                       <View style={styles.paramBox}>
-                        <Text style={styles.paramLabel}>Reps</Text>
+                        <Text style={styles.paramLabel}>{targetLabel(block.exercise)}</Text>
                         <TextInput
                           value={block.exercise.reps}
                           onChangeText={(v) =>
@@ -365,7 +372,7 @@ export default function WorkoutAssignScreen() {
                       {/* Inputs en 2 columnas: Repeticiones y Peso */}
                       <View style={styles.subParamsGrid}>
                         <View style={styles.subParamCol}>
-                          <Text style={styles.subParamLabel}>Repeticiones</Text>
+                          <Text style={styles.subParamLabel}>{targetLabel(subEx)}</Text>
                           <TextInput
                             value={subEx.reps}
                             onChangeText={(v) =>

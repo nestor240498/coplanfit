@@ -2,6 +2,7 @@ import { Dumbbell, Info, Plus, Search } from 'lucide-react-native';
 import { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   Pressable,
   StyleSheet,
@@ -11,12 +12,12 @@ import {
 } from 'react-native';
 
 import { AppBackground } from '@/components/ui/AppBackground';
-import { Badge } from '@/components/ui/Badge';
 import { CreateExerciseModal } from '@/features/workouts/components/CreateExerciseModal';
 import { ExerciseDetailModal } from '@/features/workouts/components/ExerciseDetailModal';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
-import { getCurrentUserRole, getExercises } from '@/features/workouts/exerciseService';
-import { Exercise, MUSCLE_GROUPS, MuscleGroup } from '@/features/workouts/types';
+import { matchesExerciseQuery } from '@/features/workouts/exerciseSearch';
+import { getCurrentUserRole, getExercises, RemoveExerciseResult } from '@/features/workouts/exerciseService';
+import { equipmentLabel, Exercise, MUSCLE_GROUPS, MuscleGroup, muscleLabel } from '@/features/workouts/types';
 import { s } from '@/theme/scale';
 import { colors, radius } from '@/theme/tokens';
 import { fonts, fontSizes } from '@/theme/typography';
@@ -41,9 +42,7 @@ export default function ExercisesScreen() {
     getCurrentUserRole().then((res) => {
       if (isMounted) {
         setIsSuperAdmin(res.isSuperAdmin);
-        if (res.isSuperAdmin && originFilter === 'personalizados') {
-          setOriginFilter('todos');
-        }
+        if (res.isSuperAdmin) setOriginFilter('todos');
       }
     });
 
@@ -64,22 +63,17 @@ export default function ExercisesScreen() {
   }, []);
 
   const filteredExercises = useMemo(() => {
-    const q = search.trim().toLowerCase();
     return exercisesList.filter((ex) => {
       if (originFilter === 'globales' && ex.is_custom) return false;
       if (originFilter === 'personalizados' && !ex.is_custom) return false;
 
       const matchMuscle = selectedMuscle === 'todos' || ex.muscle_group === selectedMuscle;
-      const matchSearch =
-        q === '' ||
-        ex.name.toLowerCase().includes(q) ||
-        ex.equipment.toLowerCase().includes(q);
-
-      return matchMuscle && matchSearch;
+      return matchMuscle && matchesExerciseQuery(ex, search);
     });
   }, [exercisesList, originFilter, selectedMuscle, search]);
 
   const [editingExercise, setEditingExercise] = useState<Exercise | null>(null);
+  const [createTemplate, setCreateTemplate] = useState<Partial<Exercise> | null>(null);
 
   function handleExerciseSaved(savedEx: Exercise) {
     setExercisesList((prev) => {
@@ -94,13 +88,32 @@ export default function ExercisesScreen() {
     setDetailExercise(savedEx);
   }
 
+  function handleExerciseRemoved(removed: Exercise, result: RemoveExerciseResult) {
+    setExercisesList((prev) => prev.filter((e) => e.id !== removed.id));
+    Alert.alert(
+      result === 'deleted' ? 'Ejercicio eliminado' : 'Ejercicio archivado',
+      result === 'deleted'
+        ? `"${removed.name}" se eliminó del banco.`
+        : `"${removed.name}" ya no aparece en el banco. Las rutinas que lo usan lo conservan.`
+    );
+  }
+
   function handleOpenEdit(ex: Exercise) {
     setEditingExercise(ex);
+    setCreateTemplate(null);
+    setCreateModalOpen(true);
+  }
+
+  /** Alta con datos iniciales: crear variante o hacer mi versión de un oficial. */
+  function handleCreateFrom(template: Partial<Exercise>) {
+    setEditingExercise(null);
+    setCreateTemplate(template);
     setCreateModalOpen(true);
   }
 
   function handleOpenCreate() {
     setEditingExercise(null);
+    setCreateTemplate(null);
     setCreateModalOpen(true);
   }
 
@@ -246,17 +259,17 @@ export default function ExercisesScreen() {
                 <View style={styles.badgeRow}>
                   <View style={styles.muscleBadge}>
                     <Text style={styles.muscleBadgeText}>
-                      {item.muscle_group.toUpperCase()}
+                      {muscleLabel(item.muscle_group)}
                     </Text>
                   </View>
-                  <Text style={styles.equipmentText}>{item.equipment}</Text>
+                  <Text style={styles.equipmentText}>{equipmentLabel(item.equipment)}</Text>
                   <Text style={styles.dotSeparator}>·</Text>
                   <Text style={styles.difficultyText}>{item.difficulty}</Text>
                 </View>
 
                 {item.tips ? (
                   <Text style={styles.previewTip} numberOfLines={2}>
-                    💡 {item.tips}
+                    {item.tips}
                   </Text>
                 ) : null}
               </View>
@@ -279,17 +292,24 @@ export default function ExercisesScreen() {
         onClose={() => {
           setCreateModalOpen(false);
           setEditingExercise(null);
+          setCreateTemplate(null);
         }}
         onSaved={handleExerciseSaved}
         initialExercise={editingExercise}
+        template={createTemplate}
+        existingExercises={exercisesList}
       />
 
-      {/* Modal de Detalle con Reproductor Lottie */}
+      {/* Modal de Detalle */}
       <ExerciseDetailModal
         exercise={detailExercise}
         visible={!!detailExercise}
         onClose={() => setDetailExercise(null)}
         onEdit={handleOpenEdit}
+        onRemoved={handleExerciseRemoved}
+        allExercises={exercisesList}
+        onOpenExercise={setDetailExercise}
+        onCreateFrom={handleCreateFrom}
       />
     </View>
   );

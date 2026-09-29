@@ -1,9 +1,9 @@
-import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { Camera, Download, History, ImagePlus, Trash2, X } from 'lucide-react-native';
 import { useState } from 'react';
 import { ActivityIndicator, Alert, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { StorageImage } from '@/components/ui/StorageImage';
 import { InputFieldRow } from '@/components/ui/FieldRow';
 import { getMyProfile } from '@/features/profile/repository';
 import { formatDateShort } from '@/lib/format';
@@ -12,6 +12,7 @@ import { colors, radius } from '@/theme/tokens';
 import { fonts, fontSizes } from '@/theme/typography';
 
 import { generateAndShareMeasurementPdf } from '../measurementPdf';
+import { IncludePhotosToggle } from './IncludePhotosToggle';
 import { Client, Measurement } from '../types';
 
 export type MeasurementFormState = {
@@ -76,6 +77,7 @@ export function AntropometriaTab({
   onViewHistory,
 }: Props) {
   const [exportingPdf, setExportingPdf] = useState(false);
+  const [includePhotos, setIncludePhotos] = useState(false);
   const [selectedPreview, setSelectedPreview] = useState<{ url: string; title: string; date: string } | null>(null);
 
   async function handleExportPdf() {
@@ -83,7 +85,7 @@ export function AntropometriaTab({
     setExportingPdf(true);
     try {
       const profile = await getMyProfile();
-      await generateAndShareMeasurementPdf({ client, profile, measurement });
+      await generateAndShareMeasurementPdf({ client, profile, measurement, includePhotos });
     } catch (e) {
       Alert.alert('Error al exportar PDF', (e as Error).message);
     } finally {
@@ -226,7 +228,7 @@ export function AntropometriaTab({
             >
               {currentPhotos.map((uri, idx) => (
                 <View key={`${idx}-${uri}`} style={styles.thumbnailCard}>
-                  <Image source={{ uri }} style={styles.thumbnailImg} contentFit="cover" />
+                  <StorageImage mediaRef={uri} style={styles.thumbnailImg} contentFit="cover" />
                   <View style={styles.thumbBadge}>
                     <Text style={styles.thumbBadgeText}>{idx + 1}</Text>
                   </View>
@@ -531,7 +533,7 @@ export function AntropometriaTab({
                 }
                 style={styles.readPhotoCard}
               >
-                <Image source={{ uri: photoUrl }} style={styles.readPhotoImg} contentFit="cover" />
+                <StorageImage mediaRef={photoUrl} style={styles.readPhotoImg} contentFit="cover" />
                 <View style={styles.readPhotoBadge}>
                   <Text style={styles.readPhotoBadgeText}>{idx + 1}</Text>
                 </View>
@@ -639,6 +641,9 @@ export function AntropometriaTab({
 
       {measurement != null && (
         <View style={styles.actionsBar}>
+          {(measurement.photos?.length ?? 0) > 0 && (
+            <IncludePhotosToggle value={includePhotos} onChange={setIncludePhotos} />
+          )}
           <Pressable
             accessibilityRole="button"
             onPress={handleExportPdf}
@@ -686,8 +691,8 @@ export function AntropometriaTab({
 
           {selectedPreview && (
             <View style={styles.modalImageContainer}>
-              <Image
-                source={{ uri: selectedPreview.url }}
+              <StorageImage
+                mediaRef={selectedPreview.url}
                 style={styles.modalFullImage}
                 contentFit="contain"
               />

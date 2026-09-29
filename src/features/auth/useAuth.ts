@@ -1,6 +1,7 @@
 import { Session } from '@supabase/supabase-js';
 import { create } from 'zustand';
 
+import { clearMediaCache } from '@/lib/storage';
 import { supabase } from '@/lib/supabase';
 
 type AuthState = {
@@ -46,6 +47,8 @@ export const useAuth = create<AuthState>((set) => ({
 
   signOut: async () => {
     await supabase.auth.signOut();
+    // Las fotos de clientes son confidenciales: no deben quedar en memoria tras cerrar sesión
+    await clearMediaCache().catch(() => {});
   },
 }));
 

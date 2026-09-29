@@ -1,5 +1,40 @@
 import { supabase } from '@/lib/supabase';
-import { ExerciseStep, MuscleGroup } from './types';
+import {
+  ExerciseMetric,
+  ExerciseStep,
+  ExerciseType,
+  Laterality,
+  MovementPattern,
+  MuscleGroup,
+  TrainingLevel,
+} from './types';
+
+/** Propuesta de la IA para el alta rápida: el entrenador la revisa antes de guardar. */
+export type ExerciseClassification = {
+  muscle_group: MuscleGroup;
+  secondary_muscles: MuscleGroup[];
+  equipment: string;
+  extra_equipment: string[];
+  exercise_type: ExerciseType;
+  metric: ExerciseMetric;
+  laterality: Laterality;
+  movement_pattern: MovementPattern;
+  difficulty: TrainingLevel;
+  cues: string[];
+  contraindications: string[];
+  aliases: string[];
+};
+
+/** Clasifica un ejercicio a partir de su nombre (Edge Function classify-exercise, Gemini). */
+export async function classifyExercise(name: string): Promise<ExerciseClassification> {
+  const { data, error } = await supabase.functions.invoke('classify-exercise', { body: { name: name.trim() } });
+  if (error) {
+    // FunctionsHttpError trae el cuerpo con el mensaje de la función
+    const detail = await (error as { context?: Response }).context?.json?.().catch(() => null);
+    throw new Error(detail?.error ?? 'No se pudo completar con IA. Rellena los datos a mano.');
+  }
+  return data as ExerciseClassification;
+}
 
 export type ExerciseAiDetails = {
   instructions: string;
@@ -108,11 +143,8 @@ export async function generateExerciseAiDetails(
     tips = 'Mantén una cadencia controlada (2 segundos de bajada) y cuida la alineación articular en todo momento.';
   }
 
-  const images = generateImages ? [
-    `https://image.pollinations.ai/prompt/3d%20human%20silhouette%20performing%20step%201%20setup%20of%20${encodeURIComponent(name)}%20with%20glowing%20lime%20green%20muscles%20dark%20background%20vector%20graphic?model=flux&width=720&height=480&nologo=true&enhance=true`,
-    `https://image.pollinations.ai/prompt/3d%20human%20silhouette%20performing%20step%202%20eccentric%20of%20${encodeURIComponent(name)}%20with%20glowing%20lime%20green%20muscles%20dark%20background%20vector%20graphic?model=flux&width=720&height=480&nologo=true&enhance=true`,
-    `https://image.pollinations.ai/prompt/3d%20human%20silhouette%20performing%20step%203%20concentric%20of%20${encodeURIComponent(name)}%20with%20glowing%20lime%20green%20muscles%20dark%20background%20vector%20graphic?model=flux&width=720&height=480&nologo=true&enhance=true`,
-  ] : [];
+  // Sin imágenes generadas: las fotos o el vídeo del ejercicio los aporta el entrenador
+  const images: string[] = [];
 
   return {
     instructions,

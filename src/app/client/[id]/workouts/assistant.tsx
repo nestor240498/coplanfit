@@ -1,20 +1,44 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Dumbbell, Plus, Sparkles, Trash2, Users } from 'lucide-react-native';
-import { useState } from 'react';
+import { AlertTriangle, ArrowLeftRight, Dumbbell, Plus, Sparkles, Trash2, Users } from 'lucide-react-native';
+import { useEffect, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { AppBackground } from '@/components/ui/AppBackground';
 import { Button } from '@/components/ui/Button';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
+import { getClient } from '@/features/clients/repository';
+import { listTags } from '@/features/clients/tagsRepository';
 import { ExercisePickerSheet } from '@/features/workouts/components/ExercisePickerSheet';
+import { SwapExerciseSheet } from '@/features/workouts/components/SwapExerciseSheet';
 import { WorkoutAiPreloaderModal } from '@/features/workouts/components/WorkoutAiPreloaderModal';
 import { WorkoutStepper } from '@/features/workouts/components/WorkoutStepper';
-import { SingleExerciseExecution, WorkoutBlock } from '@/features/workouts/types';
+import { getExercises } from '@/features/workouts/exerciseService';
+import { formatPrescription } from '@/features/workouts/prescription';
+import { generateRoutineWithAi } from '@/features/workouts/routineAi';
+import {
+  buildRoutineFromBank,
+  ClientTrainingContext,
+  conflictingContraindications,
+  describeMissing,
+  eligibleExercises,
+  missingMuscles,
+  replaceExecution,
+  suggestReplacements,
+} from '@/features/workouts/routineGenerator';
+import { Exercise, SingleExerciseExecution, WorkoutDay } from '@/features/workouts/types';
 import { useWorkoutBuilderStore } from '@/features/workouts/workoutBuilderStore';
-import { supabase } from '@/lib/supabase';
 import { s } from '@/theme/scale';
 import { colors, radius } from '@/theme/tokens';
 import { fonts, fontSizes } from '@/theme/typography';
+
+type SwapTarget = { blockId: string; exIndex: number | null; execution: SingleExerciseExecution };
+
+function countExercises(days: WorkoutDay[]): number {
+  return days.reduce(
+    (acc, d) => acc + d.blocks.reduce((n, b) => n + (b.type === 'superset' ? b.exercises.length : 1), 0),
+    0
+  );
+}
 
 export default function WorkoutAssistantScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -22,8 +46,10 @@ export default function WorkoutAssistantScreen() {
 
   const routineName = useWorkoutBuilderStore((s) => s.routineName);
   const days = useWorkoutBuilderStore((s) => s.days);
+  const generation = useWorkoutBuilderStore((s) => s.generation);
   const addSingleExercise = useWorkoutBuilderStore((s) => s.addSingleExercise);
   const removeBlock = useWorkoutBuilderStore((s) => s.removeBlock);
+  const replaceExercise = useWorkoutBuilderStore((s) => s.replaceExercise);
   const combineIntoSuperset = useWorkoutBuilderStore((s) => s.combineIntoSuperset);
   const removeExerciseFromSuperset = useWorkoutBuilderStore((s) => s.removeExerciseFromSuperset);
   const setDays = useWorkoutBuilderStore((s) => s.setDays);
@@ -32,257 +58,142 @@ export default function WorkoutAssistantScreen() {
   const [exercisePickerOpen, setExercisePickerOpen] = useState(false);
   const [combiningBlockId, setCombiningBlockId] = useState<string | null>(null);
   const [isGeneratingAi, setIsGeneratingAi] = useState(false);
+  const [bank, setBank] = useState<Exercise[]>([]);
+  const [trainingCtx, setTrainingCtx] = useState<ClientTrainingContext>({ conditions: [] });
+  const [swapTarget, setSwapTarget] = useState<SwapTarget | null>(null);
+  const [replacingFromBank, setReplacingFromBank] = useState<SwapTarget | null>(null);
 
   const activeDay = days[activeDayIndex] || days[0];
 
+  useEffect(() => {
+    if (!id) return;
+    Promise.all([getExercises(), getClient(id), listTags(id)])
+      .then(([exercises, client, tags]) => {
+        setBank(exercises);
+        setTrainingCtx({
+          equipmentAccess: client.equipment_access,
+          conditions: tags.filter((t) => t.kind === 'condicion').map((t) => t.label),
+        });
+      })
+      .catch((e: Error) => Alert.alert('No se pudo cargar el banco de ejercicios', e.message));
+  }, [id]);
+
+  const bankById = new Map(bank.map((ex) => [ex.id, ex]));
+
+  /** Contraindicaciones del ejercicio que chocan con la salud del cliente. */
+  function warningsFor(execution: SingleExerciseExecution): string[] {
+    const ex = execution.exercise_id ? bankById.get(execution.exercise_id) : undefined;
+    return ex ? conflictingContraindications(ex, trainingCtx.conditions) : [];
+  }
+
+  function idsInActiveDay(): string[] {
+    return (activeDay?.blocks ?? []).flatMap((b) =>
+      (b.type === 'superset' ? b.exercises : [b.exercise]).map((e) => e.exercise_id).filter((x): x is string => !!x)
+    );
+  }
+
   function handleOpenPickerForNew() {
     setCombiningBlockId(null);
+    setReplacingFromBank(null);
     setExercisePickerOpen(true);
   }
 
   function handleOpenPickerForSuperset(blockId: string) {
     setCombiningBlockId(blockId);
+    setReplacingFromBank(null);
     setExercisePickerOpen(true);
   }
 
   function handleSelectExercise(ex: SingleExerciseExecution) {
     if (!activeDay) return;
-    if (combiningBlockId) {
-      // Combinar con el bloque existente para formar superserie
+    if (replacingFromBank) {
+      const next = ex.exercise_id ? bankById.get(ex.exercise_id) : undefined;
+      replaceExercise(
+        activeDay.id,
+        replacingFromBank.blockId,
+        replacingFromBank.exIndex,
+        next ? replaceExecution(replacingFromBank.execution, next) : ex
+      );
+      setReplacingFromBank(null);
+    } else if (combiningBlockId) {
       combineIntoSuperset(activeDay.id, combiningBlockId, ex);
       setCombiningBlockId(null);
     } else {
-      // Añadir como ejercicio simple
-      addSingleExercise(activeDay.id, ex, 4, 90);
+      addSingleExercise(activeDay.id, ex, 3, 90);
     }
   }
 
-  // Generador con IA (Google Gemini vía Edge Function + fallback algorítmico)
-  async function handleGenerateAi() {
+  function handleChooseReplacement(next: Exercise) {
+    if (!activeDay || !swapTarget) return;
+    replaceExercise(activeDay.id, swapTarget.blockId, swapTarget.exIndex, replaceExecution(swapTarget.execution, next));
+    setSwapTarget(null);
+  }
+
+  function handleBrowseBankForSwap() {
+    setReplacingFromBank(swapTarget);
+    setSwapTarget(null);
+    setCombiningBlockId(null);
+    setExercisePickerOpen(true);
+  }
+
+  async function runGeneration() {
+    if (!id) return;
+    const eligible = eligibleExercises(bank, trainingCtx);
     setIsGeneratingAi(true);
     try {
-      // 1. Intentar llamar a la Edge Function de Gemini en Supabase
-      if (id) {
-        try {
-          const { data, error } = await supabase.functions.invoke('generate-workout-suggestions', {
-            body: { clientId: id, scheduleDays: days },
-          });
-
-          if (!error && data?.data?.days && Array.isArray(data.data.days)) {
-            const aiDays = data.data.days.map((aiD: any, dIdx: number) => {
-              const matchedOriginal = days[dIdx] || days[0];
-              return {
-                id: matchedOriginal.id,
-                day_name: aiD.day_name || matchedOriginal.day_name,
-                focus: aiD.focus || matchedOriginal.focus,
-                blocks: (aiD.blocks || []).map((b: any, bIdx: number) => ({
-                  ...b,
-                  id: `gemini-block-${dIdx}-${bIdx}-${Math.random().toString(36).substring(2, 6)}`,
-                })),
-              };
-            });
-
-            setDays(aiDays);
-            Alert.alert('¡Rutina generada con IA! ✨', 'Se han estructurado los 6 ejercicios por día analizando la antropometría, nivel, historial de salud y equipamiento del cliente.');
-            return;
-          }
-        } catch (edgeErr) {
-          console.log('Fallo Edge function de IA, usando motor adaptativo local:', edgeErr);
-        }
+      let proposal: WorkoutDay[];
+      try {
+        proposal = await generateRoutineWithAi(id, days, eligible, generation);
+        if (countExercises(proposal) === 0) throw new Error('La IA no propuso ejercicios.');
+      } catch (aiError) {
+        // Sin IA: la propuesta se arma igualmente con el banco (músculos de cada día)
+        proposal = buildRoutineFromBank(days, eligible, generation);
+        Alert.alert(
+          'Propuesta armada con tu banco',
+          `La IA no respondió (${(aiError as Error).message}). Se eligieron ejercicios de tu banco según los músculos de cada día.`
+        );
       }
-
-      // 2. Fallback: Generador adaptativo local con 6 ejercicios por día
-      await new Promise((resolve) => setTimeout(resolve, 600));
-
-      const updatedDays = days.map((d, dIdx) => {
-        let suggestedBlocks: WorkoutBlock[] = [];
-        const nameLower = (d.day_name + ' ' + (d.focus || '')).toLowerCase();
-
-        if (nameLower.includes('empuje') || nameLower.includes('push') || nameLower.includes('pecho')) {
-          // Día de Empuje (6 ejercicios): Pecho, Hombro y Tríceps
-          suggestedBlocks = [
-            {
-              type: 'single',
-              id: `ai-1-${dIdx}`,
-              exercise: { name: 'Press de banca plano con barra', reps: '8-10', notes: 'Fuerza base pectoral', weight: '60 kg' },
-              sets: 4,
-              rest_seconds: 120,
-            },
-            {
-              type: 'single',
-              id: `ai-2-${dIdx}`,
-              exercise: { name: 'Press inclinado con mancuernas', reps: '10-12', notes: 'Haz clavicular pectoral', weight: '22 kg' },
-              sets: 3,
-              rest_seconds: 90,
-            },
-            {
-              type: 'single',
-              id: `ai-3-${dIdx}`,
-              exercise: { name: 'Cruces de poleas en polea media / alta', reps: '12-15', notes: 'Aislamiento continuo', weight: '15 kg' },
-              sets: 3,
-              rest_seconds: 75,
-            },
-            {
-              type: 'single',
-              id: `ai-4-${dIdx}`,
-              exercise: { name: 'Press militar de pie con barra o sentado con mancuernas', reps: '8-10', notes: 'Deltoides anterior', weight: '18 kg' },
-              sets: 3,
-              rest_seconds: 90,
-            },
-            {
-              type: 'superset',
-              id: `ai-5-${dIdx}`,
-              title: 'Superserie Hombro Lateral & Tríceps (Ejercicios 5 y 6)',
-              sets: 3,
-              rest_seconds: 75,
-              exercises: [
-                { name: 'Elevaciones laterales con mancuernas', reps: '12-15', notes: 'Deltoides lateral', weight: '10 kg' },
-                { name: 'Extensiones de tríceps en polea alta con cuerda', reps: '12-15', notes: 'Apertura al final', weight: '20 kg' },
-              ],
-            },
-          ];
-        } else if (nameLower.includes('tirón') || nameLower.includes('pull') || nameLower.includes('espalda')) {
-          // Día de Tirón (6 ejercicios): Espalda, Deltoides posterior y Bíceps
-          suggestedBlocks = [
-            {
-              type: 'single',
-              id: `ai-1-${dIdx}`,
-              exercise: { name: 'Dominadas pronas', reps: '8-10', notes: 'Amplitud y tracción vertical' },
-              sets: 4,
-              rest_seconds: 120,
-            },
-            {
-              type: 'single',
-              id: `ai-2-${dIdx}`,
-              exercise: { name: 'Remo con barra inclinado (90° o 45°)', reps: '8-10', notes: 'Densidad dorsal', weight: '50 kg' },
-              sets: 3,
-              rest_seconds: 90,
-            },
-            {
-              type: 'single',
-              id: `ai-3-${dIdx}`,
-              exercise: { name: 'Remo unilateral con mancuerna en banco', reps: '10-12', notes: 'Aislamiento dorsal', weight: '24 kg' },
-              sets: 3,
-              rest_seconds: 75,
-            },
-            {
-              type: 'single',
-              id: `ai-4-${dIdx}`,
-              exercise: { name: 'Pájaros / Face Pull en polea alta', reps: '15', notes: 'Deltoides posterior y rotadores', weight: '18 kg' },
-              sets: 3,
-              rest_seconds: 75,
-            },
-            {
-              type: 'superset',
-              id: `ai-5-${dIdx}`,
-              title: 'Superserie de Bíceps (Ejercicios 5 y 6)',
-              sets: 3,
-              rest_seconds: 75,
-              exercises: [
-                { name: 'Curl de bíceps con barra Z o mancuernas', reps: '10-12', notes: 'Fase excéntrica lenta', weight: '25 kg' },
-                { name: 'Curl de bíceps martillo con mancuernas', reps: '12', notes: 'Braquial y antebrazo', weight: '12 kg' },
-              ],
-            },
-          ];
-        } else if (nameLower.includes('pierna') || nameLower.includes('legs') || nameLower.includes('glúteo') || nameLower.includes('cuádriceps')) {
-          // Día de Pierna (6 ejercicios): Cuádriceps, Isquios, Glúteos y Gemelos
-          suggestedBlocks = [
-            {
-              type: 'single',
-              id: `ai-1-${dIdx}`,
-              exercise: { name: 'Sentadilla libre con barra trasera', reps: '8-10', notes: 'Profundidad paralela', weight: '80 kg' },
-              sets: 4,
-              rest_seconds: 120,
-            },
-            {
-              type: 'single',
-              id: `ai-2-${dIdx}`,
-              exercise: { name: 'Prensa de piernas 45°', reps: '10-12', notes: 'Cuádriceps general', weight: '140 kg' },
-              sets: 3,
-              rest_seconds: 90,
-            },
-            {
-              type: 'superset',
-              id: `ai-3-${dIdx}`,
-              title: 'Superserie Cuádriceps & Cadena Posterior (Ejercicios 3 y 4)',
-              sets: 3,
-              rest_seconds: 90,
-              exercises: [
-                { name: 'Sentadilla búlgara con mancuernas', reps: '12', notes: 'Unilateral', weight: '14 kg' },
-                { name: 'Peso muerto rumano con barra o mancuernas', reps: '10-12', notes: 'Bisagra de cadera', weight: '50 kg' },
-              ],
-            },
-            {
-              type: 'single',
-              id: `ai-4-${dIdx}`,
-              exercise: { name: 'Curl femoral tumbado en máquina', reps: '12-15', notes: 'Aislamiento isquios', weight: '35 kg' },
-              sets: 3,
-              rest_seconds: 60,
-            },
-            {
-              type: 'single',
-              id: `ai-5-${dIdx}`,
-              exercise: { name: 'Elevación de talones de pie (Gemelos)', reps: '15-20', notes: 'Pausa de 1s arriba', weight: '50 kg' },
-              sets: 3,
-              rest_seconds: 60,
-            },
-          ];
-        } else {
-          // Torso o Full Body (6 ejercicios)
-          suggestedBlocks = [
-            {
-              type: 'single',
-              id: `ai-1-${dIdx}`,
-              exercise: { name: 'Press de banca plano con barra', reps: '8-10', notes: 'Pecho', weight: '60 kg' },
-              sets: 4,
-              rest_seconds: 90,
-            },
-            {
-              type: 'single',
-              id: `ai-2-${dIdx}`,
-              exercise: { name: 'Jalón al pecho en polea alta', reps: '10-12', notes: 'Espalda amplitud', weight: '45 kg' },
-              sets: 4,
-              rest_seconds: 90,
-            },
-            {
-              type: 'single',
-              id: `ai-3-${dIdx}`,
-              exercise: { name: 'Press militar de pie con barra o sentado con mancuernas', reps: '10', notes: 'Hombros', weight: '16 kg' },
-              sets: 3,
-              rest_seconds: 75,
-            },
-            {
-              type: 'single',
-              id: `ai-4-${dIdx}`,
-              exercise: { name: 'Remo en polea baja con agarre estrecho (gironda)', reps: '12', notes: 'Espalda densidad', weight: '40 kg' },
-              sets: 3,
-              rest_seconds: 75,
-            },
-            {
-              type: 'superset',
-              id: `ai-5-${dIdx}`,
-              title: 'Superserie Bíceps & Tríceps (Ejercicios 5 y 6)',
-              sets: 3,
-              rest_seconds: 60,
-              exercises: [
-                { name: 'Curl de bíceps martillo con mancuernas', reps: '12', notes: 'Bíceps y braquial', weight: '12 kg' },
-                { name: 'Extensiones de tríceps en polea alta con cuerda', reps: '12', notes: 'Tríceps', weight: '20 kg' },
-              ],
-            },
-          ];
-        }
-
-        return {
-          ...d,
-          blocks: suggestedBlocks,
-        };
-      });
-
-      setDays(updatedDays);
-      Alert.alert('Propuesta generada ✨', 'Se han estructurado 6 ejercicios por día adaptados a la distribución muscular seleccionada.');
+      setDays(proposal);
     } finally {
       setIsGeneratingAi(false);
     }
+  }
+
+  function handleGenerateAi() {
+    if (bank.length === 0) {
+      Alert.alert('Cargando el banco', 'Espera un momento a que se cargue el banco de ejercicios.');
+      return;
+    }
+    const eligible = eligibleExercises(bank, trainingCtx);
+    if (eligible.length === 0) {
+      Alert.alert(
+        'Sin ejercicios disponibles',
+        'Ningún ejercicio del banco encaja con el equipo y la salud de este cliente. Añade ejercicios al banco primero.'
+      );
+      return;
+    }
+
+    const warnings: string[] = [];
+    if (days.some((d) => !d.muscles?.length)) {
+      warnings.push('Hay días sin músculos marcados: vuelve al paso 1 para indicarlos y la propuesta será más precisa.');
+    }
+    const missing = missingMuscles(days, eligible);
+    if (missing.length > 0) {
+      warnings.push(
+        `Tu banco no tiene ejercicios de ${describeMissing(missing)} que este cliente pueda hacer. Esos músculos quedarán sin ejercicios; puedes crearlos en el banco.`
+      );
+    }
+    const replacesExisting = countExercises(days) > 0;
+    if (replacesExisting) warnings.push('La propuesta reemplazará los ejercicios que ya elegiste.');
+
+    if (warnings.length === 0) {
+      runGeneration();
+      return;
+    }
+    Alert.alert('Antes de generar', warnings.join('\n\n'), [
+      { text: 'Cancelar', style: 'cancel' },
+      { text: 'Generar igualmente', onPress: runGeneration },
+    ]);
   }
 
   function handleContinue() {
@@ -320,7 +231,9 @@ export default function WorkoutAssistantScreen() {
           style={styles.aiBtn}
         >
           <Sparkles size={s(12)} color={colors.surface} />
-          <Text style={styles.aiBtnText}>Generar propuesta con IA ✨</Text>
+          <Text style={styles.aiBtnText}>
+            Proponer {generation.exercisesPerDay} ejercicios por día con IA
+          </Text>
         </Pressable>
       </View>
 
@@ -378,7 +291,7 @@ export default function WorkoutAssistantScreen() {
                   Aún no has agregado ejercicios a este día.
                 </Text>
                 <Text style={styles.emptyDaySubtext}>
-                  Usa la IA o agrega ejercicios desde el banco.
+                  Genera una propuesta con IA o añade ejercicios desde el banco.
                 </Text>
               </View>
             ) : (
@@ -393,9 +306,25 @@ export default function WorkoutAssistantScreen() {
                         <View style={styles.cardTitleWrap}>
                           <Text style={styles.exerciseTitle}>{block.exercise.name}</Text>
                           <Text style={styles.exerciseMeta}>
-                            {block.sets} series · {block.exercise.reps} reps · {block.rest_seconds}s descanso
+                            {block.sets} series · {formatPrescription(block.exercise)} · {block.rest_seconds}s descanso
                           </Text>
+                          {warningsFor(block.exercise).length > 0 && (
+                            <View style={styles.warningRow}>
+                              <AlertTriangle size={s(12)} color={colors.danger} />
+                              <Text style={styles.warningText}>
+                                Contraindicado: {warningsFor(block.exercise).join(', ')}
+                              </Text>
+                            </View>
+                          )}
                         </View>
+                        <Pressable
+                          accessibilityRole="button"
+                          accessibilityLabel={`Cambiar ${block.exercise.name}`}
+                          onPress={() => setSwapTarget({ blockId: block.id, exIndex: null, execution: block.exercise })}
+                          style={styles.swapBtn}
+                        >
+                          <ArrowLeftRight size={s(14)} color={colors.navy} />
+                        </Pressable>
                         <Pressable
                           hitSlop={8}
                           onPress={() => removeBlock(activeDay.id, block.id)}
@@ -422,7 +351,7 @@ export default function WorkoutAssistantScreen() {
                   <View key={block.id} style={styles.supersetCard}>
                     <View style={styles.supersetHeader}>
                       <View style={styles.supersetTag}>
-                        <Text style={styles.supersetTagText}>⚡ SUPERSERIE ({block.sets} SERIES)</Text>
+                        <Text style={styles.supersetTagText}>SUPERSERIE · {block.sets} SERIES</Text>
                       </View>
                       <Pressable
                         hitSlop={8}
@@ -444,9 +373,23 @@ export default function WorkoutAssistantScreen() {
                           <View style={styles.subInfoWrap}>
                             <Text style={styles.subExName}>{subEx.name}</Text>
                             <Text style={styles.subExReps}>
-                              {subEx.reps} reps {subEx.weight ? `· ${subEx.weight}` : ''}
+                              {formatPrescription(subEx)} {subEx.weight ? `· ${subEx.weight}` : ''}
                             </Text>
+                            {warningsFor(subEx).length > 0 && (
+                              <View style={styles.warningRow}>
+                                <AlertTriangle size={s(12)} color={colors.danger} />
+                                <Text style={styles.warningText}>Contraindicado: {warningsFor(subEx).join(', ')}</Text>
+                              </View>
+                            )}
                           </View>
+                          <Pressable
+                            accessibilityRole="button"
+                            accessibilityLabel={`Cambiar ${subEx.name}`}
+                            onPress={() => setSwapTarget({ blockId: block.id, exIndex: sIdx, execution: subEx })}
+                            style={styles.swapBtn}
+                          >
+                            <ArrowLeftRight size={s(13)} color={colors.navy} />
+                          </Pressable>
                           <Pressable
                             hitSlop={8}
                             onPress={() => removeExerciseFromSuperset(activeDay.id, block.id, sIdx)}
@@ -491,7 +434,21 @@ export default function WorkoutAssistantScreen() {
         visible={exercisePickerOpen}
         onClose={() => setExercisePickerOpen(false)}
         onSelect={handleSelectExercise}
-        title={combiningBlockId ? 'Combinar con ejercicio...' : 'Añadir ejercicio'}
+        title={
+          replacingFromBank ? 'Cambiar por…' : combiningBlockId ? 'Combinar con ejercicio…' : 'Añadir ejercicio'
+        }
+        trainingContext={trainingCtx}
+      />
+
+      <SwapExerciseSheet
+        visible={swapTarget != null}
+        onClose={() => setSwapTarget(null)}
+        currentName={swapTarget?.execution.name ?? ''}
+        suggestions={
+          swapTarget ? suggestReplacements(swapTarget.execution, bank, trainingCtx, idsInActiveDay()) : []
+        }
+        onChoose={handleChooseReplacement}
+        onBrowseBank={handleBrowseBankForSwap}
       />
 
       {/* Footer */}
@@ -506,6 +463,17 @@ export default function WorkoutAssistantScreen() {
 }
 
 const styles = StyleSheet.create({
+  swapBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: radius.input,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  warningRow: { flexDirection: 'row', alignItems: 'center', gap: s(4), marginTop: s(4) },
+  warningText: { flex: 1, fontFamily: fonts.bodySemi, fontSize: fontSizes.xs, color: colors.danger },
   screen: { flex: 1, backgroundColor: colors.background },
   aiBanner: {
     paddingHorizontal: s(16),

@@ -43,22 +43,25 @@ const geminiSchema = {
   required: ['instructions', 'tips', 'pattern', 'steps'],
 };
 
-/**
- * Genera la URL de ilustración de silueta anatómica y biomecánica en alta definición
- */
-function buildStepAiImageUrl(exerciseName: string, stepTitle: string, stepNumber: number, muscleGroup: string, stepDetails?: string): string {
-  const seed = Math.floor(Math.random() * 900000) + 100000;
-  const contextDesc = stepDetails ? `, execution action: ${stepDetails.slice(0, 100)}` : '';
-  const prompt = `3d medical fitness anatomy illustration, dark metallic human silhouette demonstrating step ${stepNumber} ${stepTitle} of ${exerciseName} exercise${contextDesc}, glowing neon lime green ${muscleGroup} muscles #8BC53F, clean dark obsidian background, studio lighting, smooth 3d render, blender octane, anatomically correct, high definition, 8k`;
-  return `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?model=flux&width=720&height=480&seed=${seed}&nologo=true&enhance=true`;
-}
-
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
 
   try {
+    // Solo entrenadores con sesión: evita que se use la cuota de Gemini desde fuera de la app
+    const authHeader = req.headers.get('Authorization');
+    const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_ANON_KEY')!, {
+      global: { headers: { Authorization: authHeader ?? '' } },
+    });
+    const { data: userData } = await supabase.auth.getUser();
+    if (!authHeader || !userData.user) {
+      return new Response(JSON.stringify({ error: 'Sesión no válida.' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     const body = await req.json();
     const {
       name,
@@ -72,7 +75,6 @@ Deno.serve(async (req) => {
 
     const generate_instructions = body.generate_instructions !== false;
     const generate_tips = body.generate_tips !== false;
-    const generate_images = body.generate_images !== false;
 
     if (!name) {
       return new Response(JSON.stringify({ error: 'El nombre del ejercicio es requerido' }), {
@@ -201,59 +203,13 @@ Genera una respuesta en JSON estricto con:
       }
     }
 
-    // Si se generan imágenes
-    let stepsWithAiImages: any[] = [];
-    if (generate_images) {
-      const validCustomSteps = Array.isArray(custom_steps) ? custom_steps.filter(Boolean) : [];
-
-      if (validCustomSteps.length > 0) {
-        stepsWithAiImages = validCustomSteps.map((stText: string, i: number) => ({
-          step: i + 1,
-          title: `Paso ${i + 1}`,
-          description: stText,
-          image_url: buildStepAiImageUrl(name, `Paso ${i + 1}`, i + 1, muscle_group || 'fitness', stText),
-        }));
-      } else if (Array.isArray(parsed.steps) && parsed.steps.length > 0) {
-        stepsWithAiImages = parsed.steps.map((st: any, i: number) => ({
-          step: st.step || i + 1,
-          title: st.title || `Paso ${i + 1}`,
-          description: st.description || '',
-          image_url: buildStepAiImageUrl(name, st.title || `Paso ${i + 1}`, st.step || i + 1, muscle_group || 'fitness', st.description),
-        }));
-      } else if (parsed.instructions && parsed.instructions.trim()) {
-        // Extraer fases desde el texto de instrucciones
-        const rawFases = parsed.instructions
-          .split(/(?=\d+[\.\)]|\u2705|\u25AA|\bFase\b)/i)
-          .map((p: string) => p.trim())
-          .filter(Boolean);
-
-        const fases = rawFases.length >= 2 ? rawFases : [
-          'Posición inicial y setup',
-          'Fase excéntrica y descenso controlado',
-          'Fase concéntrica y contracción máxima',
-        ];
-
-        stepsWithAiImages = fases.map((faseText: string, i: number) => ({
-          step: i + 1,
-          title: `Paso ${i + 1}`,
-          description: faseText,
-          image_url: buildStepAiImageUrl(name, `Paso ${i + 1}`, i + 1, muscle_group || 'fitness', faseText),
-        }));
-      } else {
-        stepsWithAiImages = [
-          { step: 1, title: 'Posición Inicial & Setup', description: 'Posición inicial y ajuste postural', image_url: buildStepAiImageUrl(name, 'Posición Inicial & Setup', 1, muscle_group || 'fitness') },
-          { step: 2, title: 'Fase Excéntrica (Bajada)', description: 'Descenso controlado en 2-3 segundos', image_url: buildStepAiImageUrl(name, 'Fase Excéntrica', 2, muscle_group || 'fitness') },
-          { step: 3, title: 'Fase Concéntrica (Empuje)', description: 'Contracción muscular y exhalación', image_url: buildStepAiImageUrl(name, 'Fase Concéntrica', 3, muscle_group || 'fitness') },
-        ];
-      }
-    }
-
     const finalResponse = {
       instructions: parsed.instructions,
       tips: parsed.tips,
       pattern: parsed.pattern || 'squat',
-      steps: stepsWithAiImages,
-      images: stepsWithAiImages.map((s) => s.image_url).filter(Boolean),
+      steps: Array.isArray(parsed.steps) ? parsed.steps : [],
+      // Ya no se generan imágenes con IA: las fotos o el vídeo los aporta el entrenador
+      images: [],
     };
 
     return new Response(JSON.stringify(finalResponse), {

@@ -41,11 +41,15 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "CoplanFit necesita acceso a tus fotos para subir el logo de tu negocio."
+          "photosPermission": "CoplanFit necesita acceso a tus fotos para subir el logo de tu negocio, fotos de progreso de tus clientes y vídeos de ejercicios.",
+          "cameraPermission": "CoplanFit usa la cámara para tomar fotos de progreso de tus clientes y grabar vídeos de ejercicios.",
+          "microphonePermission": "CoplanFit usa el micrófono al grabar vídeos de ejercicios."
         }
       ],
       "expo-sharing",
-      "expo-video"
+      "expo-video",
+      "expo-image",
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true,

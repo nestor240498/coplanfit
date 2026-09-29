@@ -1,6 +1,6 @@
 import { supabase } from '@/lib/supabase';
 
-import { Exercise, MuscleGroup, WorkoutPlanVersion } from './types';
+import { WorkoutPlanVersion } from './types';
 
 async function withRetry<T>(fn: () => Promise<T>, retries = 2): Promise<T> {
   try {
@@ -52,28 +52,3 @@ export async function getWorkoutPlanVersionById(id: string): Promise<WorkoutPlan
   });
 }
 
-/** Lista ejercicios del catálogo con filtro opcional por grupo muscular o búsqueda */
-export async function listExercises(filter?: {
-  muscle_group?: MuscleGroup;
-  search?: string;
-}): Promise<Exercise[]> {
-  return withRetry(async () => {
-    let query = supabase.from('exercises').select('*').order('name', { ascending: true });
-
-    if (filter?.muscle_group) {
-      query = query.eq('muscle_group', filter.muscle_group);
-    }
-
-    if (filter?.search && filter.search.trim().length > 0) {
-      query = query.ilike('name', `%${filter.search.trim()}%`);
-    }
-
-    const { data, error } = await query;
-    if (error) {
-      console.warn('Advertencia al consultar exercises:', error.message);
-      return [];
-    }
-
-    return (data ?? []) as Exercise[];
-  });
-}

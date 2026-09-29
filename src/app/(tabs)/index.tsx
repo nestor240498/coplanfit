@@ -1,8 +1,8 @@
-import { Image } from 'expo-image';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
 import { ActivityIndicator, FlatList, StyleSheet, Text, View } from 'react-native';
 
+import { StorageImage } from '@/components/ui/StorageImage';
 import { AppBackground } from '@/components/ui/AppBackground';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -125,7 +125,7 @@ function ClientRow({ client, onPress }: { client: Client; onPress: () => void })
     <Card onPress={onPress} style={styles.row}>
       <View style={styles.avatar}>
         {client.avatar_url ? (
-          <Image source={{ uri: client.avatar_url }} style={styles.avatarImage} contentFit="cover" />
+          <StorageImage mediaRef={client.avatar_url} style={styles.avatarImage} contentFit="cover" />
         ) : (
           <Text style={styles.avatarInitials}>{initials || 'C'}</Text>
         )}

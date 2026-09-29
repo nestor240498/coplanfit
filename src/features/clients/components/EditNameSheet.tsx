@@ -7,10 +7,10 @@ import {
   Text,
   View,
 } from 'react-native';
-import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { Pencil } from 'lucide-react-native';
 
+import { StorageImage } from '@/components/ui/StorageImage';
 import { BottomSheet, SheetFooter } from '@/components/ui/BottomSheet';
 import { Input } from '@/components/ui/Input';
 import { uploadClientAvatar } from '@/features/clients/repository';
@@ -106,7 +106,7 @@ export function EditNameSheet({
         >
           <View style={styles.avatar}>
             {avatarUrl ? (
-              <Image source={{ uri: avatarUrl }} style={styles.avatarImg} contentFit="cover" />
+              <StorageImage mediaRef={avatarUrl} style={styles.avatarImg} contentFit="cover" />
             ) : (
               <Text style={styles.avatarInitials}>{initials || 'C'}</Text>
             )}

@@ -1,12 +1,15 @@
 import { Info, Plus, Search } from 'lucide-react-native';
 import { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, FlatList, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { CreateExerciseModal } from './CreateExerciseModal';
 import { ExerciseDetailModal } from './ExerciseDetailModal';
 import { BottomSheet } from '@/components/ui/BottomSheet';
-import { getExercises } from '../exerciseService';
-import { Exercise, MUSCLE_GROUPS, MuscleGroup, SingleExerciseExecution } from '../types';
+import { matchesExerciseQuery } from '../exerciseSearch';
+import { getExercises, RemoveExerciseResult } from '../exerciseService';
+import { executionFromExercise } from '../prescription';
+import { ClientTrainingContext, conflictingContraindications, isEquipmentAvailable } from '../routineGenerator';
+import { equipmentLabel, Exercise, MUSCLE_GROUPS, MuscleGroup, muscleLabel, SingleExerciseExecution } from '../types';
 import { s } from '@/theme/scale';
 import { colors, radius } from '@/theme/tokens';
 import { fonts, fontSizes } from '@/theme/typography';
@@ -16,6 +19,8 @@ type Props = {
   onClose: () => void;
   onSelect: (exercise: SingleExerciseExecution) => void;
   title?: string;
+  /** Equipo y salud del cliente: marca los ejercicios contraindicados o sin su equipo. */
+  trainingContext?: ClientTrainingContext;
 };
 
 type OriginFilter = 'todos' | 'globales' | 'personalizados';
@@ -25,6 +30,7 @@ export function ExercisePickerSheet({
   onClose,
   onSelect,
   title = 'Banco de Ejercicios',
+  trainingContext,
 }: Props) {
   const [exercisesList, setExercisesList] = useState<Exercise[]>([]);
   const [loading, setLoading] = useState(true);
@@ -58,7 +64,6 @@ export function ExercisePickerSheet({
   }, [visible]);
 
   const filteredExercises = useMemo(() => {
-    const q = search.trim().toLowerCase();
     return exercisesList.filter((ex) => {
       // Filtro de origen (Globales vs Personalizados)
       if (originFilter === 'globales' && ex.is_custom) return false;
@@ -67,28 +72,15 @@ export function ExercisePickerSheet({
       // Filtro de músculo
       const matchMuscle = selectedMuscle === 'todos' || ex.muscle_group === selectedMuscle;
 
-      // Filtro de búsqueda
-      const matchSearch =
-        q === '' ||
-        ex.name.toLowerCase().includes(q) ||
-        ex.equipment.toLowerCase().includes(q);
-
-      return matchMuscle && matchSearch;
+      return matchMuscle && matchesExerciseQuery(ex, search);
     });
   }, [exercisesList, originFilter, selectedMuscle, search]);
 
   const [editingExercise, setEditingExercise] = useState<Exercise | null>(null);
+  const [createTemplate, setCreateTemplate] = useState<Partial<Exercise> | null>(null);
 
   function handleChooseExercise(ex: Exercise) {
-    const execution: SingleExerciseExecution = {
-      exercise_id: ex.id,
-      name: ex.name,
-      reps: '10-12',
-      rir: '1-2',
-      notes: ex.tips || null,
-      lottie_url: ex.lottie_url || null,
-    };
-    onSelect(execution);
+    onSelect(executionFromExercise(ex));
     onClose();
   }
 
@@ -105,13 +97,29 @@ export function ExercisePickerSheet({
     handleChooseExercise(savedEx);
   }
 
+  function handleExerciseRemoved(removed: Exercise, result: RemoveExerciseResult) {
+    setExercisesList((prev) => prev.filter((e) => e.id !== removed.id));
+    if (result === 'archived') {
+      Alert.alert('Ejercicio archivado', `"${removed.name}" ya no aparece en el banco. Las rutinas que lo usan lo conservan.`);
+    }
+  }
+
   function handleOpenEdit(ex: Exercise) {
     setEditingExercise(ex);
+    setCreateTemplate(null);
+    setCreateModalOpen(true);
+  }
+
+  /** Alta con datos iniciales: crear variante o hacer mi versión de un oficial. */
+  function handleCreateFrom(template: Partial<Exercise>) {
+    setEditingExercise(null);
+    setCreateTemplate(template);
     setCreateModalOpen(true);
   }
 
   function handleOpenCreate() {
     setEditingExercise(null);
+    setCreateTemplate(null);
     setCreateModalOpen(true);
   }
 
@@ -155,7 +163,7 @@ export function ExercisePickerSheet({
             style={[styles.originTab, originFilter === 'globales' && styles.originTabActive]}
           >
             <Text style={[styles.originTabText, originFilter === 'globales' && styles.originTabTextActive]}>
-              🌍 Catálogo Oficial
+              Catálogo oficial
             </Text>
           </Pressable>
           <Pressable
@@ -163,13 +171,13 @@ export function ExercisePickerSheet({
             style={[styles.originTab, originFilter === 'personalizados' && styles.originTabActive]}
           >
             <Text style={[styles.originTabText, originFilter === 'personalizados' && styles.originTabTextActive]}>
-              👤 Mis Ejercicios
+              Mis ejercicios
             </Text>
           </Pressable>
         </View>
 
         {/* Filtros de grupos musculares */}
-        <View style={styles.filterRow}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll} contentContainerStyle={styles.filterRow}>
           <Pressable
             onPress={() => setSelectedMuscle('todos')}
             style={[styles.filterChip, selectedMuscle === 'todos' && styles.filterChipActive]}
@@ -179,7 +187,7 @@ export function ExercisePickerSheet({
             </Text>
           </Pressable>
 
-          {MUSCLE_GROUPS.slice(0, 6).map((m) => {
+          {MUSCLE_GROUPS.map((m) => {
             const isActive = selectedMuscle === m.id;
             return (
               <Pressable
@@ -193,7 +201,7 @@ export function ExercisePickerSheet({
               </Pressable>
             );
           })}
-        </View>
+        </ScrollView>
 
         {/* Lista de ejercicios */}
         {loading ? (
@@ -238,14 +246,22 @@ export function ExercisePickerSheet({
                     </View>
                     <View style={styles.badgeRow}>
                       <View style={styles.muscleBadge}>
-                        <Text style={styles.muscleBadgeText}>{item.muscle_group.toUpperCase()}</Text>
+                        <Text style={styles.muscleBadgeText}>{muscleLabel(item.muscle_group)}</Text>
                       </View>
-                      <Text style={styles.equipmentText}>{item.equipment}</Text>
+                      <Text style={styles.equipmentText}>{equipmentLabel(item.equipment)}</Text>
                     </View>
+                    {trainingContext && conflictingContraindications(item, trainingContext.conditions).length > 0 && (
+                      <Text style={styles.warnText}>
+                        Contraindicado: {conflictingContraindications(item, trainingContext.conditions).join(', ')}
+                      </Text>
+                    )}
+                    {trainingContext && !isEquipmentAvailable(item, trainingContext.equipmentAccess) && (
+                      <Text style={styles.noEquipText}>El cliente no tiene este equipo</Text>
+                    )}
                   </View>
                 </Pressable>
 
-                {/* Botón de Información / Lottie */}
+                {/* Botón de información */}
                 <Pressable
                   onPress={() => setDetailExercise(item)}
                   style={styles.infoBtn}
@@ -273,18 +289,25 @@ export function ExercisePickerSheet({
         onClose={() => {
           setCreateModalOpen(false);
           setEditingExercise(null);
+          setCreateTemplate(null);
         }}
         onSaved={handleExerciseSaved}
         initialExercise={editingExercise}
+        template={createTemplate}
+        existingExercises={exercisesList}
       />
 
-      {/* Modal de Detalle con Reproductor Lottie */}
+      {/* Modal de Detalle */}
       <ExerciseDetailModal
         exercise={detailExercise}
         visible={!!detailExercise}
         onClose={() => setDetailExercise(null)}
         onSelect={handleChooseExercise}
         onEdit={handleOpenEdit}
+        onRemoved={handleExerciseRemoved}
+        allExercises={exercisesList}
+        onOpenExercise={setDetailExercise}
+        onCreateFrom={handleCreateFrom}
       />
     </>
   );
@@ -361,12 +384,16 @@ const styles = StyleSheet.create({
     fontFamily: fonts.bodyBold,
     color: colors.navy,
   },
-  filterRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: s(6),
+  warnText: { fontFamily: fonts.bodySemi, fontSize: fontSizes.xs, color: colors.danger, marginTop: s(2) },
+  noEquipText: { fontFamily: fonts.body, fontSize: fontSizes.xs, color: colors.textSecondary, marginTop: s(2) },
+  filterScroll: {
+    flexGrow: 0,
     marginTop: s(8),
     marginBottom: s(4),
+  },
+  filterRow: {
+    flexDirection: 'row',
+    gap: s(6),
   },
   filterChip: {
     paddingHorizontal: s(8),

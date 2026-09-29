@@ -16,7 +16,7 @@ const STEPS = [
   { id: 1, title: 'Analizando perfil y restricciones', desc: 'Historial de salud, lesiones y nivel de experiencia' },
   { id: 2, title: 'Evaluando biomecánica y equipamiento', desc: 'Gimnasio comercial, mancuernas, máquinas y poleas' },
   { id: 3, title: 'Estructurando división semanal', desc: 'Distribución de empuje, tirón, pierna y descansos' },
-  { id: 4, title: 'Optimizando ejercicios y superseries', desc: '6 ejercicios por día, series, repeticiones y cargas' },
+  { id: 4, title: 'Optimizando ejercicios y superseries', desc: 'Solo ejercicios de tu banco: series, repeticiones y cargas' },
 ];
 
 type Props = {

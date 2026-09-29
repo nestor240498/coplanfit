@@ -1,3 +1,4 @@
+import { isLocalUri, uploadClientMedia } from '@/lib/storage';
 import { supabase } from '@/lib/supabase';
 
 import { Measurement } from './types';
@@ -70,35 +71,28 @@ export async function getLatestMeasurement(clientId: string): Promise<Measuremen
   return data as Measurement | null;
 }
 
-/** Sube una foto de progreso a Supabase Storage y retorna su URL pública */
-export async function uploadMeasurementPhoto(clientId: string, localUri: string): Promise<string> {
-  const { data: userData } = await supabase.auth.getUser();
-  const trainerId = userData.user?.id;
-  if (!trainerId) throw new Error('Sesión expirada. Vuelve a iniciar sesión.');
-
-  const ext = localUri.split('.').pop()?.toLowerCase() || 'jpg';
-  const contentType = ext === 'png' ? 'image/png' : 'image/jpeg';
-  const fileName = `${Date.now()}_${Math.random().toString(36).substring(2, 8)}.${ext}`;
-  const path = `${trainerId}/clients/${clientId}/measurements/${fileName}`;
-
-  const response = await fetch(localUri);
-  const arrayBuffer = await response.arrayBuffer();
-
-  const { error: uploadError } = await supabase.storage
-    .from('logos')
-    .upload(path, arrayBuffer, { contentType, upsert: true });
-
-  if (uploadError) {
-    const { error: avatarBucketErr } = await supabase.storage
-      .from('avatars')
-      .upload(path, arrayBuffer, { contentType, upsert: true });
-    if (avatarBucketErr) throw new Error(uploadError.message);
-    const { data } = supabase.storage.from('avatars').getPublicUrl(path);
-    return `${data.publicUrl}?t=${Date.now()}`;
+/**
+ * Sube al bucket privado las fotos locales recién elegidas y devuelve la lista de referencias
+ * a guardar en BD. Las que ya estaban subidas (rutas o URLs antiguas) se conservan tal cual.
+ */
+export async function uploadMeasurementPhotos(
+  clientId: string,
+  refs: string[],
+  onProgress?: (current: number, total: number) => void
+): Promise<string[]> {
+  const total = refs.filter(isLocalUri).length;
+  const result: string[] = [];
+  let current = 0;
+  for (const ref of refs) {
+    if (!isLocalUri(ref)) {
+      result.push(ref);
+      continue;
+    }
+    current += 1;
+    onProgress?.(current, total);
+    result.push(await uploadClientMedia(clientId, ref, 'measurements'));
   }
-
-  const { data } = supabase.storage.from('logos').getPublicUrl(path);
-  return `${data.publicUrl}?t=${Date.now()}`;
+  return result;
 }
 
 /** Crea una nueva entrada en el histórico (append-only, nunca sobrescribe la anterior). */

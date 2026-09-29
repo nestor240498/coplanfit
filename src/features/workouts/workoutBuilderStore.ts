@@ -1,6 +1,13 @@
 import { create } from 'zustand';
 
-import { SingleExerciseExecution, WorkoutBlock, WorkoutDay } from './types';
+import { DEFAULT_GENERATION } from './routineGenerator';
+import {
+  MuscleGroup,
+  RoutineGenerationSettings,
+  SingleExerciseExecution,
+  WorkoutBlock,
+  WorkoutDay,
+} from './types';
 
 interface WorkoutBuilderState {
   clientId: string | null;
@@ -9,6 +16,8 @@ interface WorkoutBuilderState {
   savedStep: number;
   isAiGenerated: boolean;
   notes: string;
+  /** Cuántos ejercicios por día y si se permiten superseries (lo decide el entrenador). */
+  generation: RoutineGenerationSettings;
 
   // Acciones
   initBuilder: (clientId: string, defaultName?: string, defaultDays?: WorkoutDay[]) => void;
@@ -17,9 +26,11 @@ interface WorkoutBuilderState {
   setNotes: (notes: string) => void;
   setSavedStep: (step: number) => void;
   setIsAiGenerated: (val: boolean) => void;
+  setGeneration: (patch: Partial<RoutineGenerationSettings>) => void;
 
   // Manejo de días
-  addDay: (dayName: string, focus?: string) => void;
+  addDay: (dayName: string, focus?: string, muscles?: MuscleGroup[]) => void;
+  setDayMuscles: (dayId: string, muscles: MuscleGroup[]) => void;
   removeDay: (dayId: string) => void;
   updateDayName: (dayId: string, dayName: string, focus?: string) => void;
 
@@ -39,6 +50,8 @@ interface WorkoutBuilderState {
   ) => void;
   updateBlock: (dayId: string, blockId: string, patch: Partial<WorkoutBlock>) => void;
   removeBlock: (dayId: string, blockId: string) => void;
+  /** Sustituye un ejercicio (en superseries, el de la posición `exIndex`). */
+  replaceExercise: (dayId: string, blockId: string, exIndex: number | null, execution: SingleExerciseExecution) => void;
 
   // Agrupar un ejercicio existente con otro para convertirlo en Superserie
   combineIntoSuperset: (
@@ -59,6 +72,7 @@ export const useWorkoutBuilderStore = create<WorkoutBuilderState>((set) => ({
   savedStep: 1,
   isAiGenerated: false,
   notes: '',
+  generation: DEFAULT_GENERATION,
 
   initBuilder: (clientId, defaultName = 'Rutina Personalizada', defaultDays = []) =>
     set({
@@ -68,6 +82,7 @@ export const useWorkoutBuilderStore = create<WorkoutBuilderState>((set) => ({
       savedStep: 1,
       isAiGenerated: false,
       notes: '',
+      generation: DEFAULT_GENERATION,
     }),
 
   setRoutineName: (routineName) => set({ routineName }),
@@ -75,8 +90,9 @@ export const useWorkoutBuilderStore = create<WorkoutBuilderState>((set) => ({
   setNotes: (notes) => set({ notes }),
   setSavedStep: (savedStep) => set({ savedStep }),
   setIsAiGenerated: (isAiGenerated) => set({ isAiGenerated }),
+  setGeneration: (patch) => set((state) => ({ generation: { ...state.generation, ...patch } })),
 
-  addDay: (dayName, focus = '') =>
+  addDay: (dayName, focus = '', muscles = []) =>
     set((state) => ({
       days: [
         ...state.days,
@@ -84,9 +100,15 @@ export const useWorkoutBuilderStore = create<WorkoutBuilderState>((set) => ({
           id: `day-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
           day_name: dayName,
           focus,
+          muscles,
           blocks: [],
         },
       ],
+    })),
+
+  setDayMuscles: (dayId, muscles) =>
+    set((state) => ({
+      days: state.days.map((d) => (d.id === dayId ? { ...d, muscles } : d)),
     })),
 
   removeDay: (dayId) =>
@@ -156,6 +178,21 @@ export const useWorkoutBuilderStore = create<WorkoutBuilderState>((set) => ({
         return {
           ...d,
           blocks: d.blocks.filter((b) => b.id !== blockId),
+        };
+      }),
+    })),
+
+  replaceExercise: (dayId, blockId, exIndex, execution) =>
+    set((state) => ({
+      days: state.days.map((d) => {
+        if (d.id !== dayId) return d;
+        return {
+          ...d,
+          blocks: d.blocks.map((b) => {
+            if (b.id !== blockId) return b;
+            if (b.type === 'single') return { ...b, exercise: execution };
+            return { ...b, exercises: b.exercises.map((ex, i) => (i === exIndex ? execution : ex)) };
+          }),
         };
       }),
     })),
@@ -230,5 +267,6 @@ export const useWorkoutBuilderStore = create<WorkoutBuilderState>((set) => ({
       savedStep: 1,
       isAiGenerated: false,
       notes: '',
+      generation: DEFAULT_GENERATION,
     }),
 }));

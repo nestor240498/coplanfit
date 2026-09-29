@@ -1,3 +1,4 @@
+import { uploadClientMedia } from '@/lib/storage';
 import { supabase } from '@/lib/supabase';
 
 import { EquipmentAccess, TrainingGoal, TrainingLevel } from '../workouts/types';
@@ -147,34 +148,7 @@ export async function updateClient(id: string, patch: ClientPatch): Promise<void
   if (error) throw new Error(error.message);
 }
 
-/** Sube la foto del cliente a Supabase Storage y devuelve la URL pública con cache-busting. */
+/** Sube la foto del cliente al bucket privado y devuelve su ruta (se guarda en `avatar_url`). */
 export async function uploadClientAvatar(clientId: string, localUri: string): Promise<string> {
-  const { data: userData } = await supabase.auth.getUser();
-  const trainerId = userData.user?.id;
-  if (!trainerId) throw new Error('Sesión expirada. Vuelve a iniciar sesión.');
-
-  const ext = localUri.split('.').pop()?.toLowerCase() || 'jpg';
-  const contentType = ext === 'png' ? 'image/png' : 'image/jpeg';
-  // La ruta debe comenzar con el ID del entrenador para cumplir con las políticas RLS de Supabase Storage
-  const path = `${trainerId}/clients/${clientId}.${ext}`;
-
-  const response = await fetch(localUri);
-  const arrayBuffer = await response.arrayBuffer();
-
-  const { error: uploadError } = await supabase.storage
-    .from('logos')
-    .upload(path, arrayBuffer, { contentType, upsert: true });
-
-  if (uploadError) {
-    // Si falla en bucket logos, intentamos en bucket avatars
-    const { error: avatarBucketErr } = await supabase.storage
-      .from('avatars')
-      .upload(path, arrayBuffer, { contentType, upsert: true });
-    if (avatarBucketErr) throw new Error(uploadError.message);
-    const { data } = supabase.storage.from('avatars').getPublicUrl(path);
-    return `${data.publicUrl}?t=${Date.now()}`;
-  }
-
-  const { data } = supabase.storage.from('logos').getPublicUrl(path);
-  return `${data.publicUrl}?t=${Date.now()}`;
+  return uploadClientMedia(clientId, localUri, 'avatar');
 }

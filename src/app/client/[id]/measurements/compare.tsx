@@ -1,4 +1,3 @@
-import { Image } from 'expo-image';
 import { Camera, Download, Maximize2, X } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import {
@@ -13,8 +12,10 @@ import {
 } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 
+import { StorageImage } from '@/components/ui/StorageImage';
 import { AppBackground } from '@/components/ui/AppBackground';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
+import { IncludePhotosToggle } from '@/features/clients/components/IncludePhotosToggle';
 import { generateAndShareMeasurementComparisonPdf } from '@/features/clients/measurementPdf';
 import { getMeasurementById } from '@/features/clients/measurementsRepository';
 import { getClient } from '@/features/clients/repository';
@@ -100,6 +101,7 @@ export default function CompareMeasurementsScreen() {
   const [earlier, setEarlier] = useState<Measurement | null>(null);
   const [later, setLater] = useState<Measurement | null>(null);
   const [exportingPdf, setExportingPdf] = useState(false);
+  const [includePhotos, setIncludePhotos] = useState(false);
   const [selectedPreview, setSelectedPreview] = useState<{ url: string; title: string; date: string } | null>(null);
 
   useEffect(() => {
@@ -117,7 +119,7 @@ export default function CompareMeasurementsScreen() {
     setExportingPdf(true);
     try {
       const profile = await getMyProfile();
-      await generateAndShareMeasurementComparisonPdf({ client, profile, earlier, later });
+      await generateAndShareMeasurementComparisonPdf({ client, profile, earlier, later, includePhotos });
     } catch (e) {
       Alert.alert('Error al exportar PDF', (e as Error).message);
     } finally {
@@ -185,7 +187,7 @@ export default function CompareMeasurementsScreen() {
                       }
                       style={styles.photoThumbContainer}
                     >
-                      <Image source={{ uri: photoUrl }} style={styles.photoThumbImg} contentFit="cover" />
+                      <StorageImage mediaRef={photoUrl} style={styles.photoThumbImg} contentFit="cover" />
                       <View style={styles.photoThumbOverlay}>
                         <View style={styles.photoThumbIndex}>
                           <Text style={styles.photoThumbIndexText}>{idx + 1}</Text>
@@ -235,7 +237,7 @@ export default function CompareMeasurementsScreen() {
                       }
                       style={styles.photoThumbContainer}
                     >
-                      <Image source={{ uri: photoUrl }} style={styles.photoThumbImg} contentFit="cover" />
+                      <StorageImage mediaRef={photoUrl} style={styles.photoThumbImg} contentFit="cover" />
                       <View style={styles.photoThumbOverlay}>
                         <View style={[styles.photoThumbIndex, styles.photoThumbIndexLater]}>
                           <Text style={styles.photoThumbIndexText}>{idx + 1}</Text>
@@ -307,6 +309,8 @@ export default function CompareMeasurementsScreen() {
           );
         })}
 
+        {hasAnyPhotos && <IncludePhotosToggle value={includePhotos} onChange={setIncludePhotos} />}
+
         <Pressable
           accessibilityRole="button"
           onPress={handleExportComparisonPdf}
@@ -348,8 +352,8 @@ export default function CompareMeasurementsScreen() {
 
           {selectedPreview && (
             <View style={styles.modalImageContainer}>
-              <Image
-                source={{ uri: selectedPreview.url }}
+              <StorageImage
+                mediaRef={selectedPreview.url}
                 style={styles.modalFullImage}
                 contentFit="contain"
               />
