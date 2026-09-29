@@ -6,6 +6,8 @@ import { Client, Goal } from './types';
 
 export type ClientPatch = Partial<{
   full_name: string;
+  contact: string | null;
+  phone: string | null;
   age: number | null;
   birth_date: string | null;
   goal: Goal | null;
@@ -90,6 +92,7 @@ export async function listClients(): Promise<Client[]> {
 export async function createClient(input: {
   full_name: string;
   contact?: string;
+  phone?: string | null;
   age?: number;
   birth_date?: string;
   goal?: Goal;
@@ -105,6 +108,7 @@ export async function createClient(input: {
       trainer_id: trainerId,
       full_name: input.full_name.trim(),
       contact: input.contact?.trim() || null,
+      phone: input.phone ?? null,
       age: input.age ?? null,
       birth_date: input.birth_date ?? null,
       goal: input.goal ?? null,

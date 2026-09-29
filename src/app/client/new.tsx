@@ -8,9 +8,11 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { GoalPickerSheet } from '@/features/clients/components/GoalPickerSheet';
+import { PhoneField } from '@/features/clients/components/PhoneField';
 import { createClient } from '@/features/clients/repository';
 import { Goal } from '@/features/clients/types';
 import { formatGoal } from '@/lib/format';
+import { DEFAULT_COUNTRY_PREFIX, joinPhone } from '@/lib/phone';
 import { s } from '@/theme/scale';
 import { colors, radius } from '@/theme/tokens';
 import { fonts, fontSizes } from '@/theme/typography';
@@ -24,13 +26,17 @@ export default function NewClientScreen() {
   const insets = useSafeAreaInsets();
   const [fullName, setFullName] = useState('');
   const [contact, setContact] = useState('');
+  const [phonePrefix, setPhonePrefix] = useState(DEFAULT_COUNTRY_PREFIX);
+  const [phoneNumber, setPhoneNumber] = useState('');
   const [age, setAge] = useState('');
   const [goal, setGoal] = useState<Goal | null>(null);
   const [goalSheetOpen, setGoalSheetOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const canSubmit = fullName.trim().length > 1;
+  const phone = joinPhone(phonePrefix, phoneNumber);
+  const phoneError = phoneNumber.trim() && !phone ? 'Revisa el número: faltan o sobran dígitos.' : undefined;
+  const canSubmit = fullName.trim().length > 1 && !phoneError;
 
   async function handleSubmit() {
     if (!canSubmit || loading) return;
@@ -40,6 +46,7 @@ export default function NewClientScreen() {
       await createClient({
         full_name: fullName,
         contact: contact || undefined,
+        phone,
         age: age ? Number(age) : undefined,
         goal: goal ?? undefined,
       });
@@ -56,12 +63,20 @@ export default function NewClientScreen() {
       <ScreenHeader title="Nuevo cliente" showBack />
       <ScrollView contentContainerStyle={[styles.form, { paddingBottom: insets.bottom + s(16) }]} keyboardShouldPersistTaps="handled">
         <Input label="Nombre completo" placeholder="Ej: Carlos Ruiz" value={fullName} onChangeText={setFullName} />
+        <PhoneField
+          prefix={phonePrefix}
+          localNumber={phoneNumber}
+          onChangePrefix={setPhonePrefix}
+          onChangeLocalNumber={setPhoneNumber}
+          error={phoneError}
+        />
         <Input
-          label="Correo o teléfono"
+          label="Correo u otro contacto"
           placeholder="Opcional"
           value={contact}
           onChangeText={setContact}
           autoCapitalize="none"
+          keyboardType="email-address"
         />
 
         <View style={styles.fieldRow}>

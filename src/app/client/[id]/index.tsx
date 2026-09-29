@@ -153,6 +153,10 @@ export default function ClientDetailScreen() {
     if (id) listTags(id).then(setTags);
   }
 
+  // Se incrementa al enviar un documento para recargar el historial de envíos de la pestaña Datos
+  const [sentRefreshKey, setSentRefreshKey] = useState(0);
+  const bumpSent = () => setSentRefreshKey((k) => k + 1);
+
   async function handleUpdateClient(patch: Parameters<typeof updateClient>[1]) {
     if (!id) return;
     await updateClient(id, patch);
@@ -412,6 +416,9 @@ export default function ClientDetailScreen() {
             latestMeasurementLabel={measurement != null ? formatDateShort(measurement.measured_at) : null}
             onUpdateClient={handleUpdateClient}
             onViewAnthropometry={() => setTab('antropometria')}
+            latestHasPhotos={(measurement?.photos?.length ?? 0) > 0}
+            sentRefreshKey={sentRefreshKey}
+            onSent={bumpSent}
           />
         )}
         {tab === 'salud' && (
@@ -430,6 +437,7 @@ export default function ClientDetailScreen() {
             formState={measurementForm}
             onChangeFormState={handleChangeMeasurementForm}
             onViewHistory={() => router.push(`/client/${id}/measurements/history`)}
+            onSent={bumpSent}
           />
         )}
         {tab === 'planes' && (
@@ -437,6 +445,8 @@ export default function ClientDetailScreen() {
             clientId={client.id}
             clientName={client.full_name}
             clientGoal={client.goal}
+            clientPhone={client.phone}
+            onSent={bumpSent}
             tags={tags}
             onReloadTags={reloadTags}
             onUpdateClient={handleUpdateClient}

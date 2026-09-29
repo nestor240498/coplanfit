@@ -8,7 +8,9 @@ import { Button } from '@/components/ui/Button';
 import { CoplanFitLogo } from '@/components/ui/CoplanFitLogo';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { usePlanBuilderStore } from '@/features/clients/planBuilderStore';
-import { generateAndSharePlanPdf } from '@/features/clients/planPdf';
+import { SendDocumentSheet } from '@/features/clients/components/SendDocumentSheet';
+import { buildPlanPdfHtml } from '@/features/clients/planPdf';
+import { DocumentToDeliver } from '@/features/clients/sentLogRepository';
 import { getPlanVersionById, PlanVersionWithData } from '@/features/clients/plansRepository';
 import { getClient } from '@/features/clients/repository';
 import { Goal } from '@/features/clients/types';
@@ -21,17 +23,17 @@ import { fonts, fontSizes } from '@/theme/typography';
 export default function PlanPreviewScreen() {
   const { id, versionId } = useLocalSearchParams<{ id: string; versionId?: string }>();
   const router = useRouter();
-  const [client, setClient] = useState<{ full_name: string; goal: Goal | null } | null>(null);
+  const [client, setClient] = useState<{ full_name: string; goal: Goal | null; phone: string | null } | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [savedPlan, setSavedPlan] = useState<PlanVersionWithData | null>(null);
   const [loadingPlan, setLoadingPlan] = useState(Boolean(versionId));
-  const [generatingPdf, setGeneratingPdf] = useState(false);
+  const [sendOpen, setSendOpen] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
 
   const store = usePlanBuilderStore();
 
   useEffect(() => {
-    getClient(id).then((c) => setClient({ full_name: c.full_name, goal: c.goal })).catch(() => {});
+    getClient(id).then((c) => setClient({ full_name: c.full_name, goal: c.goal, phone: c.phone ?? null })).catch(() => {});
     getMyProfile().then(setProfile).catch(() => {});
 
     if (versionId) {
@@ -48,28 +50,29 @@ export default function PlanPreviewScreen() {
   const suggestions = savedPlan ? savedPlan.data.suggestions : store.suggestions;
   const mealAssignments = savedPlan ? savedPlan.data.meals ?? {} : store.mealAssignments;
 
-  async function handleDownloadPdf() {
-    if (!client) return;
-    setGeneratingPdf(true);
-    try {
-      await generateAndSharePlanPdf({
-        client,
-        profile,
-        planData: {
-          mealSlots,
-          waterLiters,
-          supplements,
-          aiNote: savedPlan?.data.aiNote ?? store.aiNote,
-          suggestions,
-          meals: mealAssignments,
-        },
-        versionNumber: savedPlan?.version,
-        createdAt: savedPlan?.created_at,
-      });
-    } finally {
-      setGeneratingPdf(false);
-    }
-  }
+  const planDocument: DocumentToDeliver | null = client
+    ? {
+        clientId: id,
+        kind: 'plan',
+        refId: savedPlan?.id ?? null,
+        label: savedPlan ? `Plan nutricional v${savedPlan.version}` : 'Plan nutricional',
+        buildHtml: async () =>
+          buildPlanPdfHtml({
+            client,
+            profile,
+            planData: {
+              mealSlots,
+              waterLiters,
+              supplements,
+              aiNote: savedPlan?.data.aiNote ?? store.aiNote,
+              suggestions,
+              meals: mealAssignments,
+            },
+            versionNumber: savedPlan?.version,
+            createdAt: savedPlan?.created_at,
+          }),
+      }
+    : null;
 
   const pageTitle = savedPlan ? `Plan Nutricional v${savedPlan.version}` : 'Vista previa del plan';
 
@@ -89,16 +92,12 @@ export default function PlanPreviewScreen() {
         right={
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Descargar PDF"
-            onPress={handleDownloadPdf}
-            disabled={generatingPdf}
+            accessibilityLabel="Enviar o descargar PDF"
+            onPress={() => setSendOpen(true)}
+            disabled={!planDocument}
             style={styles.headerDownloadBtn}
           >
-            {generatingPdf ? (
-              <ActivityIndicator size="small" color={colors.lime} />
-            ) : (
-              <Download size={s(16)} color={colors.lime} strokeWidth={2.5} />
-            )}
+            <Download size={s(16)} color={colors.lime} strokeWidth={2.5} />
           </Pressable>
         }
       />
@@ -232,13 +231,21 @@ export default function PlanPreviewScreen() {
         </ScrollView>
       )}
 
+      <SendDocumentSheet
+        visible={sendOpen}
+        onClose={() => setSendOpen(false)}
+        document={planDocument}
+        clientName={client?.full_name ?? ''}
+        clientPhone={client?.phone}
+      />
+
       {/* Footer fijo al pie de la pantalla */}
       <View style={styles.footer}>
         <Button
-          title={generatingPdf ? 'Generando PDF…' : 'Descargar en PDF'}
+          title="Enviar o descargar"
           variant="secondary"
-          onPress={handleDownloadPdf}
-          loading={generatingPdf}
+          onPress={() => setSendOpen(true)}
+          disabled={!planDocument}
           style={styles.footerBtnSide}
         />
         <Button

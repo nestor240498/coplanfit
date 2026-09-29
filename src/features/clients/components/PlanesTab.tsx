@@ -1,6 +1,6 @@
 import { ArrowRight, Check, Clock, Download, Eye, Plus, Trash2 } from 'lucide-react-native';
 import { useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Chip } from '@/components/ui/Chip';
 import { getMyProfile } from '@/features/profile/repository';
@@ -9,17 +9,22 @@ import { s } from '@/theme/scale';
 import { colors, radius } from '@/theme/tokens';
 import { fonts, fontSizes } from '@/theme/typography';
 
-import { generateAndSharePlanPdf } from '../planPdf';
+import { buildPlanPdfHtml } from '../planPdf';
 import { getPlanVersionById, PlanVersionWithData } from '../plansRepository';
+import { DocumentToDeliver } from '../sentLogRepository';
 import { addTag, removeTag } from '../tagsRepository';
 import { ClientTag, Goal, PlanVersion } from '../types';
 import { AddTagSheet } from './AddTagSheet';
 import { GoalPickerSheet } from './GoalPickerSheet';
+import { SendDocumentSheet } from './SendDocumentSheet';
 
 type Props = {
   clientId: string;
   clientName: string;
   clientGoal?: Goal | null;
+  clientPhone?: string | null;
+  /** Tras enviar un documento (refresca el historial de envíos). */
+  onSent?: () => void;
   tags: ClientTag[];
   onReloadTags: () => void;
   onUpdateClient: (patch: { goal?: Goal }) => Promise<void>;
@@ -44,6 +49,8 @@ export function PlanesTab({
   clientId,
   clientName,
   clientGoal,
+  clientPhone,
+  onSent,
   tags,
   onReloadTags,
   onUpdateClient,
@@ -56,7 +63,7 @@ export function PlanesTab({
   onViewVersion,
 }: Props) {
   const [selected, setSelected] = useState<string[]>([]);
-  const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const [sendVersion, setSendVersion] = useState<PlanVersion | null>(null);
   const [goalSheetOpen, setGoalSheetOpen] = useState(false);
   const [addAvoidOpen, setAddAvoidOpen] = useState(false);
 
@@ -82,24 +89,27 @@ export function PlanesTab({
     await onUpdateClient({ goal });
   }
 
-  async function handleDownloadVersionPdf(v: PlanVersion) {
-    setDownloadingId(v.id);
-    try {
-      const fullVersion = await getPlanVersionById(v.id);
-      const profile = await getMyProfile().catch(() => null);
-      await generateAndSharePlanPdf({
-        client: { full_name: clientName, goal: clientGoal ?? null },
-        profile,
-        planData: fullVersion.data,
-        versionNumber: v.version,
-        createdAt: v.created_at,
-      });
-    } catch (e) {
-      Alert.alert('Error al descargar PDF', (e as Error).message);
-    } finally {
-      setDownloadingId(null);
-    }
-  }
+  const sendDocument: DocumentToDeliver | null = sendVersion
+    ? {
+        clientId,
+        kind: 'plan',
+        refId: sendVersion.id,
+        label: `Plan nutricional v${sendVersion.version}`,
+        buildHtml: async () => {
+          const [fullVersion, profile] = await Promise.all([
+            getPlanVersionById(sendVersion.id),
+            getMyProfile().catch(() => null),
+          ]);
+          return buildPlanPdfHtml({
+            client: { full_name: clientName, goal: clientGoal ?? null },
+            profile,
+            planData: fullVersion.data,
+            versionNumber: sendVersion.version,
+            createdAt: sendVersion.created_at,
+          });
+        },
+      }
+    : null;
 
   // Filtrar versiones publicadas (no borradores)
   const publishedVersions = versions.filter((v) => !draft || v.id !== draft.id);
@@ -190,7 +200,6 @@ export function PlanesTab({
             {publishedVersions.map((v) => {
               const isSelected = selected.includes(v.id);
               const disabled = !isSelected && selected.length >= MAX_SELECTION;
-              const isDownloading = downloadingId === v.id;
 
               return (
                 <View
@@ -240,17 +249,12 @@ export function PlanesTab({
 
                     <Pressable
                       accessibilityRole="button"
-                      accessibilityLabel="Descargar plan en PDF"
-                      onPress={() => handleDownloadVersionPdf(v)}
-                      disabled={isDownloading}
+                      accessibilityLabel={`Enviar o descargar el plan v${v.version}`}
+                      onPress={() => setSendVersion(v)}
                       hitSlop={8}
                       style={styles.iconBtn}
                     >
-                      {isDownloading ? (
-                        <ActivityIndicator size="small" color={colors.success} />
-                      ) : (
-                        <Download size={s(16)} color={colors.success} />
-                      )}
+                      <Download size={s(16)} color={colors.success} />
                     </Pressable>
                   </View>
                 </View>
@@ -290,6 +294,15 @@ export function PlanesTab({
         value={clientGoal ?? null}
         onClose={() => setGoalSheetOpen(false)}
         onSelect={handleSelectGoal}
+      />
+
+      <SendDocumentSheet
+        visible={sendVersion != null}
+        onClose={() => setSendVersion(null)}
+        document={sendDocument}
+        clientName={clientName}
+        clientPhone={clientPhone}
+        onSent={onSent}
       />
     </View>
   );

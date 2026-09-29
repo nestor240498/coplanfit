@@ -1,7 +1,7 @@
 import * as ImagePicker from 'expo-image-picker';
 import { Camera, Download, History, ImagePlus, Trash2, X } from 'lucide-react-native';
 import { useState } from 'react';
-import { ActivityIndicator, Alert, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { StorageImage } from '@/components/ui/StorageImage';
 import { InputFieldRow } from '@/components/ui/FieldRow';
@@ -11,8 +11,10 @@ import { s } from '@/theme/scale';
 import { colors, radius } from '@/theme/tokens';
 import { fonts, fontSizes } from '@/theme/typography';
 
-import { generateAndShareMeasurementPdf } from '../measurementPdf';
+import { buildMeasurementPdfHtml } from '../measurementPdf';
+import { DocumentToDeliver } from '../sentLogRepository';
 import { IncludePhotosToggle } from './IncludePhotosToggle';
+import { SendDocumentSheet } from './SendDocumentSheet';
 import { Client, Measurement } from '../types';
 
 export type MeasurementFormState = {
@@ -61,6 +63,8 @@ type Props = {
   formState?: MeasurementFormState;
   onChangeFormState?: (key: keyof MeasurementFormState, value: any) => void;
   onViewHistory: () => void;
+  /** Tras enviar el reporte (refresca el historial de envíos). */
+  onSent?: () => void;
 };
 
 function fmt(value: number | null | undefined, unit: string, decimals = 0): string {
@@ -75,23 +79,24 @@ export function AntropometriaTab({
   formState,
   onChangeFormState,
   onViewHistory,
+  onSent,
 }: Props) {
-  const [exportingPdf, setExportingPdf] = useState(false);
+  const [sendOpen, setSendOpen] = useState(false);
   const [includePhotos, setIncludePhotos] = useState(false);
   const [selectedPreview, setSelectedPreview] = useState<{ url: string; title: string; date: string } | null>(null);
 
-  async function handleExportPdf() {
-    if (!measurement) return;
-    setExportingPdf(true);
-    try {
-      const profile = await getMyProfile();
-      await generateAndShareMeasurementPdf({ client, profile, measurement, includePhotos });
-    } catch (e) {
-      Alert.alert('Error al exportar PDF', (e as Error).message);
-    } finally {
-      setExportingPdf(false);
-    }
-  }
+  const measurementDocument: DocumentToDeliver | null = measurement
+    ? {
+        clientId: client.id,
+        kind: 'medicion',
+        refId: measurement.id,
+        label: `Evaluación antropométrica del ${formatDateShort(measurement.measured_at)}`,
+        buildHtml: async () => {
+          const profile = await getMyProfile().catch(() => null);
+          return buildMeasurementPdfHtml({ client, profile, measurement, includePhotos });
+        },
+      }
+    : null;
 
   async function handlePickImage(source: 'camera' | 'library') {
     if (!formState || !onChangeFormState) return;
@@ -641,23 +646,9 @@ export function AntropometriaTab({
 
       {measurement != null && (
         <View style={styles.actionsBar}>
-          {(measurement.photos?.length ?? 0) > 0 && (
-            <IncludePhotosToggle value={includePhotos} onChange={setIncludePhotos} />
-          )}
-          <Pressable
-            accessibilityRole="button"
-            onPress={handleExportPdf}
-            disabled={exportingPdf}
-            style={styles.exportPdfBtn}
-          >
-            {exportingPdf ? (
-              <ActivityIndicator size="small" color="#3B6B11" />
-            ) : (
-              <>
-                <Download size={s(12)} color="#3B6B11" strokeWidth={2.2} />
-                <Text style={styles.exportPdfBtnText}>Descargar reporte en PDF</Text>
-              </>
-            )}
+          <Pressable accessibilityRole="button" onPress={() => setSendOpen(true)} style={styles.exportPdfBtn}>
+            <Download size={s(12)} color="#3B6B11" strokeWidth={2.2} />
+            <Text style={styles.exportPdfBtnText}>Enviar o descargar el reporte</Text>
           </Pressable>
 
           <Pressable onPress={onViewHistory} style={styles.historyBtn}>
@@ -666,6 +657,19 @@ export function AntropometriaTab({
           </Pressable>
         </View>
       )}
+
+      <SendDocumentSheet
+        visible={sendOpen}
+        onClose={() => setSendOpen(false)}
+        document={measurementDocument}
+        clientName={client.full_name}
+        clientPhone={client.phone}
+        onSent={onSent}
+      >
+        {(measurement?.photos?.length ?? 0) > 0 && (
+          <IncludePhotosToggle value={includePhotos} onChange={setIncludePhotos} />
+        )}
+      </SendDocumentSheet>
 
       {/* MODAL FULLSCREEN PREVIEW */}
       <Modal

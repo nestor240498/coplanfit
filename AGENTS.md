@@ -28,7 +28,7 @@ Especificación funcional y visual: `design_handoff_coplanfit/` (README = handof
 - `src/lib/` — `supabase.ts` (cliente; `isSupabaseConfigured`), `format.ts`, `measurementTrends.ts` (flechas favorables según objetivo).
 
 ## Datos (Supabase)
-- SQL en `supabase/`: `schema.sql` → `migration_002..009` → `seed_exercises.sql`. Se aplican con `supabase db query --linked -f <archivo>` (o en el SQL Editor); no hay `supabase/migrations/` ni historial de migraciones de la CLI. Nuevas migraciones: `migration_00N_<nombre>.sql`, idempotentes (`if not exists`, `drop policy if exists`).
+- SQL en `supabase/`: `schema.sql` → `migration_002..011` → `seed_exercises.sql`. Se aplican con `supabase db query --linked -f <archivo>` (o en el SQL Editor); no hay `supabase/migrations/` ni historial de migraciones de la CLI. Nuevas migraciones: `migration_00N_<nombre>.sql`, idempotentes (`if not exists`, `drop policy if exists`).
 - Tablas: `profiles` (role `trainer`/`super_admin`, trigger al registrarse), `clients`, `client_tags` (alergia/condicion/evita), `measurements` (append-only; `bmi` y `waist_hip_ratio` son columnas generadas), `plan_versions` y `workout_plan_versions` (jsonb `data`, una `is_current` por cliente vía índice único parcial), `exercises` (globales `is_custom=false` visibles para todos + personalizados `created_by`, visibles solo para su autor); un ejercicio se **archiva** (`archived_at`) en vez de borrarse si es oficial o si alguna rutina lo usa (`removeExercise()`, RPC `exercise_in_use`). Vista `clients_with_current_plan`.
 - RLS: todo se filtra por `clients.trainer_id = auth.uid()`; los repositorios no pasan `trainer_id` salvo al insertar.
 - **Borradores** de plan/rutina se guardan en la misma tabla de versiones con `data.is_draft = true` y `is_current = false`; los listados los filtran.
@@ -48,6 +48,13 @@ Especificación funcional y visual: `design_handoff_coplanfit/` (README = handof
 - Grupos musculares y equipos: `MUSCLE_GROUPS` / `EXERCISE_EQUIPMENT` en `src/features/workouts/types.ts`. En la UI mostrar siempre `muscleLabel()` / `equipmentLabel()`, nunca el id crudo.
 - Búsqueda y aviso de duplicados: `matchesExerciseQuery()` / `findSimilarExercises()` en `exerciseSearch.ts` (ignoran tildes).
 - Al añadir un ejercicio a una rutina se enlaza por `exercise_id` (salvo los de respaldo `default-N`), y `notes` empieza vacío: son notas para ese cliente, no la técnica general.
+
+## PDF y envío al cliente
+- Base común en `src/lib/pdf.ts`: `esc()` (obligatorio para todo texto del usuario), `pdfHeader` / `pdfMetaCard` / `pdfSectionTitle` / `pdfFooter` / `pdfDocument` (estilo Navy Pro) y salida `sharePdf` / `downloadPdf`.
+- Cada documento expone un `build…Html()` (plan, rutina, medición, comparativa, informe completo en `clientReportPdf.ts`) y la UI abre siempre `<SendDocumentSheet>` con un `DocumentToDeliver`.
+- «Enviar» abre el menú de compartir y anota el envío en `sent_log` (`sendDocument`); «Descargar» abre el diálogo de imprimir/guardar sin anotarlo. En la Fase 2, `sendDocument` también publicará en la app del cliente.
+- El informe completo no incluye las notas privadas del entrenador (`notes`, `medical_notes`); las fotos solo con el interruptor.
+- `clients.phone`: dígitos con prefijo de país sin el 0 nacional (`src/lib/phone.ts`); habilita abrir el chat de WhatsApp (`wa.me`).
 
 ## Rutinas de entrenamiento
 - Una rutina **solo contiene ejercicios del banco**, enlazados por `exercise_id`; nunca nombres inventados.

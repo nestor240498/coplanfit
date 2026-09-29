@@ -9,6 +9,8 @@ export type Client = {
   trainer_id: string;
   full_name: string;
   contact: string | null;
+  /** Teléfono internacional solo con dígitos (p. ej. 584121234567), para abrir WhatsApp. */
+  phone?: string | null;
   age: number | null;
   birth_date?: string | null;
   goal: Goal | null;

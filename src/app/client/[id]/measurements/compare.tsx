@@ -2,7 +2,6 @@ import { Camera, Download, Maximize2, X } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Modal,
   Pressable,
   ScrollView,
@@ -16,7 +15,9 @@ import { StorageImage } from '@/components/ui/StorageImage';
 import { AppBackground } from '@/components/ui/AppBackground';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { IncludePhotosToggle } from '@/features/clients/components/IncludePhotosToggle';
-import { generateAndShareMeasurementComparisonPdf } from '@/features/clients/measurementPdf';
+import { SendDocumentSheet } from '@/features/clients/components/SendDocumentSheet';
+import { buildMeasurementComparisonPdfHtml } from '@/features/clients/measurementPdf';
+import { DocumentToDeliver } from '@/features/clients/sentLogRepository';
 import { getMeasurementById } from '@/features/clients/measurementsRepository';
 import { getClient } from '@/features/clients/repository';
 import { Client, Measurement } from '@/features/clients/types';
@@ -100,7 +101,7 @@ export default function CompareMeasurementsScreen() {
   const [client, setClient] = useState<Client | null>(null);
   const [earlier, setEarlier] = useState<Measurement | null>(null);
   const [later, setLater] = useState<Measurement | null>(null);
-  const [exportingPdf, setExportingPdf] = useState(false);
+  const [sendOpen, setSendOpen] = useState(false);
   const [includePhotos, setIncludePhotos] = useState(false);
   const [selectedPreview, setSelectedPreview] = useState<{ url: string; title: string; date: string } | null>(null);
 
@@ -114,18 +115,19 @@ export default function CompareMeasurementsScreen() {
     });
   }, [id, a, b]);
 
-  async function handleExportComparisonPdf() {
-    if (!client || !earlier || !later) return;
-    setExportingPdf(true);
-    try {
-      const profile = await getMyProfile();
-      await generateAndShareMeasurementComparisonPdf({ client, profile, earlier, later, includePhotos });
-    } catch (e) {
-      Alert.alert('Error al exportar PDF', (e as Error).message);
-    } finally {
-      setExportingPdf(false);
-    }
-  }
+  const comparisonDocument: DocumentToDeliver | null =
+    client && earlier && later
+      ? {
+          clientId: client.id,
+          kind: 'comparativa',
+          refId: later.id,
+          label: `Comparativa de medidas ${formatDateShort(earlier.measured_at)} – ${formatDateShort(later.measured_at)}`,
+          buildHtml: async () => {
+            const profile = await getMyProfile().catch(() => null);
+            return buildMeasurementComparisonPdfHtml({ client, profile, earlier, later, includePhotos });
+          },
+        }
+      : null;
 
   if (client == null || earlier == null || later == null) {
     return (
@@ -309,24 +311,21 @@ export default function CompareMeasurementsScreen() {
           );
         })}
 
-        {hasAnyPhotos && <IncludePhotosToggle value={includePhotos} onChange={setIncludePhotos} />}
-
-        <Pressable
-          accessibilityRole="button"
-          onPress={handleExportComparisonPdf}
-          disabled={exportingPdf}
-          style={styles.exportCta}
-        >
-          {exportingPdf ? (
-            <ActivityIndicator size="small" color={colors.navy} />
-          ) : (
-            <>
-              <Download size={s(15)} color={colors.navy} strokeWidth={2.5} />
-              <Text style={styles.exportCtaText}>Descargar comparativa en PDF</Text>
-            </>
-          )}
+        <Pressable accessibilityRole="button" onPress={() => setSendOpen(true)} style={styles.exportCta}>
+          <Download size={s(15)} color={colors.navy} strokeWidth={2.5} />
+          <Text style={styles.exportCtaText}>Enviar o descargar la comparativa</Text>
         </Pressable>
       </ScrollView>
+
+      <SendDocumentSheet
+        visible={sendOpen}
+        onClose={() => setSendOpen(false)}
+        document={comparisonDocument}
+        clientName={client.full_name}
+        clientPhone={client.phone}
+      >
+        {hasAnyPhotos && <IncludePhotosToggle value={includePhotos} onChange={setIncludePhotos} />}
+      </SendDocumentSheet>
 
       {/* MODAL DE VISUALIZACIÓN EN PANTALLA COMPLETA */}
       <Modal

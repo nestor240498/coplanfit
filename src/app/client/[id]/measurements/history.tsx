@@ -1,12 +1,14 @@
 import { Camera, Download } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 
 import { AppBackground } from '@/components/ui/AppBackground';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { IncludePhotosToggle } from '@/features/clients/components/IncludePhotosToggle';
-import { generateAndShareMeasurementPdf } from '@/features/clients/measurementPdf';
+import { SendDocumentSheet } from '@/features/clients/components/SendDocumentSheet';
+import { buildMeasurementPdfHtml } from '@/features/clients/measurementPdf';
+import { DocumentToDeliver } from '@/features/clients/sentLogRepository';
 import { listMeasurements } from '@/features/clients/measurementsRepository';
 import { getClient } from '@/features/clients/repository';
 import { Client, Measurement } from '@/features/clients/types';
@@ -36,7 +38,7 @@ export default function MeasurementHistoryScreen() {
   const [client, setClient] = useState<Client | null>(null);
   const [measurements, setMeasurements] = useState<Measurement[] | null>(null);
   const [selected, setSelected] = useState<string[]>([]);
-  const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const [sendMeasurement, setSendMeasurement] = useState<Measurement | null>(null);
   const [includePhotos, setIncludePhotos] = useState(false);
 
   useEffect(() => {
@@ -52,18 +54,19 @@ export default function MeasurementHistoryScreen() {
     });
   }
 
-  async function handleDownloadPdf(m: Measurement) {
-    if (!client) return;
-    setDownloadingId(m.id);
-    try {
-      const profile = await getMyProfile();
-      await generateAndShareMeasurementPdf({ client, profile, measurement: m, includePhotos });
-    } catch (e) {
-      Alert.alert('Error al exportar PDF', (e as Error).message);
-    } finally {
-      setDownloadingId(null);
-    }
-  }
+  const measurementDocument: DocumentToDeliver | null =
+    client && sendMeasurement
+      ? {
+          clientId: client.id,
+          kind: 'medicion',
+          refId: sendMeasurement.id,
+          label: `Evaluación antropométrica del ${formatDateShort(sendMeasurement.measured_at)}`,
+          buildHtml: async () => {
+            const profile = await getMyProfile().catch(() => null);
+            return buildMeasurementPdfHtml({ client, profile, measurement: sendMeasurement, includePhotos });
+          },
+        }
+      : null;
 
   return (
     <View style={styles.screen}>
@@ -83,17 +86,13 @@ export default function MeasurementHistoryScreen() {
           contentContainerStyle={styles.list}
           ListHeaderComponent={
             <View style={styles.header}>
-              <Text style={styles.hint}>Selecciona 2 mediciones para compararlas o descarga el PDF individual</Text>
-              {measurements.some((m) => (m.photos?.length ?? 0) > 0) && (
-                <IncludePhotosToggle value={includePhotos} onChange={setIncludePhotos} />
-              )}
+              <Text style={styles.hint}>Selecciona 2 mediciones para compararlas o envía el PDF de una</Text>
             </View>
           }
           ListEmptyComponent={<Text style={styles.empty}>Sin mediciones registradas todavía.</Text>}
           renderItem={({ item }) => {
             const isSelected = selected.includes(item.id);
             const disabled = !isSelected && selected.length >= MAX_SELECTION;
-            const isDownloading = downloadingId === item.id;
             const photoCount = item.photos?.length ?? 0;
 
             return (
@@ -124,16 +123,11 @@ export default function MeasurementHistoryScreen() {
 
                 <Pressable
                   accessibilityRole="button"
-                  accessibilityLabel="Descargar reporte en PDF"
-                  onPress={() => handleDownloadPdf(item)}
-                  disabled={isDownloading}
+                  accessibilityLabel="Enviar o descargar el reporte en PDF"
+                  onPress={() => setSendMeasurement(item)}
                   style={styles.downloadBtn}
                 >
-                  {isDownloading ? (
-                    <ActivityIndicator size="small" color={colors.navy} />
-                  ) : (
-                    <Download size={s(15)} color={colors.navy} strokeWidth={2.2} />
-                  )}
+                  <Download size={s(15)} color={colors.navy} strokeWidth={2.2} />
                 </Pressable>
               </View>
             );
@@ -151,6 +145,18 @@ export default function MeasurementHistoryScreen() {
           }
         />
       )}
+
+      <SendDocumentSheet
+        visible={sendMeasurement != null}
+        onClose={() => setSendMeasurement(null)}
+        document={measurementDocument}
+        clientName={client?.full_name ?? ''}
+        clientPhone={client?.phone}
+      >
+        {(sendMeasurement?.photos?.length ?? 0) > 0 && (
+          <IncludePhotosToggle value={includePhotos} onChange={setIncludePhotos} />
+        )}
+      </SendDocumentSheet>
     </View>
   );
 }

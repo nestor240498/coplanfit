@@ -14,13 +14,15 @@ import {
 import { AppBackground } from '@/components/ui/AppBackground';
 import { Button } from '@/components/ui/Button';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
+import { SendDocumentSheet } from '@/features/clients/components/SendDocumentSheet';
 import { getClient } from '@/features/clients/repository';
+import { DocumentToDeliver } from '@/features/clients/sentLogRepository';
 import { Client } from '@/features/clients/types';
 import { getMyProfile } from '@/features/profile/repository';
 import { getExercises } from '@/features/workouts/exerciseService';
 import { formatPrescription, targetFieldLabel } from '@/features/workouts/prescription';
 import { WorkoutPlanVersion } from '@/features/workouts/types';
-import { shareWorkoutPdf } from '@/features/workouts/workoutPdf';
+import { buildWorkoutPdfHtml } from '@/features/workouts/workoutPdf';
 import { getWorkoutPlanVersionById } from '@/features/workouts/workoutsRepository';
 import { s } from '@/theme/scale';
 import { colors, radius } from '@/theme/tokens';
@@ -33,20 +35,21 @@ export default function WorkoutPreviewScreen() {
   const [version, setVersion] = useState<WorkoutPlanVersion | null>(null);
   const [activeDayIndex, setActiveDayIndex] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [exporting, setExporting] = useState(false);
+  const [sendOpen, setSendOpen] = useState(false);
 
-  async function handleDownloadPdf() {
-    if (!client || !version) return;
-    setExporting(true);
-    try {
-      const [profile, bank] = await Promise.all([getMyProfile().catch(() => null), getExercises()]);
-      await shareWorkoutPdf({ client, profile, version, bank });
-    } catch (e) {
-      Alert.alert('No se pudo generar el PDF', (e as Error).message);
-    } finally {
-      setExporting(false);
-    }
-  }
+  const workoutDocument: DocumentToDeliver | null =
+    client && version
+      ? {
+          clientId: client.id,
+          kind: 'rutina',
+          refId: version.id,
+          label: `Rutina «${version.name}» v${version.version}`,
+          buildHtml: async () => {
+            const [profile, bank] = await Promise.all([getMyProfile().catch(() => null), getExercises()]);
+            return buildWorkoutPdfHtml({ client, profile, version, bank });
+          },
+        }
+      : null;
 
   useEffect(() => {
     if (!id || !versionId) return;
@@ -220,13 +223,16 @@ export default function WorkoutPreviewScreen() {
         )}
       </ScrollView>
 
+      <SendDocumentSheet
+        visible={sendOpen}
+        onClose={() => setSendOpen(false)}
+        document={workoutDocument}
+        clientName={client?.full_name ?? ''}
+        clientPhone={client?.phone}
+      />
+
       <View style={styles.footer}>
-        <Button
-          title={exporting ? 'Generando PDF…' : 'Descargar PDF'}
-          onPress={handleDownloadPdf}
-          loading={exporting}
-          variant="secondary"
-        />
+        <Button title="Enviar o descargar" onPress={() => setSendOpen(true)} disabled={!workoutDocument} />
       </View>
     </View>
   );

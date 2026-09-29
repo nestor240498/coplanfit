@@ -1,13 +1,21 @@
+import { ClipboardList } from 'lucide-react-native';
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { calculateAge, formatDateShort } from '@/lib/format';
+import { formatPhone } from '@/lib/phone';
 import { s } from '@/theme/scale';
 import { colors, radius } from '@/theme/tokens';
 import { fonts, fontSizes } from '@/theme/typography';
 
 import { Client } from '../types';
+import { buildClientReportHtml } from '../clientReportPdf';
+import { DocumentToDeliver } from '../sentLogRepository';
 import { DatePickerSheet } from './DatePickerSheet';
+import { IncludePhotosToggle } from './IncludePhotosToggle';
+import { PhoneSheet } from './PhoneSheet';
+import { SendDocumentSheet } from './SendDocumentSheet';
+import { SentHistory } from './SentHistory';
 
 type Props = {
   client: Client;
@@ -16,8 +24,14 @@ type Props = {
     birth_date?: string | null;
     age?: number | null;
     notes?: string;
+    phone?: string | null;
   }) => Promise<void>;
   onViewAnthropometry: () => void;
+  /** La última medición tiene fotos de progreso (muestra el interruptor en el informe). */
+  latestHasPhotos: boolean;
+  /** Cambia cada vez que se envía algo al cliente. */
+  sentRefreshKey: number;
+  onSent: () => void;
 };
 
 export function DatosTab({
@@ -25,8 +39,21 @@ export function DatosTab({
   latestMeasurementLabel,
   onUpdateClient,
   onViewAnthropometry,
+  latestHasPhotos,
+  sentRefreshKey,
+  onSent,
 }: Props) {
   const [datePickerOpen, setDatePickerOpen] = useState(false);
+  const [phoneSheetOpen, setPhoneSheetOpen] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
+  const [reportPhotos, setReportPhotos] = useState(false);
+
+  const reportDocument: DocumentToDeliver = {
+    clientId: client.id,
+    kind: 'informe',
+    label: 'Informe completo',
+    buildHtml: () => buildClientReportHtml(client.id, { includePhotos: reportPhotos }),
+  };
   const [notes, setNotes] = useState(client.notes ?? '');
 
   const computedAge =
@@ -49,6 +76,29 @@ export function DatosTab({
 
   return (
     <View style={styles.container}>
+      {/* Informe completo: todo lo del cliente en un solo PDF */}
+      <Pressable accessibilityRole="button" onPress={() => setReportOpen(true)} style={styles.reportCard}>
+        <ClipboardList size={s(20)} color={colors.navy} />
+        <View style={styles.reportTexts}>
+          <Text style={styles.reportTitle}>Informe completo</Text>
+          <Text style={styles.reportText}>
+            Datos, evolución de medidas, plan nutricional y rutina vigentes en un solo PDF.
+          </Text>
+        </View>
+        <Text style={styles.reportAction}>Enviar ›</Text>
+      </Pressable>
+
+      {/* Teléfono para WhatsApp */}
+      <Pressable
+        onPress={() => setPhoneSheetOpen(true)}
+        style={styles.fieldRow}
+        accessibilityRole="button"
+        accessibilityLabel="Editar teléfono del cliente"
+      >
+        <Text style={styles.fieldLabel}>Teléfono (WhatsApp)</Text>
+        <Text style={styles.fieldValue}>{client.phone ? formatPhone(client.phone) : 'Añadir ▾'}</Text>
+      </Pressable>
+
       {/* Selector interactivo de Fecha de nacimiento */}
       <Pressable
         onPress={() => setDatePickerOpen(true)}
@@ -90,6 +140,26 @@ export function DatosTab({
         </Pressable>
       </View>
 
+      <SentHistory clientId={client.id} refreshKey={sentRefreshKey} />
+
+      <PhoneSheet
+        visible={phoneSheetOpen}
+        value={client.phone}
+        onClose={() => setPhoneSheetOpen(false)}
+        onSave={(phone) => onUpdateClient({ phone })}
+      />
+
+      <SendDocumentSheet
+        visible={reportOpen}
+        onClose={() => setReportOpen(false)}
+        document={reportDocument}
+        clientName={client.full_name}
+        clientPhone={client.phone}
+        onSent={onSent}
+      >
+        {latestHasPhotos && <IncludePhotosToggle value={reportPhotos} onChange={setReportPhotos} />}
+      </SendDocumentSheet>
+
       {/* Modal interactivo de selección de fecha */}
       <DatePickerSheet
         visible={datePickerOpen}
@@ -103,6 +173,21 @@ export function DatosTab({
 
 const styles = StyleSheet.create({
   container: { padding: s(16), gap: s(10) },
+  reportCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: s(10),
+    minHeight: 64,
+    padding: s(12),
+    borderRadius: radius.card,
+    borderWidth: 1,
+    borderColor: colors.lime,
+    backgroundColor: colors.successBg,
+  },
+  reportTexts: { flex: 1, gap: s(2) },
+  reportTitle: { fontFamily: fonts.bodyBold, fontSize: fontSizes.sm, color: colors.navy },
+  reportText: { fontFamily: fonts.body, fontSize: fontSizes.xs, color: colors.textSecondary },
+  reportAction: { fontFamily: fonts.bodyBold, fontSize: fontSizes.xs, color: colors.success },
   groupLabel: {
     fontFamily: fonts.headingSemi,
     fontSize: fontSizes.label,
