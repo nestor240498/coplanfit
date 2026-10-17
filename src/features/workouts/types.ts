@@ -195,6 +195,8 @@ export type Exercise = {
   secondary_muscles?: MuscleGroup[];
   equipment: string;
   difficulty: TrainingLevel;
+  /** Qué es y qué trabaja, en una frase: se ve en la tarjeta del banco (migración 013). */
+  description?: string | null;
   instructions?: string | null;
   tips?: string | null;
   images?: string[] | null; // URLs de fotos de los pasos (Paso 1, Paso 2, Paso 3)

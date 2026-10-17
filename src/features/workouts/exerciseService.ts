@@ -18,6 +18,7 @@ export type CreateExerciseInput = {
   equipment: string;
   extra_equipment?: string[];
   difficulty: TrainingLevel;
+  description?: string | null;
   exercise_type?: ExerciseType | null;
   metric?: ExerciseMetric;
   laterality?: Laterality;
@@ -52,6 +53,7 @@ function toRow(input: Partial<CreateExerciseInput>): Record<string, unknown> {
   if (input.metric !== undefined) row.metric = input.metric;
   if (input.laterality !== undefined) row.laterality = input.laterality;
   if (input.movement_pattern !== undefined) row.movement_pattern = input.movement_pattern;
+  if (input.description !== undefined) row.description = input.description?.trim().slice(0, 200) || null;
   if (input.instructions !== undefined) row.instructions = input.instructions?.trim() || null;
   if (input.tips !== undefined) row.tips = input.tips?.trim() || null;
   if (input.cues !== undefined) row.cues = cleanList(input.cues);

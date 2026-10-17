@@ -13,10 +13,13 @@ import {
   View,
 } from 'react-native';
 
+import { friendlyError } from '@/lib/errors';
 import { Button } from '@/components/ui/Button';
 import { AppBackground } from '@/components/ui/AppBackground';
 import { Input } from '@/components/ui/Input';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
+import { AiQuotaCard } from '@/features/ai/components/AiQuotaCard';
+import { useAiQuota } from '@/features/ai/quota';
 import { useAuth } from '@/features/auth/useAuth';
 import {
   getMyProfile,
@@ -44,11 +47,14 @@ export default function ProfileScreen() {
   const [businessName, setBusinessName] = useState('');
   const [description, setDescription] = useState('');
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const quota = useAiQuota((st) => st.quota);
+  const refreshQuota = useAiQuota((st) => st.refresh);
 
   const load = useCallback(() => {
     let cancelled = false;
     setLoading(true);
     setError(null);
+    refreshQuota();
     getMyProfile()
       .then((profile) => {
         if (cancelled) return;
@@ -59,7 +65,7 @@ export default function ProfileScreen() {
         setLogoUrl(profile.logo_url);
       })
       .catch((e: Error) => {
-        if (!cancelled) setError(e.message);
+        if (!cancelled) setError(friendlyError(e));
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -67,7 +73,7 @@ export default function ProfileScreen() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [refreshQuota]);
 
   useFocusEffect(load);
 
@@ -81,7 +87,7 @@ export default function ProfileScreen() {
         description: description || null,
       });
     } catch (e) {
-      setError((e as Error).message);
+      setError(friendlyError(e));
     } finally {
       setSaving(false);
     }
@@ -114,7 +120,7 @@ export default function ProfileScreen() {
       });
       setLogoUrl(uploadedUrl);
     } catch (e) {
-      setError((e as Error).message);
+      setError(friendlyError(e));
     } finally {
       setUploading(false);
     }
@@ -186,6 +192,8 @@ export default function ProfileScreen() {
                 />
               </View>
             </View>
+
+            {quota ? <AiQuotaCard quota={quota} /> : null}
           </View>
 
           <View style={styles.footerWrap}>

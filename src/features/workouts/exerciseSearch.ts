@@ -1,4 +1,4 @@
-import { Exercise, equipmentLabel, muscleLabel } from './types';
+import { Exercise, equipmentLabel, MuscleGroup, muscleLabel } from './types';
 
 /** Minúsculas, sin tildes ni signos: "Bíceps" y "biceps" son lo mismo al buscar. */
 export function normalizeText(text: string): string {
@@ -22,6 +22,7 @@ export function matchesExerciseQuery(ex: Exercise, query: string): boolean {
       muscleLabel(ex.muscle_group),
       ...(ex.secondary_muscles ?? []).map(muscleLabel),
       equipmentLabel(ex.equipment),
+      ex.description ?? '',
     ].join(' ')
   );
   return words.every((w) => haystack.includes(w));
@@ -109,4 +110,19 @@ export function variantTemplate(base: Exercise): Partial<Exercise> {
 export function personalCopyTemplate(official: Exercise): Partial<Exercise> {
   // El formulario solo toma los campos editables (no id, autor ni origen)
   return { ...official, name: `${official.name} (mi versión)`, parent_id: official.id };
+}
+
+/** Filtros del banco: varios músculos y equipos a la vez (vacío = todos). Cuenta el músculo y el equipo principal. */
+export type ExerciseFilters = { muscles: MuscleGroup[]; equipment: string[] };
+
+export const NO_EXERCISE_FILTERS: ExerciseFilters = { muscles: [], equipment: [] };
+
+export function matchesExerciseFilters(ex: Exercise, filters: ExerciseFilters): boolean {
+  if (filters.muscles.length > 0 && !filters.muscles.includes(ex.muscle_group)) return false;
+  if (filters.equipment.length > 0 && !filters.equipment.includes(ex.equipment)) return false;
+  return true;
+}
+
+export function activeFilterCount(filters: ExerciseFilters): number {
+  return filters.muscles.length + filters.equipment.length;
 }

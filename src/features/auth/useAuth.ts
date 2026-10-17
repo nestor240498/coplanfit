@@ -1,6 +1,7 @@
 import { Session } from '@supabase/supabase-js';
 import { create } from 'zustand';
 
+import { useAiQuota } from '@/features/ai/quota';
 import { clearMediaCache } from '@/lib/storage';
 import { supabase } from '@/lib/supabase';
 
@@ -49,6 +50,7 @@ export const useAuth = create<AuthState>((set) => ({
     await supabase.auth.signOut();
     // Las fotos de clientes son confidenciales: no deben quedar en memoria tras cerrar sesión
     await clearMediaCache().catch(() => {});
+    useAiQuota.setState({ quota: null });
   },
 }));
 

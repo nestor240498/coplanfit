@@ -29,9 +29,13 @@ export function ExerciseVideo({ videoRef, height }: Props) {
   useEffect(() => {
     if (!uri) return;
     let cancelled = false;
-    player.replaceAsync(uri).then(() => {
-      if (!cancelled && !reduceMotion) player.play();
-    });
+    player
+      .replaceAsync(uri)
+      .then(() => {
+        if (!cancelled && !reduceMotion) player.play();
+      })
+      // Si se cierra el detalle mientras carga, el reproductor ya se liberó: no es un error
+      .catch(() => {});
     return () => {
       cancelled = true;
     };

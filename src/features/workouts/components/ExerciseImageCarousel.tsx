@@ -14,7 +14,7 @@ import {
 
 import { s } from '@/theme/scale';
 import { colors, radius } from '@/theme/tokens';
-import { fonts } from '@/theme/typography';
+import { fonts, fontSizes } from '@/theme/typography';
 import { MuscleGroup, muscleLabel } from '../types';
 
 type Props = {
@@ -155,14 +155,14 @@ export function ExerciseImageCarousel({
       {/* Controles de Navegación < y > */}
       {total > 1 && (
         <>
-          <Pressable
+          <Pressable accessibilityLabel="Foto anterior"
             onPress={handlePrev}
             style={[styles.navBtn, styles.navBtnLeft]}
             hitSlop={10}
           >
             <ChevronLeft size={s(16)} color={colors.navy} />
           </Pressable>
-          <Pressable
+          <Pressable accessibilityRole="button" accessibilityLabel="Foto siguiente"
             onPress={handleNext}
             style={[styles.navBtn, styles.navBtnRight]}
             hitSlop={10}
@@ -215,17 +215,17 @@ const styles = StyleSheet.create({
   },
   stepBadgeText: {
     fontFamily: fonts.bodyBold,
-    fontSize: s(8),
+    fontSize: fontSizes.label,
     color: colors.surface,
     letterSpacing: 0.5,
   },
   navBtn: {
     position: 'absolute',
     top: '50%',
-    marginTop: -s(14),
-    width: s(28),
-    height: s(28),
-    borderRadius: s(14),
+    marginTop: -20,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     backgroundColor: 'rgba(255, 255, 255, 0.92)',
     alignItems: 'center',
     justifyContent: 'center',
@@ -286,7 +286,7 @@ const styles = StyleSheet.create({
   },
   placeholderTitle: {
     fontFamily: fonts.bodyBold,
-    fontSize: s(11),
+    fontSize: fontSizes.sm,
     color: colors.surface,
     textAlign: 'center',
   },
@@ -298,7 +298,7 @@ const styles = StyleSheet.create({
   },
   placeholderBadgeText: {
     fontFamily: fonts.bodyBold,
-    fontSize: s(7.5),
+    fontSize: fontSizes.micro,
     color: colors.navy,
   },
 });

@@ -135,7 +135,7 @@ const styles = StyleSheet.create({
   pillText: { fontFamily: fonts.body, fontSize: fontSizes.xs, color: colors.textSecondary },
   pillTextSelected: { fontFamily: fonts.bodyBold, color: colors.surface },
   input: {
-    height: s(36),
+    minHeight: 44,
     borderRadius: radius.input,
     borderWidth: 1,
     borderColor: colors.border,

@@ -3,7 +3,6 @@ import { Check, Sparkles, X, Zap } from 'lucide-react-native';
 import { useCallback, useState } from 'react';
 import {
   Alert,
-  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -14,6 +13,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppBackground } from '@/components/ui/AppBackground';
+import { BottomSheet } from '@/components/ui/BottomSheet';
 import { Button } from '@/components/ui/Button';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { listClients } from '@/features/clients/repository';
@@ -205,31 +205,12 @@ export default function SubscriptionScreen() {
       </ScrollView>
 
       {/* Modal / Sheet con los planes disponibles */}
-      <Modal
+      <BottomSheet
         visible={modalVisible}
-        animationType="slide"
-        transparent
-        onRequestClose={() => setModalVisible(false)}
-      >
-        <View style={styles.modalOverlay}>
-          {/* Backdrop para cerrar al tocar fuera */}
-          <Pressable
-            style={StyleSheet.absoluteFill}
-            onPress={() => setModalVisible(false)}
-          />
-
-          <View
-            style={[
-              styles.modalContent,
-              { paddingBottom: Math.max(insets.bottom, s(8)) },
-            ]}
-          >
-            {/* Tirador visual */}
-            <View style={styles.sheetHandleWrap}>
-              <View style={styles.sheetHandle} />
-            </View>
-
-            {/* Header del Modal */}
+        onClose={() => setModalVisible(false)}
+        bare
+        sheetStyle={[styles.modalContent, { paddingBottom: Math.max(insets.bottom, s(8)) }]}
+        header={
             <View style={styles.modalHeader}>
               <View style={{ flex: 1, gap: 2, paddingRight: s(8) }}>
                 <Text style={styles.modalTitle}>Planes de CoplanFit</Text>
@@ -245,7 +226,8 @@ export default function SubscriptionScreen() {
                 <X size={s(16)} color={colors.textSecondary} />
               </Pressable>
             </View>
-
+        }
+      >
             {/* Lista de planes */}
             <ScrollView
               showsVerticalScrollIndicator={false}
@@ -309,9 +291,7 @@ export default function SubscriptionScreen() {
                 );
               })}
             </ScrollView>
-          </View>
-        </View>
-      </Modal>
+      </BottomSheet>
     </View>
   );
 }
@@ -367,17 +347,17 @@ const styles = StyleSheet.create({
   },
   popularBadgeText: {
     fontFamily: fonts.bodyBold,
-    fontSize: s(8),
+    fontSize: fontSizes.label,
     color: colors.success,
   },
   packageSubtitle: {
     fontFamily: fonts.body,
-    fontSize: s(8.5),
+    fontSize: fontSizes.label,
     color: colors.textSecondary,
   },
   packagePrice: {
     fontFamily: fonts.heading,
-    fontSize: s(14),
+    fontSize: fontSizes.screenTitle,
     color: colors.navy,
     flexShrink: 0,
     marginTop: 1,
@@ -400,12 +380,12 @@ const styles = StyleSheet.create({
   },
   usageText: {
     fontFamily: fonts.bodyBold,
-    fontSize: s(8.5),
+    fontSize: fontSizes.label,
     color: colors.text,
   },
   usagePctText: {
     fontFamily: fonts.body,
-    fontSize: s(8.5),
+    fontSize: fontSizes.label,
     color: colors.textMuted,
   },
   chargeBox: {
@@ -425,7 +405,7 @@ const styles = StyleSheet.create({
   },
   chargeDate: {
     fontFamily: fonts.body,
-    fontSize: s(8.5),
+    fontSize: fontSizes.label,
     color: colors.textSecondary,
   },
   chargeStatusBadge: {
@@ -456,7 +436,7 @@ const styles = StyleSheet.create({
   },
   paymentSub: {
     fontFamily: fonts.body,
-    fontSize: s(8.5),
+    fontSize: fontSizes.label,
     color: colors.textMuted,
   },
   paymentStatus: {
@@ -474,7 +454,7 @@ const styles = StyleSheet.create({
   },
   featuresCardTitle: {
     fontFamily: fonts.bodyBold,
-    fontSize: s(8.5),
+    fontSize: fontSizes.label,
     color: colors.textMuted,
     letterSpacing: 0.4,
     marginBottom: s(2),
@@ -494,11 +474,11 @@ const styles = StyleSheet.create({
   },
   featureText: {
     fontFamily: fonts.body,
-    fontSize: s(8.5),
+    fontSize: fontSizes.label,
     color: colors.textSecondary,
   },
   upgradeCta: {
-    height: s(40),
+    minHeight: 44,
     borderRadius: radius.button,
     borderWidth: 1.5,
     borderColor: colors.navy,
@@ -512,36 +492,21 @@ const styles = StyleSheet.create({
   },
   upgradeCtaText: {
     fontFamily: fonts.bodyBold,
-    fontSize: s(10),
+    fontSize: fontSizes.xs,
     color: colors.navy,
   },
 
   /* Estilos del Modal */
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(18, 32, 61, 0.65)',
-    justifyContent: 'flex-end',
-  },
   modalContent: {
     backgroundColor: colors.background,
     borderTopLeftRadius: radius.sheet,
     borderTopRightRadius: radius.sheet,
-    paddingTop: s(4),
     maxHeight: '80%',
     width: '100%',
     overflow: 'hidden',
   },
-  sheetHandleWrap: {
-    alignItems: 'center',
-    paddingVertical: s(6),
-  },
-  sheetHandle: {
-    width: s(36),
-    height: s(4),
-    borderRadius: s(2),
-    backgroundColor: '#CBD5E1',
-  },
   modalHeader: {
+    paddingTop: s(20),
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
@@ -557,12 +522,12 @@ const styles = StyleSheet.create({
   },
   modalSubtitle: {
     fontFamily: fonts.body,
-    fontSize: s(9),
+    fontSize: fontSizes.label,
     color: colors.textSecondary,
   },
   closeBtn: {
-    width: s(26),
-    height: s(26),
+    width: 44,
+    height: 44,
     borderRadius: s(13),
     backgroundColor: colors.surface,
     borderWidth: 1,
@@ -605,7 +570,7 @@ const styles = StyleSheet.create({
   },
   planBadgeRibbonText: {
     fontFamily: fonts.bodyBold,
-    fontSize: s(8),
+    fontSize: fontSizes.label,
     color: colors.navy,
   },
   planCardHeader: {
@@ -620,23 +585,23 @@ const styles = StyleSheet.create({
   },
   planCardLimit: {
     fontFamily: fonts.bodyBold,
-    fontSize: s(8.5),
+    fontSize: fontSizes.label,
     color: colors.navy,
     marginTop: 2,
   },
   planCardPrice: {
     fontFamily: fonts.heading,
-    fontSize: s(14),
+    fontSize: fontSizes.screenTitle,
     color: colors.navy,
   },
   planCardPeriod: {
     fontFamily: fonts.body,
-    fontSize: s(8.5),
+    fontSize: fontSizes.label,
     color: colors.textMuted,
   },
   planCardTagline: {
     fontFamily: fonts.body,
-    fontSize: s(8),
+    fontSize: fontSizes.label,
     color: colors.textSecondary,
   },
   planDivider: {
@@ -654,7 +619,7 @@ const styles = StyleSheet.create({
   },
   planFeatureText: {
     fontFamily: fonts.body,
-    fontSize: s(8.5),
+    fontSize: fontSizes.label,
     color: colors.text,
   },
 });

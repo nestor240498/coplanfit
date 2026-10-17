@@ -2,12 +2,14 @@ import { ArrowRight, Check, Clock, Download, Eye, Plus, Trash2 } from 'lucide-re
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { Chip } from '@/components/ui/Chip';
+import { AddChip, Chip } from '@/components/ui/Chip';
+import { toast, toastWithUndo } from '@/components/ui/Toast';
 import { getMyProfile } from '@/features/profile/repository';
 import { formatDateShort, formatGoal } from '@/lib/format';
+import { friendlyError } from '@/lib/errors';
 import { s } from '@/theme/scale';
 import { colors, radius } from '@/theme/tokens';
-import { fonts, fontSizes } from '@/theme/typography';
+import { fonts, fontSizes, lineHeights } from '@/theme/typography';
 
 import { buildPlanPdfHtml } from '../planPdf';
 import { getPlanVersionById, PlanVersionWithData } from '../plansRepository';
@@ -66,6 +68,7 @@ export function PlanesTab({
   const [sendVersion, setSendVersion] = useState<PlanVersion | null>(null);
   const [goalSheetOpen, setGoalSheetOpen] = useState(false);
   const [addAvoidOpen, setAddAvoidOpen] = useState(false);
+  const [avoidNonce, setAvoidNonce] = useState(0);
 
   function toggle(id: string) {
     setSelected((prev) => {
@@ -80,9 +83,18 @@ export function PlanesTab({
     onReloadTags();
   }
 
-  async function handleRemoveTag(tagId: string) {
-    await removeTag(tagId);
-    onReloadTags();
+  /** Quita el dato al momento y ofrece «Deshacer» (lo vuelve a crear con el mismo tipo y texto). */
+  async function handleRemoveTag(tag: ClientTag) {
+    try {
+      await removeTag(tag.id);
+      onReloadTags();
+      toastWithUndo(`«${tag.label}» quitado de la ficha`, async () => {
+        await addTag(clientId, tag.kind, tag.label);
+        onReloadTags();
+      });
+    } catch (e) {
+      toast({ message: friendlyError(e), tone: 'danger' });
+    }
   }
 
   async function handleSelectGoal(goal: Goal) {
@@ -132,12 +144,13 @@ export function PlanesTab({
                 key={tag.id}
                 label={tag.label}
                 variant="neutral"
-                onRemove={() => handleRemoveTag(tag.id)}
+                onRemove={() => handleRemoveTag(tag)}
               />
             ))}
-            <Pressable onPress={() => setAddAvoidOpen(true)} style={styles.addChip}>
-              <Text style={styles.addChipText}>+ Agregar</Text>
-            </Pressable>
+            <AddChip onPress={() => {
+              setAvoidNonce((n) => n + 1);
+              setAddAvoidOpen(true);
+            }} accessibilityLabel="Agregar alimento a evitar" />
           </View>
         </View>
 
@@ -280,14 +293,13 @@ export function PlanesTab({
         </View>
       )}
 
-      {addAvoidOpen && (
-        <AddTagSheet
-          visible={addAvoidOpen}
-          initialKind="evita"
-          onClose={() => setAddAvoidOpen(false)}
-          onAdd={handleAddAvoidTag}
-        />
-      )}
+      <AddTagSheet
+        key={avoidNonce}
+        visible={addAvoidOpen}
+        initialKind="evita"
+        onClose={() => setAddAvoidOpen(false)}
+        onAdd={handleAddAvoidTag}
+      />
 
       <GoalPickerSheet
         visible={goalSheetOpen}
@@ -340,7 +352,7 @@ const styles = StyleSheet.create({
     fontFamily: fonts.body,
     fontSize: fontSizes.label,
     color: colors.textMuted,
-    lineHeight: s(14),
+    lineHeight: lineHeights.label,
   },
   fieldRow: {
     flexDirection: 'row',
@@ -363,17 +375,7 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 0.3,
   },
-  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: s(6) },
-  addChip: {
-    paddingVertical: s(4),
-    paddingHorizontal: s(8),
-    borderRadius: radius.chip,
-    borderWidth: 1,
-    borderColor: colors.navy,
-    borderStyle: 'dashed',
-    backgroundColor: 'transparent',
-  },
-  addChipText: { fontFamily: fonts.bodyBold, fontSize: fontSizes.label, color: colors.navy },
+  chipRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: s(6) },
   versionsHeaderRow: {
     marginTop: s(2),
   },
@@ -389,7 +391,7 @@ const styles = StyleSheet.create({
     paddingBottom: s(8),
   },
   newVersionCta: {
-    height: s(36),
+    minHeight: 44,
     flexDirection: 'row',
     gap: s(6),
     borderRadius: radius.input,
@@ -442,8 +444,8 @@ const styles = StyleSheet.create({
     gap: s(4),
   },
   iconBtn: {
-    width: s(25),
-    height: s(25),
+    width: 44,
+    height: 44,
     borderRadius: s(5),
     backgroundColor: '#F1F5F9',
     alignItems: 'center',
@@ -483,7 +485,7 @@ const styles = StyleSheet.create({
   },
   draftTag: {
     fontFamily: fonts.headingSemi,
-    fontSize: s(7),
+    fontSize: fontSizes.micro,
     color: '#D48806',
     letterSpacing: 0.2,
   },
@@ -494,7 +496,7 @@ const styles = StyleSheet.create({
   },
   draftDate: {
     fontFamily: fonts.body,
-    fontSize: s(8),
+    fontSize: fontSizes.label,
     color: colors.textMuted,
   },
   draftActionsColumn: {
@@ -513,7 +515,7 @@ const styles = StyleSheet.create({
   },
   resumeBtnText: {
     fontFamily: fonts.bodyBold,
-    fontSize: s(10),
+    fontSize: fontSizes.xs,
     color: colors.lime,
   },
   discardBtn: {
@@ -530,11 +532,11 @@ const styles = StyleSheet.create({
   },
   discardBtnText: {
     fontFamily: fonts.bodyBold,
-    fontSize: s(10),
+    fontSize: fontSizes.xs,
     color: colors.danger,
   },
   compareCta: {
-    height: s(38),
+    minHeight: 44,
     borderRadius: radius.button,
     backgroundColor: colors.lime,
     alignItems: 'center',

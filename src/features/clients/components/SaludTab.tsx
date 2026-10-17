@@ -1,7 +1,10 @@
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { StyleSheet, Text, TextInput, View } from 'react-native';
 
-import { Chip } from '@/components/ui/Chip';
+import { useRetained } from '@/lib/useRetained';
+import { AddChip, Chip } from '@/components/ui/Chip';
+import { toast, toastWithUndo } from '@/components/ui/Toast';
+import { friendlyError } from '@/lib/errors';
 import { s } from '@/theme/scale';
 import { colors, radius } from '@/theme/tokens';
 import { fonts, fontSizes } from '@/theme/typography';
@@ -19,6 +22,14 @@ type Props = {
 
 export function SaludTab({ client, tags, onReloadTags, onUpdateClient }: Props) {
   const [sheetKind, setSheetKind] = useState<TagKind | null>(null);
+  // La hoja sigue pintada mientras se cierra; la key la reinicia en cada apertura
+  const shownKind = useRetained(sheetKind);
+  const [tagNonce, setTagNonce] = useState(0);
+
+  function openTagSheet(kind: NonNullable<typeof sheetKind>) {
+    setTagNonce((n) => n + 1);
+    setSheetKind(kind);
+  }
   const [medicalNotes, setMedicalNotes] = useState(client.medical_notes ?? '');
 
   async function handleAddTag(kind: TagKind, label: string) {
@@ -26,9 +37,18 @@ export function SaludTab({ client, tags, onReloadTags, onUpdateClient }: Props) 
     onReloadTags();
   }
 
-  async function handleRemoveTag(tagId: string) {
-    await removeTag(tagId);
-    onReloadTags();
+  /** Quita el dato al momento y ofrece «Deshacer» (lo vuelve a crear con el mismo tipo y texto). */
+  async function handleRemoveTag(tag: ClientTag) {
+    try {
+      await removeTag(tag.id);
+      onReloadTags();
+      toastWithUndo(`«${tag.label}» quitado de la ficha`, async () => {
+        await addTag(client.id, tag.kind, tag.label);
+        onReloadTags();
+      });
+    } catch (e) {
+      toast({ message: friendlyError(e), tone: 'danger' });
+    }
   }
 
   function handleNotesBlur() {
@@ -51,12 +71,10 @@ export function SaludTab({ client, tags, onReloadTags, onUpdateClient }: Props) 
               key={tag.id}
               label={tag.label}
               variant="neutral"
-              onRemove={() => handleRemoveTag(tag.id)}
+              onRemove={() => handleRemoveTag(tag)}
             />
           ))}
-          <Pressable onPress={() => setSheetKind('condicion')} style={styles.addChip}>
-            <Text style={styles.addChipText}>+ Agregar</Text>
-          </Pressable>
+          <AddChip onPress={() => openTagSheet('condicion')} accessibilityLabel="Agregar condición médica" />
         </View>
       </View>
 
@@ -69,12 +87,10 @@ export function SaludTab({ client, tags, onReloadTags, onUpdateClient }: Props) 
               key={tag.id}
               label={tag.label}
               variant="danger"
-              onRemove={() => handleRemoveTag(tag.id)}
+              onRemove={() => handleRemoveTag(tag)}
             />
           ))}
-          <Pressable onPress={() => setSheetKind('alergia')} style={styles.addChip}>
-            <Text style={styles.addChipText}>+ Agregar</Text>
-          </Pressable>
+          <AddChip onPress={() => openTagSheet('alergia')} accessibilityLabel="Agregar alergia o intolerancia" />
         </View>
       </View>
 
@@ -90,10 +106,11 @@ export function SaludTab({ client, tags, onReloadTags, onUpdateClient }: Props) 
         style={styles.notes}
       />
 
-      {sheetKind && (
+      {shownKind && (
         <AddTagSheet
+          key={tagNonce}
           visible={sheetKind !== null}
-          initialKind={sheetKind}
+          initialKind={shownKind}
           onClose={() => setSheetKind(null)}
           onAdd={handleAddTag}
         />
@@ -112,17 +129,7 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 0.3,
   },
-  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: s(6) },
-  addChip: {
-    paddingVertical: s(4),
-    paddingHorizontal: s(8),
-    borderRadius: radius.chip,
-    borderWidth: 1,
-    borderColor: colors.navy,
-    borderStyle: 'dashed',
-    backgroundColor: 'transparent',
-  },
-  addChipText: { fontFamily: fonts.bodyBold, fontSize: fontSizes.label, color: colors.navy },
+  chipRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: s(6) },
   notes: {
     backgroundColor: colors.surface,
     borderRadius: radius.input,

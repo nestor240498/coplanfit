@@ -10,6 +10,7 @@ import {
 import * as ImagePicker from 'expo-image-picker';
 import { Pencil } from 'lucide-react-native';
 
+import { friendlyError } from '@/lib/errors';
 import { StorageImage } from '@/components/ui/StorageImage';
 import { BottomSheet, SheetFooter } from '@/components/ui/BottomSheet';
 import { Input } from '@/components/ui/Input';
@@ -66,7 +67,7 @@ export function EditNameSheet({
       const url = await uploadClientAvatar(clientId, result.assets[0].uri);
       setAvatarUrl(url);
     } catch (e) {
-      Alert.alert('Error al subir foto', (e as Error).message);
+      Alert.alert('Error al subir foto', friendlyError(e));
     } finally {
       setUploading(false);
     }
@@ -191,7 +192,7 @@ const styles = StyleSheet.create({
   },
   avatarHint: {
     fontFamily: fonts.body,
-    fontSize: s(9),
+    fontSize: fontSizes.label,
     color: colors.textMuted,
     marginTop: -s(4),
   },

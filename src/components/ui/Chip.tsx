@@ -1,4 +1,6 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Plus, X } from 'lucide-react-native';
+import { Pressable, StyleSheet, Text } from 'react-native';
+import Animated, { FadeOut, LinearTransition, useReducedMotion } from 'react-native-reanimated';
 
 import { s } from '@/theme/scale';
 import { colors, radius } from '@/theme/tokens';
@@ -9,7 +11,7 @@ export type ChipVariant = 'danger' | 'neutral' | 'success';
 type Props = {
   label: string;
   variant?: ChipVariant;
-  /** Muestra "×" y lo hace tocable para quitar */
+  /** Muestra una X tocable para quitar */
   onRemove?: () => void;
 };
 
@@ -21,36 +23,80 @@ const palette: Record<ChipVariant, { bg: string; fg: string }> = {
 
 export function Chip({ label, variant = 'neutral', onRemove }: Props) {
   const { bg, fg } = palette[variant];
+  const reduceMotion = useReducedMotion();
+  // Al quitarlo se desvanece y el resto de la fila se recoloca con suavidad (sin animar la entrada)
   return (
-    <View style={[styles.chip, { backgroundColor: bg }]}>
+    <Animated.View
+      layout={reduceMotion ? undefined : LinearTransition.duration(200)}
+      exiting={reduceMotion ? undefined : FadeOut.duration(140)}
+      style={[styles.chip, { backgroundColor: bg }]}
+    >
       <Text style={[styles.label, { color: fg }]}>{label}</Text>
       {onRemove && (
-        <Pressable accessibilityLabel={`Quitar ${label}`} onPress={onRemove} hitSlop={8}>
-          <Text style={[styles.remove, { color: fg }]}>×</Text>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`Quitar ${label}`}
+          onPress={onRemove}
+          hitSlop={{ top: 10, bottom: 10, left: 6, right: 10 }}
+          style={styles.removeBtn}
+        >
+          <X size={14} color={fg} strokeWidth={2.5} />
         </Pressable>
       )}
-    </View>
+    </Animated.View>
   );
 }
 
-// Mockup (chips de ficha): texto 10px 600, padding 4x9, radio 20 (pill)
+/** Chip punteado «Agregar» que acompaña a una fila de chips: misma altura y tipografía que Chip. */
+export function AddChip({ onPress, label = 'Agregar', accessibilityLabel }: { onPress: () => void; label?: string; accessibilityLabel?: string }) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel ?? label}
+      onPress={onPress}
+      hitSlop={{ top: 6, bottom: 6 }}
+      style={({ pressed }) => [styles.chip, styles.addChip, pressed && styles.addChipPressed]}
+    >
+      <Plus size={14} color={colors.navy} strokeWidth={2.5} />
+      <Text style={[styles.label, styles.addLabel]}>{label}</Text>
+    </Pressable>
+  );
+}
+
+// Chips de ficha: pill, texto 13 pt; la X tiene área táctil ampliada con hitSlop (≈44 pt).
+// La altura la fija minHeight (sin relleno vertical): así un chip con X y el «Agregar» sin X miden
+// lo mismo; con Dynamic Type crecen ambos por igual con el texto.
+const CHIP_HEIGHT = 36;
+
 const styles = StyleSheet.create({
   chip: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: s(5),
     borderRadius: radius.chip,
-    paddingVertical: s(4),
-    paddingHorizontal: s(9),
+    minHeight: CHIP_HEIGHT,
+    paddingVertical: 2,
+    paddingHorizontal: s(10),
     alignSelf: 'flex-start',
   },
   label: {
     fontFamily: fonts.bodySemi,
     fontSize: fontSizes.xs,
   },
-  remove: {
-    fontFamily: fonts.bodyBold,
-    fontSize: fontSizes.sm,
-    marginTop: -1,
+  addChip: {
+    gap: s(4),
+    borderWidth: 1,
+    borderColor: colors.navy,
+    borderStyle: 'dashed',
+    backgroundColor: 'transparent',
+  },
+  addChipPressed: { backgroundColor: colors.neutralChipBg },
+  addLabel: { fontFamily: fonts.bodyBold, color: colors.navy },
+  removeBtn: {
+    width: 24,
+    height: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: -6,
   },
 });

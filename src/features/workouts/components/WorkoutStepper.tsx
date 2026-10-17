@@ -135,7 +135,7 @@ const styles = StyleSheet.create({
   },
   stepLabel: {
     fontFamily: fonts.body,
-    fontSize: s(9),
+    fontSize: fontSizes.label,
     color: colors.textMuted,
     textAlign: 'center',
   },

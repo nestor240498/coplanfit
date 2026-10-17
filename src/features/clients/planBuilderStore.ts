@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 
+import { edgeFunctionError, friendlyError } from '@/lib/errors';
 import { supabase } from '@/lib/supabase';
 
 import {
@@ -232,11 +233,11 @@ export const usePlanBuilderStore = create<PlanBuilderState>((set, get) => ({
       const { data, error } = await supabase.functions.invoke('generate-plan-suggestions', {
         body: { clientId, mealSlots, waterLiters, supplements, aiNote },
       });
-      if (error) throw new Error(error.message);
+      if (error) throw await edgeFunctionError(error, 'La IA no respondió. Inténtalo de nuevo.');
       const suggestions = toFoodSuggestions(data as RawSuggestions);
       set({ suggestions, generating: false });
     } catch (e) {
-      set({ generateError: (e as Error).message, generating: false });
+      set({ generateError: friendlyError(e), generating: false });
     }
   },
 

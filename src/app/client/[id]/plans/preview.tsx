@@ -3,11 +3,13 @@ import { Download, Droplets, Pill, Users } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { friendlyError } from '@/lib/errors';
 import { AppBackground } from '@/components/ui/AppBackground';
 import { Button } from '@/components/ui/Button';
 import { CoplanFitLogo } from '@/components/ui/CoplanFitLogo';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { usePlanBuilderStore } from '@/features/clients/planBuilderStore';
+import { PublishedBanner } from '@/features/clients/components/PublishedBanner';
 import { SendDocumentSheet } from '@/features/clients/components/SendDocumentSheet';
 import { buildPlanPdfHtml } from '@/features/clients/planPdf';
 import { DocumentToDeliver } from '@/features/clients/sentLogRepository';
@@ -18,16 +20,17 @@ import { getMyProfile } from '@/features/profile/repository';
 import { Profile } from '@/features/profile/types';
 import { s } from '@/theme/scale';
 import { colors, radius, shadows } from '@/theme/tokens';
-import { fonts, fontSizes } from '@/theme/typography';
+import { fonts, fontSizes, lineHeights } from '@/theme/typography';
 
 export default function PlanPreviewScreen() {
-  const { id, versionId } = useLocalSearchParams<{ id: string; versionId?: string }>();
+  const { id, versionId, published } = useLocalSearchParams<{ id: string; versionId?: string; published?: string }>();
   const router = useRouter();
   const [client, setClient] = useState<{ full_name: string; goal: Goal | null; phone: string | null } | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [savedPlan, setSavedPlan] = useState<PlanVersionWithData | null>(null);
   const [loadingPlan, setLoadingPlan] = useState(Boolean(versionId));
   const [sendOpen, setSendOpen] = useState(false);
+  const [sent, setSent] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
 
   const store = usePlanBuilderStore();
@@ -39,7 +42,7 @@ export default function PlanPreviewScreen() {
     if (versionId) {
       getPlanVersionById(versionId)
         .then(setSavedPlan)
-        .catch((e: Error) => setLoadError(e.message))
+        .catch((e: Error) => setLoadError(friendlyError(e)))
         .finally(() => setLoadingPlan(false));
     }
   }, [id, versionId]);
@@ -73,6 +76,11 @@ export default function PlanPreviewScreen() {
           }),
       }
     : null;
+
+  const justPublished = published === '1';
+  const firstName = client?.full_name.split(' ')[0] ?? 'el cliente';
+  // Recién publicado y sin enviar: enviar pasa a ser la acción principal
+  const sendIsPrimary = justPublished && !sent;
 
   const pageTitle = savedPlan ? `Plan Nutricional v${savedPlan.version}` : 'Vista previa del plan';
 
@@ -116,13 +124,21 @@ export default function PlanPreviewScreen() {
             if (versionId) {
               getPlanVersionById(versionId)
                 .then(setSavedPlan)
-                .catch((e: Error) => setLoadError(e.message))
+                .catch((e: Error) => setLoadError(friendlyError(e)))
                 .finally(() => setLoadingPlan(false));
             }
           }} style={{ marginTop: s(12) }} />
         </View>
       ) : (
         <ScrollView contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
+          {justPublished && savedPlan ? (
+            <PublishedBanner
+              documentName="Plan nutricional"
+              version={savedPlan.version}
+              clientName={client?.full_name ?? ''}
+              sent={sent}
+            />
+          ) : null}
           {/* Documento tipo hoja */}
           <View style={styles.documentCard}>
             {/* Header del documento */}
@@ -237,20 +253,22 @@ export default function PlanPreviewScreen() {
         document={planDocument}
         clientName={client?.full_name ?? ''}
         clientPhone={client?.phone}
+        onSent={() => setSent(true)}
       />
 
       {/* Footer fijo al pie de la pantalla */}
       <View style={styles.footer}>
         <Button
-          title="Enviar o descargar"
+          title={sendIsPrimary ? 'Ficha del cliente' : 'Enviar o descargar'}
           variant="secondary"
-          onPress={() => setSendOpen(true)}
-          disabled={!planDocument}
+          onPress={sendIsPrimary ? () => router.dismissTo(`/client/${id}`) : () => setSendOpen(true)}
+          disabled={!sendIsPrimary && !planDocument}
           style={styles.footerBtnSide}
         />
         <Button
-          title="Ficha del cliente"
-          onPress={() => router.push(`/client/${id}`)}
+          title={sendIsPrimary ? `Enviar a ${firstName}` : 'Ficha del cliente'}
+          onPress={sendIsPrimary ? () => setSendOpen(true) : () => router.dismissTo(`/client/${id}`)}
+          disabled={sendIsPrimary && !planDocument}
           style={styles.footerBtnMain}
         />
       </View>
@@ -289,7 +307,7 @@ const styles = StyleSheet.create({
   },
   docLogoText: {
     fontFamily: fonts.heading,
-    fontSize: s(11),
+    fontSize: fontSizes.sm,
     color: colors.lime,
   },
   docTitleWrap: { flex: 1 },
@@ -301,7 +319,7 @@ const styles = StyleSheet.create({
   },
   docSubtitle: {
     fontFamily: fonts.body,
-    fontSize: s(9),
+    fontSize: fontSizes.label,
     color: colors.textSecondary,
     marginTop: 2,
   },
@@ -316,7 +334,7 @@ const styles = StyleSheet.create({
   },
   tableHeaderCell: {
     fontFamily: fonts.bodyBold,
-    fontSize: s(8),
+    fontSize: fontSizes.label,
     color: colors.textSecondary,
     textTransform: 'uppercase',
   },
@@ -330,19 +348,19 @@ const styles = StyleSheet.create({
   },
   mealCellName: {
     fontFamily: fonts.bodyBold,
-    fontSize: s(8),
+    fontSize: fontSizes.label,
     color: colors.text,
   },
   mealCellTime: {
     fontFamily: fonts.body,
-    fontSize: s(8),
+    fontSize: fontSizes.label,
     color: colors.textMuted,
   },
   optionCellText: {
     fontFamily: fonts.body,
-    fontSize: s(8),
+    fontSize: fontSizes.label,
     color: colors.text,
-    lineHeight: s(10),
+    lineHeight: lineHeights.label,
   },
   divider: {
     height: 1,
@@ -354,7 +372,7 @@ const styles = StyleSheet.create({
   },
   docSectionTitle: {
     fontFamily: fonts.bodyBold,
-    fontSize: s(9),
+    fontSize: fontSizes.label,
     color: colors.textSecondary,
     letterSpacing: 0.3,
   },
@@ -375,7 +393,7 @@ const styles = StyleSheet.create({
   },
   marketHeaderCell: {
     fontFamily: fonts.bodyBold,
-    fontSize: s(8),
+    fontSize: fontSizes.label,
     color: colors.textSecondary,
     textTransform: 'uppercase',
   },
@@ -390,14 +408,14 @@ const styles = StyleSheet.create({
   },
   marketMacroName: {
     fontFamily: fonts.bodyBold,
-    fontSize: s(8),
+    fontSize: fontSizes.label,
     color: colors.text,
   },
   marketFoodItem: {
     fontFamily: fonts.body,
-    fontSize: s(9.5),
+    fontSize: fontSizes.xs,
     color: colors.textSecondary,
-    lineHeight: s(13),
+    lineHeight: lineHeights.xs,
   },
   noteRow: {
     flexDirection: 'row',
@@ -406,9 +424,9 @@ const styles = StyleSheet.create({
   },
   notesText: {
     fontFamily: fonts.body,
-    fontSize: s(9),
+    fontSize: fontSizes.label,
     color: colors.textSecondary,
-    lineHeight: s(14),
+    lineHeight: lineHeights.label,
   },
   notesTextBold: {
     fontFamily: fonts.bodyBold,
@@ -422,20 +440,22 @@ const styles = StyleSheet.create({
   },
   trainerName: {
     fontFamily: fonts.bodyBold,
-    fontSize: s(10),
+    fontSize: fontSizes.xs,
     color: colors.text,
   },
   trainerRole: {
     fontFamily: fonts.body,
-    fontSize: s(8),
+    fontSize: fontSizes.label,
     color: colors.textMuted,
   },
   headerDownloadBtn: {
+    minWidth: 44,
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
     padding: s(6),
     borderRadius: radius.pill,
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   centerLoading: {
     flex: 1,

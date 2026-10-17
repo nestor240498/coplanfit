@@ -72,7 +72,7 @@ export const PDF_BASE_CSS = `
     margin-top: 20px; padding-top: 10px; border-top: 1px dashed #CBD2E0; display: flex; justify-content: space-between;
     align-items: flex-end; gap: 16px; page-break-inside: avoid;
   }
-  .doc-meta { font-size: 9px; color: #8B93A3; }
+  .doc-meta { font-size: 9px; color: #697182; }
   .trainer-name { font-family: 'Manrope', sans-serif; font-size: 13px; font-weight: 800; color: #1B2A4A; text-align: right; }
   .trainer-role { font-size: 10px; font-weight: 700; color: #4B7A1F; text-align: right; margin-top: 1px; }
   .trainer-desc { font-size: 9.5px; color: #5A6270; text-align: right; margin-top: 2px; max-width: 280px; }

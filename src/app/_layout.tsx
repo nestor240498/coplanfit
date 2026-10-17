@@ -3,8 +3,10 @@ import { Manrope_700Bold, Manrope_800ExtraBold, useFonts } from '@expo-google-fo
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useEffect } from 'react';
 
+import { ToastHost } from '@/components/ui/Toast';
 import { useAuth } from '@/features/auth/useAuth';
 import { colors } from '@/theme/tokens';
 
@@ -34,7 +36,7 @@ export default function RootLayout() {
   if (!ready) return null;
 
   return (
-    <>
+    <GestureHandlerRootView style={{ flex: 1 }}>
       <StatusBar style="light" />
       <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.background } }}>
         <Stack.Protected guard={!!session}>
@@ -47,6 +49,7 @@ export default function RootLayout() {
           <Stack.Screen name="register" />
         </Stack.Protected>
       </Stack>
-    </>
+      <ToastHost />
+    </GestureHandlerRootView>
   );
 }

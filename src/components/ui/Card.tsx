@@ -1,6 +1,7 @@
-import { Pressable, StyleSheet, View, ViewProps, ViewStyle } from 'react-native';
+import { StyleSheet, View, ViewProps, ViewStyle } from 'react-native';
 
 import { colors, radius, shadows, spacing } from '@/theme/tokens';
+import { PressableScale } from './PressableScale';
 
 type Props = ViewProps & {
   onPress?: () => void;
@@ -13,14 +14,9 @@ export function Card({ onPress, highlighted, style, children, ...rest }: Props) 
   const cardStyle = [styles.card, highlighted && styles.highlighted, style];
   if (onPress) {
     return (
-      <Pressable
-        accessibilityRole="button"
-        onPress={onPress}
-        style={({ pressed }) => [...cardStyle, pressed && styles.pressed]}
-        {...rest}
-      >
+      <PressableScale accessibilityRole="button" onPress={onPress} pressedScale={0.985} style={cardStyle} {...rest}>
         {children}
-      </Pressable>
+      </PressableScale>
     );
   }
   return (
@@ -41,5 +37,4 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.lime,
   },
-  pressed: { opacity: 0.9 },
 });

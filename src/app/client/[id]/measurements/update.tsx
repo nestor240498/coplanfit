@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { friendlyError } from '@/lib/errors';
 import { AppBackground } from '@/components/ui/AppBackground';
 import { InputFieldRow } from '@/components/ui/FieldRow';
 import { createMeasurement, getLatestMeasurement, uploadMeasurementPhotos } from '@/features/clients/measurementsRepository';
@@ -95,7 +96,7 @@ export default function UpdateMeasurementScreen() {
         }
       }
     } catch (err) {
-      Alert.alert('Error al seleccionar imagen', (err as Error).message);
+      Alert.alert('Error al seleccionar imagen', friendlyError(err));
     }
   }
 
@@ -126,7 +127,7 @@ export default function UpdateMeasurementScreen() {
       });
       router.back();
     } catch (e) {
-      setError((e as Error).message);
+      setError(friendlyError(e));
       setSaving(false);
       setSavingStatus(null);
     }
@@ -190,11 +191,11 @@ export default function UpdateMeasurementScreen() {
                   <View style={styles.thumbBadge}>
                     <Text style={styles.thumbBadgeText}>{idx + 1}</Text>
                   </View>
-                  <Pressable
+                  <Pressable accessibilityRole="button" accessibilityLabel={`Quitar foto ${idx + 1}`}
                     onPress={() => handleRemovePhoto(idx)}
                     disabled={saving}
                     style={styles.thumbDeleteBtn}
-                    hitSlop={6}
+                    hitSlop={12}
                   >
                     <Trash2 size={s(11)} color={colors.surface} />
                   </Pressable>
@@ -309,7 +310,7 @@ const styles = StyleSheet.create({
   },
   photosCountText: {
     fontFamily: fonts.bodyBold,
-    fontSize: s(7.5),
+    fontSize: fontSizes.micro,
     color: colors.navy,
   },
   photoActionsRow: {
@@ -367,7 +368,7 @@ const styles = StyleSheet.create({
   },
   thumbBadgeText: {
     fontFamily: fonts.bodyBold,
-    fontSize: s(7.5),
+    fontSize: fontSizes.micro,
     color: colors.surface,
   },
   thumbDeleteBtn: {
@@ -393,7 +394,7 @@ const styles = StyleSheet.create({
   },
   emptyPhotosText: {
     fontFamily: fonts.body,
-    fontSize: s(8),
+    fontSize: fontSizes.label,
     color: colors.textMuted,
   },
   hint: {
@@ -418,22 +419,22 @@ const styles = StyleSheet.create({
   },
   cancelBtn: {
     flex: 1,
-    height: s(40),
+    minHeight: 48,
     borderRadius: radius.button,
     borderWidth: 1,
     borderColor: colors.border,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  cancelText: { fontFamily: fonts.bodyBold, fontSize: s(9), color: colors.textSecondary },
+  cancelText: { fontFamily: fonts.bodyBold, fontSize: fontSizes.label, color: colors.textSecondary },
   saveBtn: {
     flex: 1,
-    height: s(40),
+    minHeight: 48,
     borderRadius: radius.button,
     backgroundColor: colors.lime,
     alignItems: 'center',
     justifyContent: 'center',
   },
   saveBtnDisabled: { opacity: 0.6 },
-  saveText: { fontFamily: fonts.bodyBold, fontSize: s(9), color: colors.navy },
+  saveText: { fontFamily: fonts.bodyBold, fontSize: fontSizes.label, color: colors.navy },
 });

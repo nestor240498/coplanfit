@@ -1,8 +1,7 @@
-import { Camera, Download, Maximize2, X } from 'lucide-react-native';
+import { Camera, Download, Maximize2 } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -11,6 +10,7 @@ import {
 } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 
+import { PhotoPreview, PhotoViewer } from '@/components/ui/PhotoViewer';
 import { StorageImage } from '@/components/ui/StorageImage';
 import { AppBackground } from '@/components/ui/AppBackground';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
@@ -103,7 +103,7 @@ export default function CompareMeasurementsScreen() {
   const [later, setLater] = useState<Measurement | null>(null);
   const [sendOpen, setSendOpen] = useState(false);
   const [includePhotos, setIncludePhotos] = useState(false);
-  const [selectedPreview, setSelectedPreview] = useState<{ url: string; title: string; date: string } | null>(null);
+  const [selectedPreview, setSelectedPreview] = useState<PhotoPreview | null>(null);
 
   useEffect(() => {
     Promise.all([getClient(id), getMeasurementById(a), getMeasurementById(b)]).then(([c, ma, mb]) => {
@@ -327,39 +327,7 @@ export default function CompareMeasurementsScreen() {
         {hasAnyPhotos && <IncludePhotosToggle value={includePhotos} onChange={setIncludePhotos} />}
       </SendDocumentSheet>
 
-      {/* MODAL DE VISUALIZACIÓN EN PANTALLA COMPLETA */}
-      <Modal
-        visible={selectedPreview != null}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setSelectedPreview(null)}
-      >
-        <View style={styles.modalBackdrop}>
-          <View style={styles.modalHeader}>
-            <View>
-              <Text style={styles.modalTitle}>{selectedPreview?.title}</Text>
-              <Text style={styles.modalSubtitle}>{selectedPreview?.date}</Text>
-            </View>
-            <Pressable
-              onPress={() => setSelectedPreview(null)}
-              style={styles.modalCloseBtn}
-              hitSlop={10}
-            >
-              <X size={s(18)} color={colors.surface} />
-            </Pressable>
-          </View>
-
-          {selectedPreview && (
-            <View style={styles.modalImageContainer}>
-              <StorageImage
-                mediaRef={selectedPreview.url}
-                style={styles.modalFullImage}
-                contentFit="contain"
-              />
-            </View>
-          )}
-        </View>
-      </Modal>
+      <PhotoViewer preview={selectedPreview} onClose={() => setSelectedPreview(null)} />
     </View>
   );
 }
@@ -419,7 +387,7 @@ const styles = StyleSheet.create({
   },
   photoStageBadgeText: {
     fontFamily: fonts.bodyBold,
-    fontSize: s(7.5),
+    fontSize: fontSizes.micro,
     color: colors.surface,
     letterSpacing: 0.3,
   },
@@ -478,7 +446,7 @@ const styles = StyleSheet.create({
   },
   photoThumbIndexText: {
     fontFamily: fonts.bodyBold,
-    fontSize: s(7.5),
+    fontSize: fontSizes.micro,
     color: colors.surface,
   },
   photoThumbZoomIcon: {
@@ -548,7 +516,7 @@ const styles = StyleSheet.create({
   valueCellBold: { fontFamily: fonts.bodyBold, color: colors.text },
   favorable: { color: '#3B6B11', backgroundColor: '#EBF7D4', borderRadius: 4, paddingVertical: 2 },
   exportCta: {
-    height: s(44),
+    minHeight: 44,
     borderRadius: radius.button,
     backgroundColor: colors.lime,
     flexDirection: 'row',
@@ -561,47 +529,5 @@ const styles = StyleSheet.create({
     fontFamily: fonts.bodyBold,
     fontSize: fontSizes.sm,
     color: colors.navy,
-  },
-  modalBackdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(10, 15, 26, 0.95)',
-    justifyContent: 'space-between',
-    paddingTop: s(40),
-    paddingBottom: s(30),
-    paddingHorizontal: s(16),
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  modalTitle: {
-    fontFamily: fonts.headingSemi,
-    fontSize: fontSizes.base,
-    color: colors.surface,
-  },
-  modalSubtitle: {
-    fontFamily: fonts.body,
-    fontSize: fontSizes.xs,
-    color: '#A0AEC0',
-    marginTop: 2,
-  },
-  modalCloseBtn: {
-    width: s(36),
-    height: s(36),
-    borderRadius: s(18),
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  modalImageContainer: {
-    flex: 1,
-    marginVertical: s(16),
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  modalFullImage: {
-    width: '100%',
-    height: '100%',
   },
 });

@@ -2,7 +2,7 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { s } from '@/theme/scale';
 import { colors, radius } from '@/theme/tokens';
-import { fonts, fontSizes } from '@/theme/typography';
+import { fonts, fontSizes, TIGHT_FONT_SCALE } from '@/theme/typography';
 
 type Props = {
   label: string;
@@ -14,7 +14,12 @@ type Props = {
 export function Badge({ label, variant = 'lime' }: Props) {
   return (
     <View style={[styles.badge, variant === 'lime' ? styles.lime : styles.success]}>
-      <Text style={[styles.label, variant === 'lime' ? styles.labelLime : styles.labelSuccess]}>{label}</Text>
+      <Text
+        style={[styles.label, variant === 'lime' ? styles.labelLime : styles.labelSuccess]}
+        maxFontSizeMultiplier={TIGHT_FONT_SCALE}
+      >
+        {label}
+      </Text>
     </View>
   );
 }

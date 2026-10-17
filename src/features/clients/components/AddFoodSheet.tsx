@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { BottomSheet, SheetFooter } from '@/components/ui/BottomSheet';
 import { s } from '@/theme/scale';
@@ -55,7 +55,13 @@ export function AddFoodSheet({ visible, initialGroup, onClose, onAdd }: Props) {
         {FOOD_GROUPS.map((g) => {
           const selected = g === group;
           return (
-            <Pressable key={g} onPress={() => setGroup(g)} style={[styles.pill, selected && styles.pillSelected]}>
+            <Pressable
+              key={g}
+              accessibilityRole="radio"
+              accessibilityState={{ selected }}
+              onPress={() => setGroup(g)}
+              style={[styles.pill, selected && styles.pillSelected]}
+            >
               <Text style={[styles.pillText, selected && styles.pillTextSelected]}>{FOOD_GROUP_LABELS[g]}</Text>
             </Pressable>
           );
@@ -81,18 +87,23 @@ export function AddFoodSheet({ visible, initialGroup, onClose, onAdd }: Props) {
           placeholderTextColor={colors.textMuted}
           style={[styles.input, styles.quantityInput]}
         />
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.unitScroll}>
-          <View style={styles.unitRow}>
-            {UNITS.map((u) => {
-              const selected = u === unit;
-              return (
-                <Pressable key={u} onPress={() => setUnit(u)} style={[styles.unitChip, selected && styles.unitChipSelected]}>
-                  <Text style={[styles.unitChipText, selected && styles.unitChipTextSelected]}>{u}</Text>
-                </Pressable>
-              );
-            })}
-          </View>
-        </ScrollView>
+        {/* Unidades a la vista (sin scroll): pasan a otra línea si no caben */}
+        <View style={styles.unitRow} accessibilityRole="radiogroup">
+          {UNITS.map((u) => {
+            const selected = u === unit;
+            return (
+              <Pressable
+                key={u}
+                accessibilityRole="radio"
+                accessibilityState={{ selected }}
+                onPress={() => setUnit(u)}
+                style={[styles.unitChip, selected && styles.unitChipSelected]}
+              >
+                <Text style={[styles.unitChipText, selected && styles.unitChipTextSelected]}>{u}</Text>
+              </Pressable>
+            );
+          })}
+        </View>
       </View>
 
       <Text style={styles.label}>Motivo (opcional)</Text>
@@ -124,6 +135,8 @@ const styles = StyleSheet.create({
   },
   pillRow: { flexDirection: 'row', flexWrap: 'wrap', gap: s(5) },
   pill: {
+    minHeight: 44,
+    justifyContent: 'center',
     borderRadius: radius.chip,
     borderWidth: 1,
     borderColor: colors.border,
@@ -131,10 +144,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: s(10),
   },
   pillSelected: { backgroundColor: colors.navy, borderColor: colors.navy },
-  pillText: { fontFamily: fonts.body, fontSize: fontSizes.xs, color: colors.textSecondary },
+  pillText: { fontFamily: fonts.body, fontSize: fontSizes.sm, color: colors.textSecondary },
   pillTextSelected: { fontFamily: fonts.bodyBold, color: colors.surface },
   input: {
-    height: s(36),
+    minHeight: 44,
     borderRadius: radius.input,
     borderWidth: 1,
     borderColor: colors.border,
@@ -144,11 +157,14 @@ const styles = StyleSheet.create({
     fontSize: fontSizes.base,
     color: colors.text,
   },
-  quantityRow: { flexDirection: 'row', gap: s(6), alignItems: 'center' },
-  quantityInput: { flex: 1, maxWidth: s(100) },
-  unitScroll: { maxWidth: s(180) },
-  unitRow: { flexDirection: 'row', gap: s(5) },
+  quantityRow: { flexDirection: 'row', gap: s(8), alignItems: 'flex-start' },
+  quantityInput: { width: 88 },
+  unitRow: { flex: 1, flexDirection: 'row', flexWrap: 'wrap', gap: s(6) },
   unitChip: {
+    minHeight: 44,
+    minWidth: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
     borderRadius: radius.input,
     borderWidth: 1,
     borderColor: colors.border,
@@ -157,6 +173,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: s(9),
   },
   unitChipSelected: { backgroundColor: colors.navy, borderColor: colors.navy },
-  unitChipText: { fontFamily: fonts.bodyMedium, fontSize: fontSizes.xs, color: colors.textSecondary },
+  unitChipText: { fontFamily: fonts.bodyMedium, fontSize: fontSizes.sm, color: colors.textSecondary },
   unitChipTextSelected: { color: colors.surface },
 });

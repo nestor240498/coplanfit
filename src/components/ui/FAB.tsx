@@ -1,25 +1,32 @@
-import { Pressable, StyleSheet, Text } from 'react-native';
+import { Plus } from 'lucide-react-native';
+import { StyleSheet } from 'react-native';
 
+import { hapticPress } from '@/lib/motion';
+
+import { PressableScale } from './PressableScale';
 import { s } from '@/theme/scale';
 import { colors, shadows } from '@/theme/tokens';
-import { fonts } from '@/theme/typography';
 
 type Props = {
   onPress: () => void;
   accessibilityLabel: string;
 };
 
-/** Mockup: círculo lima de 44px, "+" 18px Manrope 800 navy, anclado abajo-derecha a 16px. */
+/** Botón flotante lima de 56 pt con icono «+» navy, anclado abajo a la derecha. */
 export function FAB({ onPress, accessibilityLabel }: Props) {
   return (
-    <Pressable
+    <PressableScale
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
-      onPress={onPress}
-      style={({ pressed }) => [styles.fab, pressed && styles.pressed]}
+      onPress={() => {
+        hapticPress();
+        onPress();
+      }}
+      pressedScale={0.92}
+      style={styles.fab}
     >
-      <Text style={styles.plus}>+</Text>
-    </Pressable>
+      <Plus size={26} color={colors.navy} strokeWidth={2.75} />
+    </PressableScale>
   );
 }
 
@@ -28,19 +35,12 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: s(16),
     right: s(16),
-    width: s(44),
-    height: s(44),
-    borderRadius: s(22),
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     backgroundColor: colors.lime,
     alignItems: 'center',
     justifyContent: 'center',
     ...shadows.fab,
-  },
-  pressed: { opacity: 0.85 },
-  plus: {
-    fontFamily: fonts.heading,
-    fontSize: s(18),
-    color: colors.navy,
-    marginTop: -2,
   },
 });

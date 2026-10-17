@@ -1,8 +1,10 @@
 import * as ImagePicker from 'expo-image-picker';
-import { Camera, Download, History, ImagePlus, Trash2, X } from 'lucide-react-native';
+import { Camera, Download, History, ImagePlus, Trash2 } from 'lucide-react-native';
 import { useState } from 'react';
-import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { friendlyError } from '@/lib/errors';
+import { PhotoPreview, PhotoViewer } from '@/components/ui/PhotoViewer';
 import { StorageImage } from '@/components/ui/StorageImage';
 import { InputFieldRow } from '@/components/ui/FieldRow';
 import { getMyProfile } from '@/features/profile/repository';
@@ -83,7 +85,7 @@ export function AntropometriaTab({
 }: Props) {
   const [sendOpen, setSendOpen] = useState(false);
   const [includePhotos, setIncludePhotos] = useState(false);
-  const [selectedPreview, setSelectedPreview] = useState<{ url: string; title: string; date: string } | null>(null);
+  const [selectedPreview, setSelectedPreview] = useState<PhotoPreview | null>(null);
 
   const measurementDocument: DocumentToDeliver | null = measurement
     ? {
@@ -133,7 +135,7 @@ export function AntropometriaTab({
         }
       }
     } catch (err) {
-      Alert.alert('Error al seleccionar imagen', (err as Error).message);
+      Alert.alert('Error al seleccionar imagen', friendlyError(err));
     }
   }
 
@@ -237,10 +239,10 @@ export function AntropometriaTab({
                   <View style={styles.thumbBadge}>
                     <Text style={styles.thumbBadgeText}>{idx + 1}</Text>
                   </View>
-                  <Pressable
+                  <Pressable accessibilityRole="button" accessibilityLabel={`Quitar foto ${idx + 1}`}
                     onPress={() => handleRemovePhoto(idx)}
                     style={styles.thumbDeleteBtn}
-                    hitSlop={6}
+                    hitSlop={12}
                   >
                     <Trash2 size={s(11)} color={colors.surface} />
                   </Pressable>
@@ -671,39 +673,7 @@ export function AntropometriaTab({
         )}
       </SendDocumentSheet>
 
-      {/* MODAL FULLSCREEN PREVIEW */}
-      <Modal
-        visible={selectedPreview != null}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setSelectedPreview(null)}
-      >
-        <View style={styles.modalBackdrop}>
-          <View style={styles.modalHeader}>
-            <View>
-              <Text style={styles.modalTitle}>{selectedPreview?.title}</Text>
-              <Text style={styles.modalSubtitle}>{selectedPreview?.date}</Text>
-            </View>
-            <Pressable
-              onPress={() => setSelectedPreview(null)}
-              style={styles.modalCloseBtn}
-              hitSlop={10}
-            >
-              <X size={s(18)} color={colors.surface} />
-            </Pressable>
-          </View>
-
-          {selectedPreview && (
-            <View style={styles.modalImageContainer}>
-              <StorageImage
-                mediaRef={selectedPreview.url}
-                style={styles.modalFullImage}
-                contentFit="contain"
-              />
-            </View>
-          )}
-        </View>
-      </Modal>
+      <PhotoViewer preview={selectedPreview} onClose={() => setSelectedPreview(null)} />
     </View>
   );
 }
@@ -766,7 +736,7 @@ const styles = StyleSheet.create({
   },
   photosCountText: {
     fontFamily: fonts.bodyBold,
-    fontSize: s(7.5),
+    fontSize: fontSizes.micro,
     color: colors.navy,
   },
   photoActionsRow: {
@@ -824,7 +794,7 @@ const styles = StyleSheet.create({
   },
   thumbBadgeText: {
     fontFamily: fonts.bodyBold,
-    fontSize: s(7.5),
+    fontSize: fontSizes.micro,
     color: colors.surface,
   },
   thumbDeleteBtn: {
@@ -850,7 +820,7 @@ const styles = StyleSheet.create({
   },
   emptyPhotosText: {
     fontFamily: fonts.body,
-    fontSize: s(8),
+    fontSize: fontSizes.label,
     color: colors.textMuted,
   },
   photosReadSection: {
@@ -888,7 +858,7 @@ const styles = StyleSheet.create({
   },
   readPhotoBadgeText: {
     fontFamily: fonts.bodyBold,
-    fontSize: s(7.5),
+    fontSize: fontSizes.micro,
     color: colors.surface,
   },
   sectionHeader: {
@@ -902,7 +872,7 @@ const styles = StyleSheet.create({
   },
   subGroupLabel: {
     fontFamily: fonts.bodyBold,
-    fontSize: s(9),
+    fontSize: fontSizes.label,
     color: colors.textSecondary,
     marginTop: s(3),
   },
@@ -968,7 +938,7 @@ const styles = StyleSheet.create({
   },
   exportPdfBtn: {
     width: '100%',
-    height: s(32),
+    minHeight: 44,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -980,12 +950,12 @@ const styles = StyleSheet.create({
   },
   exportPdfBtnText: {
     fontFamily: fonts.bodyBold,
-    fontSize: s(9.5),
+    fontSize: fontSizes.xs,
     color: '#3B6B11',
   },
   historyBtn: {
     width: '100%',
-    height: s(32),
+    minHeight: 44,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -997,49 +967,7 @@ const styles = StyleSheet.create({
   },
   historyLink: {
     fontFamily: fonts.bodyBold,
-    fontSize: s(9.5),
-    color: colors.textSecondary,
-  },
-  modalBackdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(10, 15, 26, 0.95)',
-    justifyContent: 'space-between',
-    paddingTop: s(40),
-    paddingBottom: s(30),
-    paddingHorizontal: s(16),
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  modalTitle: {
-    fontFamily: fonts.headingSemi,
-    fontSize: fontSizes.base,
-    color: colors.surface,
-  },
-  modalSubtitle: {
-    fontFamily: fonts.body,
     fontSize: fontSizes.xs,
-    color: '#A0AEC0',
-    marginTop: 2,
-  },
-  modalCloseBtn: {
-    width: s(36),
-    height: s(36),
-    borderRadius: s(18),
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  modalImageContainer: {
-    flex: 1,
-    marginVertical: s(16),
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  modalFullImage: {
-    width: '100%',
-    height: '100%',
+    color: colors.textSecondary,
   },
 });

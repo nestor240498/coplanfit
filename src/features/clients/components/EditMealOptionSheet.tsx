@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import {
-  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -10,6 +9,8 @@ import {
 } from 'react-native';
 import { Check, Pencil, Sparkles, X } from 'lucide-react-native';
 
+import { BottomSheet } from '@/components/ui/BottomSheet';
+
 import { usePlanBuilderStore } from '@/features/clients/planBuilderStore';
 import {
   FOOD_GROUP_LABELS,
@@ -18,7 +19,7 @@ import {
 } from '@/features/clients/planBuilderTypes';
 import { s } from '@/theme/scale';
 import { colors, radius } from '@/theme/tokens';
-import { fonts, fontSizes } from '@/theme/typography';
+import { fonts, fontSizes, lineHeights } from '@/theme/typography';
 
 type Props = {
   visible: boolean;
@@ -89,15 +90,11 @@ export function EditMealOptionSheet({
   }
 
   return (
-    <Modal
+    <BottomSheet
       visible={visible}
-      transparent
-      animationType="slide"
-      onRequestClose={onClose}
-    >
-      <View style={styles.backdrop}>
-        <View style={styles.sheetContainer}>
-          {/* Header del Sheet */}
+      onClose={onClose}
+      sheetStyle={styles.sheetContainer}
+      header={
           <View style={styles.header}>
             <View style={styles.headerTitles}>
               <Text style={styles.sheetTitle}>
@@ -107,11 +104,12 @@ export function EditMealOptionSheet({
                 Selecciona los alimentos para esta opción
               </Text>
             </View>
-            <Pressable onPress={onClose} hitSlop={8} style={styles.closeBtn}>
+            <Pressable accessibilityRole="button" accessibilityLabel="Cerrar" onPress={onClose} hitSlop={8} style={styles.closeBtn}>
               <X size={s(18)} color={colors.textSecondary} />
             </Pressable>
           </View>
-
+      }
+    >
           {/* Vista previa / Input del texto resultante */}
           <View style={styles.previewBox}>
             <View style={styles.previewHeader}>
@@ -213,26 +211,13 @@ export function EditMealOptionSheet({
               <Text style={styles.saveBtnText}>Guardar opción</Text>
             </Pressable>
           </View>
-        </View>
-      </View>
-    </Modal>
+    </BottomSheet>
   );
 }
 
 const styles = StyleSheet.create({
-  backdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(18, 32, 61, 0.55)',
-    justifyContent: 'flex-end',
-  },
   sheetContainer: {
-    backgroundColor: colors.surface,
-    borderTopLeftRadius: radius.modal,
-    borderTopRightRadius: radius.modal,
-    paddingTop: s(16),
-    paddingHorizontal: s(16),
-    paddingBottom: s(24),
-    maxHeight: '85%',
+    maxHeight: '88%',
     gap: s(10),
   },
   header: {
@@ -256,13 +241,13 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   closeBtn: {
-    width: s(28),
-    height: s(28),
+    width: 44,
+    height: 44,
     alignItems: 'center',
     justifyContent: 'center',
   },
   closeIcon: {
-    fontSize: s(18),
+    fontSize: fontSizes.screenTitle,
     color: colors.textSecondary,
     fontFamily: fonts.bodyBold,
   },
@@ -281,7 +266,7 @@ const styles = StyleSheet.create({
   },
   previewLabel: {
     fontFamily: fonts.bodyBold,
-    fontSize: s(9),
+    fontSize: fontSizes.label,
     color: colors.textSecondary,
     letterSpacing: 0.3,
   },
@@ -298,14 +283,14 @@ const styles = StyleSheet.create({
   },
   manualEditText: {
     fontFamily: fonts.bodySemi,
-    fontSize: s(9),
+    fontSize: fontSizes.label,
     color: colors.navy,
   },
   previewText: {
     fontFamily: fonts.bodyMedium,
     fontSize: fontSizes.xs,
     color: colors.text,
-    lineHeight: s(16),
+    lineHeight: lineHeights.xs,
   },
   previewTextEmpty: {
     color: colors.textMuted,
@@ -335,7 +320,7 @@ const styles = StyleSheet.create({
   },
   groupLabel: {
     fontFamily: fonts.headingSemi,
-    fontSize: s(10),
+    fontSize: fontSizes.xs,
     color: colors.success,
     textTransform: 'uppercase',
     letterSpacing: 0.3,
@@ -375,7 +360,7 @@ const styles = StyleSheet.create({
   checkMark: {
     color: colors.navy,
     fontFamily: fonts.bodyBold,
-    fontSize: s(10),
+    fontSize: fontSizes.xs,
     fontWeight: '800',
   },
   foodName: {
@@ -392,7 +377,7 @@ const styles = StyleSheet.create({
   },
   quantityText: {
     fontFamily: fonts.bodyBold,
-    fontSize: s(9),
+    fontSize: fontSizes.label,
     color: colors.textSecondary,
   },
   footer: {
@@ -402,7 +387,7 @@ const styles = StyleSheet.create({
   },
   cancelBtn: {
     flex: 1,
-    height: s(36),
+    minHeight: 48,
     borderRadius: radius.button,
     borderWidth: 1,
     borderColor: colors.border,
@@ -411,12 +396,12 @@ const styles = StyleSheet.create({
   },
   cancelBtnText: {
     fontFamily: fonts.bodyBold,
-    fontSize: s(10),
+    fontSize: fontSizes.xs,
     color: colors.textSecondary,
   },
   saveBtn: {
     flex: 1.5,
-    height: s(36),
+    minHeight: 48,
     borderRadius: radius.button,
     backgroundColor: colors.lime,
     alignItems: 'center',
@@ -424,7 +409,7 @@ const styles = StyleSheet.create({
   },
   saveBtnText: {
     fontFamily: fonts.bodyBold,
-    fontSize: s(10),
+    fontSize: fontSizes.xs,
     color: colors.navy,
   },
 });

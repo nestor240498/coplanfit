@@ -5,7 +5,7 @@ import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-n
 
 import { s } from '@/theme/scale';
 import { colors } from '@/theme/tokens';
-import { fonts } from '@/theme/typography';
+import { fonts, fontSizes } from '@/theme/typography';
 
 export type BreadcrumbItem = {
   label: string;
@@ -112,7 +112,7 @@ const styles = StyleSheet.create({
   },
   label: {
     fontFamily: fonts.body,
-    fontSize: s(7.5),
+    fontSize: fontSizes.micro,
     color: 'rgba(255, 255, 255, 0.7)',
   },
   labelClickable: {

@@ -3,6 +3,7 @@ import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { friendlyError } from '@/lib/errors';
 import { AppBackground } from '@/components/ui/AppBackground';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -15,7 +16,7 @@ import { formatGoal } from '@/lib/format';
 import { DEFAULT_COUNTRY_PREFIX, joinPhone } from '@/lib/phone';
 import { s } from '@/theme/scale';
 import { colors, radius } from '@/theme/tokens';
-import { fonts, fontSizes } from '@/theme/typography';
+import { fonts, fontSizes, lineHeights } from '@/theme/typography';
 
 /**
  * Mockup 1d (Nuevo cliente): nombre, correo/teléfono, fila Edad + Objetivo ("Elegir ▾"),
@@ -52,7 +53,7 @@ export default function NewClientScreen() {
       });
       router.back();
     } catch (e) {
-      setError((e as Error).message);
+      setError(friendlyError(e));
       setLoading(false);
     }
   }
@@ -148,14 +149,14 @@ const styles = StyleSheet.create({
   flexField: { flex: 1 },
   selectLabel: {
     fontFamily: fonts.bodyBold,
-    fontSize: s(8.5),
+    fontSize: fontSizes.label,
     color: colors.textSecondary,
     textTransform: 'uppercase',
     letterSpacing: 0.3,
     marginBottom: s(2),
   },
   select: {
-    height: s(32),
+    minHeight: 44,
     borderRadius: radius.input,
     borderWidth: 1,
     borderColor: colors.border,
@@ -172,7 +173,7 @@ const styles = StyleSheet.create({
     fontFamily: fonts.body,
     fontSize: fontSizes.xs,
     color: colors.textMuted,
-    lineHeight: s(14),
+    lineHeight: lineHeights.xs,
     marginTop: s(2),
   },
   error: {

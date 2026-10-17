@@ -1,15 +1,16 @@
 import { Info, Plus, Search } from 'lucide-react-native';
 import { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, FlatList, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { CreateExerciseModal } from './CreateExerciseModal';
 import { ExerciseDetailModal } from './ExerciseDetailModal';
 import { BottomSheet } from '@/components/ui/BottomSheet';
-import { matchesExerciseQuery } from '../exerciseSearch';
+import { ExerciseFilters, matchesExerciseFilters, matchesExerciseQuery, NO_EXERCISE_FILTERS } from '../exerciseSearch';
+import { ExerciseFilterBar } from './ExerciseFilterBar';
 import { getExercises, RemoveExerciseResult } from '../exerciseService';
 import { executionFromExercise } from '../prescription';
 import { ClientTrainingContext, conflictingContraindications, isEquipmentAvailable } from '../routineGenerator';
-import { equipmentLabel, Exercise, MUSCLE_GROUPS, MuscleGroup, muscleLabel, SingleExerciseExecution } from '../types';
+import { equipmentLabel, Exercise, muscleLabel, SingleExerciseExecution } from '../types';
 import { s } from '@/theme/scale';
 import { colors, radius } from '@/theme/tokens';
 import { fonts, fontSizes } from '@/theme/typography';
@@ -34,7 +35,7 @@ export function ExercisePickerSheet({
 }: Props) {
   const [exercisesList, setExercisesList] = useState<Exercise[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedMuscle, setSelectedMuscle] = useState<MuscleGroup | 'todos'>('todos');
+  const [filters, setFilters] = useState<ExerciseFilters>(NO_EXERCISE_FILTERS);
   const [originFilter, setOriginFilter] = useState<OriginFilter>('todos');
   const [search, setSearch] = useState('');
 
@@ -63,18 +64,19 @@ export function ExercisePickerSheet({
     };
   }, [visible]);
 
-  const filteredExercises = useMemo(() => {
-    return exercisesList.filter((ex) => {
-      // Filtro de origen (Globales vs Personalizados)
-      if (originFilter === 'globales' && ex.is_custom) return false;
-      if (originFilter === 'personalizados' && !ex.is_custom) return false;
-
-      // Filtro de músculo
-      const matchMuscle = selectedMuscle === 'todos' || ex.muscle_group === selectedMuscle;
-
-      return matchMuscle && matchesExerciseQuery(ex, search);
-    });
-  }, [exercisesList, originFilter, selectedMuscle, search]);
+  const searchedExercises = useMemo(
+    () =>
+      exercisesList.filter((ex) => {
+        if (originFilter === 'globales' && ex.is_custom) return false;
+        if (originFilter === 'personalizados' && !ex.is_custom) return false;
+        return matchesExerciseQuery(ex, search);
+      }),
+    [exercisesList, originFilter, search]
+  );
+  const filteredExercises = useMemo(
+    () => searchedExercises.filter((ex) => matchesExerciseFilters(ex, filters)),
+    [searchedExercises, filters]
+  );
 
   const [editingExercise, setEditingExercise] = useState<Exercise | null>(null);
   const [createTemplate, setCreateTemplate] = useState<Partial<Exercise> | null>(null);
@@ -176,32 +178,9 @@ export function ExercisePickerSheet({
           </Pressable>
         </View>
 
-        {/* Filtros de grupos musculares */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll} contentContainerStyle={styles.filterRow}>
-          <Pressable
-            onPress={() => setSelectedMuscle('todos')}
-            style={[styles.filterChip, selectedMuscle === 'todos' && styles.filterChipActive]}
-          >
-            <Text style={[styles.filterChipText, selectedMuscle === 'todos' && styles.filterChipTextActive]}>
-              Todos
-            </Text>
-          </Pressable>
-
-          {MUSCLE_GROUPS.map((m) => {
-            const isActive = selectedMuscle === m.id;
-            return (
-              <Pressable
-                key={m.id}
-                onPress={() => setSelectedMuscle(m.id)}
-                style={[styles.filterChip, isActive && styles.filterChipActive]}
-              >
-                <Text style={[styles.filterChipText, isActive && styles.filterChipTextActive]}>
-                  {m.label}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </ScrollView>
+        <View style={styles.filterBar}>
+          <ExerciseFilterBar exercises={searchedExercises} filters={filters} onChange={setFilters} />
+        </View>
 
         {/* Lista de ejercicios */}
         {loading ? (
@@ -262,7 +241,7 @@ export function ExercisePickerSheet({
                 </Pressable>
 
                 {/* Botón de información */}
-                <Pressable
+                <Pressable accessibilityRole="button" accessibilityLabel={`Ver detalle de ${item.name}`}
                   onPress={() => setDetailExercise(item)}
                   style={styles.infoBtn}
                   hitSlop={8}
@@ -281,39 +260,40 @@ export function ExercisePickerSheet({
             )}
           />
         )}
+        {/* Anidadas dentro de la hoja: iOS solo presenta una hoja encima de otra si es su hija */}
+        {/* Modal de Creación / Edición de Ejercicio */}
+        <CreateExerciseModal
+          visible={createModalOpen}
+          onClose={() => {
+            setCreateModalOpen(false);
+            setEditingExercise(null);
+            setCreateTemplate(null);
+          }}
+          onSaved={handleExerciseSaved}
+          initialExercise={editingExercise}
+          template={createTemplate}
+          existingExercises={exercisesList}
+        />
+
+        {/* Modal de Detalle */}
+        <ExerciseDetailModal
+          exercise={detailExercise}
+          visible={!!detailExercise}
+          onClose={() => setDetailExercise(null)}
+          onSelect={handleChooseExercise}
+          onEdit={handleOpenEdit}
+          onRemoved={handleExerciseRemoved}
+          allExercises={exercisesList}
+          onOpenExercise={setDetailExercise}
+          onCreateFrom={handleCreateFrom}
+        />
       </BottomSheet>
-
-      {/* Modal de Creación / Edición de Ejercicio */}
-      <CreateExerciseModal
-        visible={createModalOpen}
-        onClose={() => {
-          setCreateModalOpen(false);
-          setEditingExercise(null);
-          setCreateTemplate(null);
-        }}
-        onSaved={handleExerciseSaved}
-        initialExercise={editingExercise}
-        template={createTemplate}
-        existingExercises={exercisesList}
-      />
-
-      {/* Modal de Detalle */}
-      <ExerciseDetailModal
-        exercise={detailExercise}
-        visible={!!detailExercise}
-        onClose={() => setDetailExercise(null)}
-        onSelect={handleChooseExercise}
-        onEdit={handleOpenEdit}
-        onRemoved={handleExerciseRemoved}
-        allExercises={exercisesList}
-        onOpenExercise={setDetailExercise}
-        onCreateFrom={handleCreateFrom}
-      />
     </>
   );
 }
 
 const styles = StyleSheet.create({
+  filterBar: { paddingVertical: s(8) },
   topActionsRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -409,7 +389,7 @@ const styles = StyleSheet.create({
   },
   filterChipText: {
     fontFamily: fonts.body,
-    fontSize: s(8.5),
+    fontSize: fontSizes.label,
     color: colors.textSecondary,
   },
   filterChipTextActive: {
@@ -426,8 +406,9 @@ const styles = StyleSheet.create({
     fontSize: fontSizes.xs,
     color: colors.textMuted,
   },
+  // Se encoge para que la hoja no pase de su altura máxima
   list: {
-    maxHeight: s(360),
+    flexShrink: 1,
     marginTop: s(6),
   },
   listContent: {
@@ -470,7 +451,7 @@ const styles = StyleSheet.create({
   },
   customChipText: {
     fontFamily: fonts.bodyBold,
-    fontSize: s(7.5),
+    fontSize: fontSizes.micro,
     color: colors.navy,
   },
   badgeRow: {
@@ -486,16 +467,20 @@ const styles = StyleSheet.create({
   },
   muscleBadgeText: {
     fontFamily: fonts.bodyBold,
-    fontSize: s(7.5),
+    fontSize: fontSizes.micro,
     color: colors.surface,
   },
   equipmentText: {
     fontFamily: fonts.body,
-    fontSize: s(8),
+    fontSize: fontSizes.label,
     color: colors.textMuted,
     textTransform: 'capitalize',
   },
   infoBtn: {
+    minWidth: 44,
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
     padding: s(6),
     borderRadius: radius.chip,
     backgroundColor: 'rgba(27, 42, 74, 0.06)',

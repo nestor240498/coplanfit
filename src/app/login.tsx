@@ -1,7 +1,8 @@
-import { Link } from 'expo-router';
+import { Link, useFocusEffect } from 'expo-router';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { Eye, EyeOff, Lock, Mail } from 'lucide-react-native';
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
+import { useReducedMotion } from 'react-native-reanimated';
 import {
   KeyboardAvoidingView,
   Platform,
@@ -37,11 +38,28 @@ export default function LoginScreen() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
+  const reduceMotion = useReducedMotion();
   const player = useVideoPlayer(bgVideoSource, (p) => {
     p.loop = true;
     p.muted = true;
-    p.play();
   });
+
+  // El vídeo de fondo solo se reproduce con la pantalla visible y sin «Reducir movimiento»
+  // (entonces queda su primer fotograma como imagen fija). Ahorra batería al no estar en pantalla.
+  useFocusEffect(
+    useCallback(() => {
+      if (!reduceMotion) player.play();
+      return () => {
+        // Al iniciar sesión la pantalla se desmonta y useVideoPlayer libera el reproductor nativo
+        // antes de esta limpieza: en ese caso ya no hay nada que pausar.
+        try {
+          player.pause();
+        } catch {
+          // reproductor ya liberado
+        }
+      };
+    }, [player, reduceMotion])
+  );
 
   const canSubmit = email.trim().length > 0 && password.length > 0;
 
@@ -62,7 +80,7 @@ export default function LoginScreen() {
         {Platform.OS === 'web' ? (
           <video
             src={typeof bgVideoSource === 'string' ? bgVideoSource : bgVideoSource.uri || bgVideoSource}
-            autoPlay
+            autoPlay={!reduceMotion}
             loop
             muted
             playsInline
@@ -215,7 +233,7 @@ const styles = StyleSheet.create({
   },
   // El login usa inputs más altos que los formularios (mockup: 42px, radio 10)
   loginInput: {
-    height: s(42),
+    minHeight: 44,
     borderRadius: s(10),
     paddingHorizontal: s(12),
     backgroundColor: 'rgba(255, 255, 255, 0.95)',

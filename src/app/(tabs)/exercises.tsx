@@ -2,7 +2,6 @@ import { Dumbbell, Info, Plus, Search } from 'lucide-react-native';
 import { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   FlatList,
   Pressable,
   StyleSheet,
@@ -11,16 +10,23 @@ import {
   View,
 } from 'react-native';
 
+import { toast } from '@/components/ui/Toast';
 import { AppBackground } from '@/components/ui/AppBackground';
 import { CreateExerciseModal } from '@/features/workouts/components/CreateExerciseModal';
 import { ExerciseDetailModal } from '@/features/workouts/components/ExerciseDetailModal';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
-import { matchesExerciseQuery } from '@/features/workouts/exerciseSearch';
+import { ExerciseFilterBar } from '@/features/workouts/components/ExerciseFilterBar';
+import {
+  ExerciseFilters,
+  matchesExerciseFilters,
+  matchesExerciseQuery,
+  NO_EXERCISE_FILTERS,
+} from '@/features/workouts/exerciseSearch';
 import { getCurrentUserRole, getExercises, RemoveExerciseResult } from '@/features/workouts/exerciseService';
-import { equipmentLabel, Exercise, MUSCLE_GROUPS, MuscleGroup, muscleLabel } from '@/features/workouts/types';
+import { equipmentLabel, Exercise, muscleLabel } from '@/features/workouts/types';
 import { s } from '@/theme/scale';
 import { colors, radius } from '@/theme/tokens';
-import { fonts, fontSizes } from '@/theme/typography';
+import { fonts, fontSizes, lineHeights } from '@/theme/typography';
 
 type OriginFilter = 'todos' | 'globales' | 'personalizados';
 
@@ -28,7 +34,7 @@ export default function ExercisesScreen() {
   const [exercisesList, setExercisesList] = useState<Exercise[]>([]);
   const [loading, setLoading] = useState(true);
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
-  const [selectedMuscle, setSelectedMuscle] = useState<MuscleGroup | 'todos'>('todos');
+  const [filters, setFilters] = useState<ExerciseFilters>(NO_EXERCISE_FILTERS);
   const [originFilter, setOriginFilter] = useState<OriginFilter>('todos');
   const [search, setSearch] = useState('');
 
@@ -62,15 +68,20 @@ export default function ExercisesScreen() {
     };
   }, []);
 
-  const filteredExercises = useMemo(() => {
-    return exercisesList.filter((ex) => {
-      if (originFilter === 'globales' && ex.is_custom) return false;
-      if (originFilter === 'personalizados' && !ex.is_custom) return false;
-
-      const matchMuscle = selectedMuscle === 'todos' || ex.muscle_group === selectedMuscle;
-      return matchMuscle && matchesExerciseQuery(ex, search);
-    });
-  }, [exercisesList, originFilter, selectedMuscle, search]);
+  // Origen y búsqueda primero: sobre ese resultado se calculan las opciones y recuentos de los filtros
+  const searchedExercises = useMemo(
+    () =>
+      exercisesList.filter((ex) => {
+        if (originFilter === 'globales' && ex.is_custom) return false;
+        if (originFilter === 'personalizados' && !ex.is_custom) return false;
+        return matchesExerciseQuery(ex, search);
+      }),
+    [exercisesList, originFilter, search]
+  );
+  const filteredExercises = useMemo(
+    () => searchedExercises.filter((ex) => matchesExerciseFilters(ex, filters)),
+    [searchedExercises, filters]
+  );
 
   const [editingExercise, setEditingExercise] = useState<Exercise | null>(null);
   const [createTemplate, setCreateTemplate] = useState<Partial<Exercise> | null>(null);
@@ -90,11 +101,10 @@ export default function ExercisesScreen() {
 
   function handleExerciseRemoved(removed: Exercise, result: RemoveExerciseResult) {
     setExercisesList((prev) => prev.filter((e) => e.id !== removed.id));
-    Alert.alert(
-      result === 'deleted' ? 'Ejercicio eliminado' : 'Ejercicio archivado',
+    toast(
       result === 'deleted'
-        ? `"${removed.name}" se eliminó del banco.`
-        : `"${removed.name}" ya no aparece en el banco. Las rutinas que lo usan lo conservan.`
+        ? `«${removed.name}» se eliminó del banco.`
+        : `«${removed.name}» archivado: ya no aparece en el banco, pero las rutinas que lo usan lo conservan.`
     );
   }
 
@@ -181,28 +191,7 @@ export default function ExercisesScreen() {
           </View>
         )}
 
-        {/* Chips de grupo muscular */}
-        <FlatList
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          data={[{ id: 'todos', label: 'Todos' }, ...MUSCLE_GROUPS]}
-          keyExtractor={(item) => item.id}
-          style={styles.chipsScroll}
-          contentContainerStyle={styles.chipsContainer}
-          renderItem={({ item }) => {
-            const isActive = selectedMuscle === item.id;
-            return (
-              <Pressable
-                onPress={() => setSelectedMuscle(item.id as MuscleGroup | 'todos')}
-                style={[styles.chip, isActive && styles.chipActive]}
-              >
-                <Text style={[styles.chipText, isActive && styles.chipTextActive]}>
-                  {item.label}
-                </Text>
-              </Pressable>
-            );
-          }}
-        />
+        <ExerciseFilterBar exercises={searchedExercises} filters={filters} onChange={setFilters} />
       </View>
 
       {/* Lista de Ejercicios */}
@@ -267,9 +256,9 @@ export default function ExercisesScreen() {
                   <Text style={styles.difficultyText}>{item.difficulty}</Text>
                 </View>
 
-                {item.tips ? (
+                {item.description ? (
                   <Text style={styles.previewTip} numberOfLines={2}>
-                    {item.tips}
+                    {item.description}
                   </Text>
                 ) : null}
               </View>
@@ -399,33 +388,6 @@ const styles = StyleSheet.create({
     fontFamily: fonts.bodyBold,
     color: colors.navy,
   },
-  chipsScroll: {
-    maxHeight: s(30),
-  },
-  chipsContainer: {
-    gap: s(6),
-  },
-  chip: {
-    paddingHorizontal: s(10),
-    paddingVertical: s(4),
-    borderRadius: radius.chip,
-    backgroundColor: colors.background,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  chipActive: {
-    backgroundColor: colors.navy,
-    borderColor: colors.navy,
-  },
-  chipText: {
-    fontFamily: fonts.body,
-    fontSize: s(8.5),
-    color: colors.textSecondary,
-  },
-  chipTextActive: {
-    fontFamily: fonts.bodyBold,
-    color: colors.surface,
-  },
   loadingBox: {
     flex: 1,
     alignItems: 'center',
@@ -477,7 +439,7 @@ const styles = StyleSheet.create({
   },
   customBadgeText: {
     fontFamily: fonts.bodyBold,
-    fontSize: s(7.5),
+    fontSize: fontSizes.micro,
     color: colors.navy,
   },
   globalBadge: {
@@ -489,7 +451,7 @@ const styles = StyleSheet.create({
   },
   globalBadgeText: {
     fontFamily: fonts.bodyBold,
-    fontSize: s(7.5),
+    fontSize: fontSizes.micro,
     color: colors.textSecondary,
   },
   badgeRow: {
@@ -505,36 +467,36 @@ const styles = StyleSheet.create({
   },
   muscleBadgeText: {
     fontFamily: fonts.bodyBold,
-    fontSize: s(7.5),
+    fontSize: fontSizes.micro,
     color: colors.surface,
   },
   equipmentText: {
     fontFamily: fonts.body,
-    fontSize: s(8),
+    fontSize: fontSizes.label,
     color: colors.textSecondary,
     textTransform: 'capitalize',
   },
   dotSeparator: {
     color: colors.textMuted,
-    fontSize: s(8),
+    fontSize: fontSizes.label,
   },
   difficultyText: {
     fontFamily: fonts.body,
-    fontSize: s(8),
+    fontSize: fontSizes.label,
     color: colors.textMuted,
     textTransform: 'capitalize',
   },
   previewTip: {
     fontFamily: fonts.body,
-    fontSize: fontSizes.label,
+    fontSize: fontSizes.xs,
     color: colors.textSecondary,
     marginTop: 2,
-    lineHeight: s(16),
+    lineHeight: lineHeights.xs,
   },
   infoBtn: {
-    width: s(34),
-    height: s(34),
-    borderRadius: s(17),
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: colors.background,
     borderWidth: 1,
     borderColor: colors.border,

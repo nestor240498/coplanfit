@@ -2,6 +2,7 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
 import { ActivityIndicator, FlatList, StyleSheet, Text, View } from 'react-native';
 
+import { friendlyError } from '@/lib/errors';
 import { StorageImage } from '@/components/ui/StorageImage';
 import { AppBackground } from '@/components/ui/AppBackground';
 import { Badge } from '@/components/ui/Badge';
@@ -15,7 +16,7 @@ import { Client } from '@/features/clients/types';
 import { calculateAge, formatDateShort, formatGoal } from '@/lib/format';
 import { s } from '@/theme/scale';
 import { colors, radius } from '@/theme/tokens';
-import { fonts, fontSizes } from '@/theme/typography';
+import { fonts, fontSizes, lineHeights } from '@/theme/typography';
 
 // TODO: leer el límite del paquete de suscripción cuando exista esa tabla
 const PLAN_LIMIT = 10;
@@ -40,7 +41,7 @@ export default function ClientsScreen() {
         if (!cancelled) setClients(data);
       })
       .catch((e: Error) => {
-        if (!cancelled) setError(e.message);
+        if (!cancelled) setError(friendlyError(e));
       });
     return () => {
       cancelled = true;
@@ -162,7 +163,7 @@ const styles = StyleSheet.create({
     gap: s(8),
   },
   search: {
-    height: s(36),
+    minHeight: 44,
     borderRadius: s(9),
     paddingHorizontal: s(12),
     fontSize: fontSizes.sm,
@@ -179,7 +180,7 @@ const styles = StyleSheet.create({
     fontSize: fontSizes.sm,
     color: colors.textMuted,
     textAlign: 'center',
-    lineHeight: s(15),
+    lineHeight: lineHeights.sm,
   },
   row: {
     flexDirection: 'row',
@@ -220,7 +221,7 @@ const styles = StyleSheet.create({
   },
   ageBadge: {
     fontFamily: fonts.bodySemi,
-    fontSize: s(9),
+    fontSize: fontSizes.label,
     color: colors.textSecondary,
     backgroundColor: colors.background,
     paddingVertical: s(2),
@@ -231,7 +232,7 @@ const styles = StyleSheet.create({
   },
   meta: {
     fontFamily: fonts.body,
-    fontSize: s(8),
+    fontSize: fontSizes.label,
     color: colors.textSecondary,
   },
   metaHighlight: {
@@ -240,7 +241,7 @@ const styles = StyleSheet.create({
   },
   measuresText: {
     fontFamily: fonts.body,
-    fontSize: s(8),
+    fontSize: fontSizes.label,
     color: colors.textMuted,
   },
 });

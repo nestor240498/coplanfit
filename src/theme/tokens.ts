@@ -18,7 +18,7 @@ export const colors = {
 
   text: '#2E2E2E',
   textSecondary: '#5A6270',
-  textMuted: '#8B93A3',
+  textMuted: '#697182',
   /** Texto secundario sobre fondo navy (subtítulos de header) */
   onNavyMuted: '#B9C2D6',
 
@@ -26,6 +26,8 @@ export const colors = {
   dangerBg: '#FFE4DF',
   success: '#4B7A1F',
   successBg: '#EAF6D9',
+  /** Relleno de avisos «queda poco» (barras de uso); no usar como color de texto */
+  warning: '#E0A21B',
 
   /** Fondo de chip neutro (ej. "Evita: frutos secos") */
   neutralChipBg: '#EEF0F4',

@@ -5,9 +5,6 @@ import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -16,10 +13,18 @@ import {
   View,
 } from 'react-native';
 
+import { friendlyError } from '@/lib/errors';
+import { hapticSuccess } from '@/lib/motion';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+import { BottomSheet } from '@/components/ui/BottomSheet';
 import { Button } from '@/components/ui/Button';
 import { s } from '@/theme/scale';
 import { colors, radius } from '@/theme/tokens';
 import { fonts, fontSizes } from '@/theme/typography';
+import { AiQuotaHint } from '@/features/ai/components/AiQuotaHint';
+import { useAiQuota } from '@/features/ai/quota';
+
 import { classifyExercise, generateExerciseAiDetails } from '../exerciseAiAssistant';
 import { findSimilarExercises, matchesExerciseQuery } from '../exerciseSearch';
 import {
@@ -51,7 +56,7 @@ import {
 } from '../types';
 import { ExerciseImageCarousel } from './ExerciseImageCarousel';
 import { ExerciseVideo } from './ExerciseVideo';
-import { FieldLabel, FormSection, MultiChoice, SingleChoice, TextListInput } from './ExerciseFormControls';
+import { FieldLabel, FormSection, MultiSelectField, SelectField, SingleChoice, TextListInput } from './ExerciseFormControls';
 
 type Props = {
   visible: boolean;
@@ -67,6 +72,7 @@ type Props = {
 
 type FormState = {
   name: string;
+  description: string;
   muscleGroup: MuscleGroup;
   secondaryMuscles: MuscleGroup[];
   equipment: string;
@@ -101,6 +107,7 @@ function formFrom(ex: Partial<Exercise> | null | undefined): FormState {
     Array.isArray(ex?.images) && ex.images.length > 0 ? ex.images : ex?.image_url ? [ex.image_url] : [];
   return {
     name: ex?.name ?? '',
+    description: ex?.description ?? '',
     muscleGroup: ex?.muscle_group ?? 'pecho',
     secondaryMuscles: ex?.secondary_muscles ?? [],
     equipment: ex?.equipment ?? 'mancuernas',
@@ -131,8 +138,13 @@ export function CreateExerciseModal({
 }: Props) {
   const [form, setForm] = useState<FormState>(() => formFrom(initialExercise ?? template));
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+  const insets = useSafeAreaInsets();
   const [classifying, setClassifying] = useState(false);
-  const [aiFilled, setAiFilled] = useState(false);
+  const quota = useAiQuota((st) => st.quota);
+  const refreshQuota = useAiQuota((st) => st.refresh);
+  const [classifyStage, setClassifyStage] = useState<'classify' | 'technique'>('classify');
+  // Campos que rellenó la IA y el entrenador aún no ha cambiado (se marcan con «IA»)
+  const [aiFields, setAiFields] = useState<ReadonlySet<keyof FormState>>(new Set());
   const [generatingTechnique, setGeneratingTechnique] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [uploadingVideo, setUploadingVideo] = useState(false);
@@ -141,7 +153,18 @@ export function CreateExerciseModal({
   const [saving, setSaving] = useState(false);
 
   const isEditing = Boolean(initialExercise);
-  const set = <K extends keyof FormState>(key: K, value: FormState[K]) => setForm((f) => ({ ...f, [key]: value }));
+  const touch = (key: keyof FormState) =>
+    setAiFields((prev) => {
+      if (!prev.has(key)) return prev;
+      const next = new Set(prev);
+      next.delete(key);
+      return next;
+    });
+  const set = <K extends keyof FormState>(key: K, value: FormState[K]) => {
+    setForm((f) => ({ ...f, [key]: value }));
+    touch(key);
+  };
+  const ai = (key: keyof FormState) => aiFields.has(key);
 
   // Al abrir (o cambiar el ejercicio/plantilla) se reinicia el formulario durante el render,
   // el patrón recomendado por React en lugar de un efecto
@@ -154,15 +177,17 @@ export function CreateExerciseModal({
     setOpenedWith({ visible, initialExercise, template });
     if (visible) {
       setForm(formFrom(initialExercise ?? template));
-      setAiFilled(false);
+      setAiFields(new Set());
       setActiveImageIndex(0);
       setParentQuery('');
     }
   }
 
   useEffect(() => {
-    if (visible) getCurrentUserRole().then((res) => setIsSuperAdmin(res.isSuperAdmin));
-  }, [visible]);
+    if (!visible) return;
+    getCurrentUserRole().then((res) => setIsSuperAdmin(res.isSuperAdmin));
+    refreshQuota();
+  }, [visible, refreshQuota]);
 
   const selfId = initialExercise?.id;
   const similarExercises =
@@ -182,67 +207,120 @@ export function CreateExerciseModal({
     .filter(Boolean)
     .join(' · ');
   const techniqueSummary =
-    form.steps.length + form.cues.length > 0
+    (form.steps.length + form.cues.length > 0
       ? `${form.steps.length} pasos · ${form.cues.length} indicaciones`
-      : 'Sin técnica todavía';
+      : 'Sin técnica todavía') + (ai('cues') || ai('steps') ? ' · propuesto por IA' : '');
   const safetySummary =
-    [
+    ([
       form.contraindications.length ? `${form.contraindications.length} contraindicaciones` : '',
       form.aliases.length ? `${form.aliases.length} sinónimos` : '',
     ]
       .filter(Boolean)
-      .join(' · ') || 'Opcional';
+      .join(' · ') || 'Opcional') + (ai('contraindications') || ai('aliases') ? ' · propuesto por IA' : '');
 
   async function handleClassify() {
     if (form.name.trim().length < 3) return;
     setClassifying(true);
+    setClassifyStage('classify');
     try {
-      const ai = await classifyExercise(form.name);
+      const proposal = await classifyExercise(form.name);
+      // Lo que el entrenador ya escribió en las listas no se pisa
+      const filled: (keyof FormState)[] = [
+        'muscleGroup',
+        'equipment',
+        'exerciseType',
+        'metric',
+        'laterality',
+        'pattern',
+        'difficulty',
+      ];
+      if (!form.description.trim() && proposal.description) filled.push('description');
+      if (proposal.secondary_muscles.length) filled.push('secondaryMuscles');
+      if (proposal.extra_equipment.length) filled.push('extraEquipment');
+      if (!form.cues.length && proposal.cues.length) filled.push('cues');
+      if (!form.contraindications.length && proposal.contraindications.length) filled.push('contraindications');
+      if (!form.aliases.length && proposal.aliases.length) filled.push('aliases');
       setForm((f) => ({
         ...f,
-        muscleGroup: ai.muscle_group,
-        secondaryMuscles: ai.secondary_muscles,
-        equipment: ai.equipment,
-        extraEquipment: ai.extra_equipment,
-        exerciseType: ai.exercise_type,
-        metric: ai.metric,
-        laterality: ai.laterality,
-        pattern: ai.movement_pattern,
-        difficulty: ai.difficulty,
-        // Lo que el entrenador ya escribió no se pisa
-        cues: f.cues.length ? f.cues : ai.cues,
-        contraindications: f.contraindications.length ? f.contraindications : ai.contraindications,
-        aliases: f.aliases.length ? f.aliases : ai.aliases,
+        description: f.description.trim() ? f.description : proposal.description,
+        muscleGroup: proposal.muscle_group,
+        secondaryMuscles: proposal.secondary_muscles,
+        equipment: proposal.equipment,
+        extraEquipment: proposal.extra_equipment,
+        exerciseType: proposal.exercise_type,
+        metric: proposal.metric,
+        laterality: proposal.laterality,
+        pattern: proposal.movement_pattern,
+        difficulty: proposal.difficulty,
+        cues: f.cues.length ? f.cues : proposal.cues,
+        contraindications: f.contraindications.length ? f.contraindications : proposal.contraindications,
+        aliases: f.aliases.length ? f.aliases : proposal.aliases,
       }));
-      setAiFilled(true);
+      setAiFields(new Set(filled));
+
+      // «Completar» también redacta la técnica si aún no hay
+      if (form.steps.length === 0 && !form.tips.trim()) {
+        setClassifyStage('technique');
+        const technique = await draftTechnique(
+          proposal.muscle_group,
+          proposal.equipment,
+          proposal.difficulty,
+          true
+        ).catch(() => null);
+        if (technique && (technique.steps.length || technique.tips)) {
+          setForm((f) => ({ ...f, steps: technique.steps, tips: technique.tips }));
+          setAiFields((prev) => new Set([...prev, 'steps', 'tips']));
+        }
+      }
+      hapticSuccess();
     } catch (e) {
-      Alert.alert('No se pudo completar con IA', (e as Error).message);
+      Alert.alert('No se pudo completar con IA', friendlyError(e));
     } finally {
       setClassifying(false);
+      refreshQuota();
     }
+  }
+
+  /** Pasos y consejos redactados por la IA; null si no respondió (el texto genérico local no se usa aquí). */
+  async function draftTechnique(
+    muscle: MuscleGroup,
+    equipment: string,
+    difficulty: TrainingLevel,
+    bundled = false
+  ): Promise<{ steps: string[]; tips: string } | null> {
+    const res = await generateExerciseAiDetails(form.name, muscle, equipment, difficulty, '', '', {
+      instructions: true,
+      tips: true,
+      images: false,
+      bundled,
+    });
+    if (res.source !== 'ai') return null;
+    const steps =
+      Array.isArray(res.steps) && res.steps.length > 0
+        ? res.steps.map((st) => `${st.title ? `${st.title}: ` : ''}${st.description ?? ''}`.trim()).filter(Boolean)
+        : parseInstructionsToSteps(res.instructions);
+    return { steps, tips: res.tips };
   }
 
   async function runTechniqueGeneration() {
     setGeneratingTechnique(true);
     try {
-      const ai = await generateExerciseAiDetails(
-        form.name,
-        form.muscleGroup,
-        form.equipment,
-        form.difficulty,
-        '',
-        '',
-        { instructions: true, tips: true, images: false }
-      );
-      const steps =
-        Array.isArray(ai.steps) && ai.steps.length > 0
-          ? ai.steps.map((st) => `${st.title ? `${st.title}: ` : ''}${st.description ?? ''}`.trim()).filter(Boolean)
-          : parseInstructionsToSteps(ai.instructions);
-      setForm((f) => ({ ...f, steps: steps.length ? steps : f.steps, tips: ai.tips || f.tips }));
+      const technique = await draftTechnique(form.muscleGroup, form.equipment, form.difficulty);
+      if (!technique) {
+        Alert.alert('No se pudo redactar la técnica', 'La IA no respondió. Prueba de nuevo en un minuto o escríbela a mano.');
+        return;
+      }
+      setForm((f) => ({
+        ...f,
+        steps: technique.steps.length ? technique.steps : f.steps,
+        tips: technique.tips || f.tips,
+      }));
+      setAiFields((prev) => new Set([...prev, 'steps', 'tips']));
     } catch (e) {
-      Alert.alert('No se pudo redactar la técnica', (e as Error).message);
+      Alert.alert('No se pudo redactar la técnica', friendlyError(e));
     } finally {
       setGeneratingTechnique(false);
+      refreshQuota();
     }
   }
 
@@ -286,7 +364,7 @@ export function CreateExerciseModal({
       });
       if (replaceIndex === undefined) setActiveImageIndex(form.images.length);
     } catch (err) {
-      Alert.alert('Error al subir imagen', (err as Error).message);
+      Alert.alert('Error al subir imagen', friendlyError(err));
     } finally {
       setUploadingImage(false);
     }
@@ -324,7 +402,7 @@ export function CreateExerciseModal({
       const path = await uploadExerciseVideo(asset.uri, asset.mimeType);
       set('videoPath', path);
     } catch (err) {
-      Alert.alert('Error al subir el vídeo', (err as Error).message);
+      Alert.alert('Error al subir el vídeo', friendlyError(err));
     } finally {
       setUploadingVideo(false);
     }
@@ -343,6 +421,7 @@ export function CreateExerciseModal({
 
     const input = {
       name: form.name.trim(),
+      description: form.description.trim() || null,
       muscle_group: form.muscleGroup,
       secondary_muscles: form.secondaryMuscles.filter((m) => m !== form.muscleGroup),
       equipment: form.equipment,
@@ -375,7 +454,7 @@ export function CreateExerciseModal({
       onSaved(result);
       onClose();
     } catch (err) {
-      Alert.alert('No se pudo guardar', (err as Error).message);
+      Alert.alert('No se pudo guardar', friendlyError(err));
     } finally {
       setSaving(false);
     }
@@ -391,9 +470,12 @@ export function CreateExerciseModal({
       : 'Nuevo ejercicio';
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.overlay}>
-        <View style={styles.sheet}>
+    <BottomSheet
+      visible={visible}
+      onClose={onClose}
+      bare
+      sheetStyle={styles.sheet}
+      header={
           <View style={styles.header}>
             <View style={styles.titleWrap}>
               <View style={styles.iconWrap}>
@@ -415,7 +497,8 @@ export function CreateExerciseModal({
               <X size={s(18)} color={colors.textSecondary} />
             </Pressable>
           </View>
-
+      }
+    >
           <ScrollView
             style={styles.body}
             contentContainerStyle={styles.bodyContent}
@@ -456,15 +539,21 @@ export function CreateExerciseModal({
                     <Sparkles size={s(14)} color={colors.navy} />
                   )}
                   <Text style={styles.aiBtnText}>
-                    {classifying ? 'Analizando el ejercicio…' : 'Completar datos con IA'}
+                    {classifying
+                      ? classifyStage === 'technique'
+                        ? 'Redactando la técnica…'
+                        : 'Analizando el ejercicio…'
+                      : 'Completar datos con IA'}
                   </Text>
                 </Pressable>
               )}
-              {aiFilled && (
+              {!isEditing && <AiQuotaHint quota={quota} style={styles.quotaHint} />}
+              {aiFields.size > 0 && (
                 <View style={styles.aiFilledBanner} accessibilityLiveRegion="polite">
                   <CheckCircle2 size={s(14)} color={colors.success} />
                   <Text style={styles.aiFilledText}>
-                    La IA propuso la clasificación, las indicaciones y los sinónimos. Revísalos antes de guardar.
+                    La IA rellenó {aiFields.size} campos, marcados con «IA» y borde verde. Revísalos: al cambiar uno, la
+                    marca desaparece.
                   </Text>
                 </View>
               )}
@@ -483,54 +572,88 @@ export function CreateExerciseModal({
               )}
             </View>
 
+            <View>
+              <FieldLabel ai={ai('description')}>Descripción breve</FieldLabel>
+              <TextInput
+                value={form.description}
+                onChangeText={(val) => set('description', val)}
+                placeholder="Qué es y qué trabaja. Ej: Sentadilla a una pierna con el pie trasero en un banco; trabaja cuádriceps y glúteos."
+                placeholderTextColor={colors.textMuted}
+                multiline
+                maxLength={200}
+                style={[styles.input, styles.descriptionInput]}
+              />
+              <Text style={styles.hint}>
+                Se ve en la tarjeta del ejercicio en el banco. {form.description.length}/200
+              </Text>
+            </View>
+
             <FormSection title="Clasificación" summary={classificationSummary} defaultOpen={!isEditing}>
+              <SelectField
+                label="Músculo principal"
+                options={MUSCLE_GROUPS}
+                value={form.muscleGroup}
+                ai={ai('muscleGroup')}
+                onChange={(m) => {
+                  setForm((f) => ({
+                    ...f,
+                    muscleGroup: m,
+                    secondaryMuscles: f.secondaryMuscles.filter((sec) => sec !== m),
+                  }));
+                  touch('muscleGroup');
+                }}
+              />
+              <MultiSelectField
+                label="Músculos secundarios"
+                options={MUSCLE_GROUPS.filter((m) => m.id !== form.muscleGroup)}
+                values={form.secondaryMuscles}
+                ai={ai('secondaryMuscles')}
+                onChange={(v) => set('secondaryMuscles', v)}
+                sheetHint="Los que también trabajan de forma relevante. Mejor 3 como máximo."
+              />
+              <SelectField
+                label="Equipo principal"
+                options={EXERCISE_EQUIPMENT}
+                value={form.equipment}
+                ai={ai('equipment')}
+                onChange={(v) => set('equipment', v)}
+              />
+              <MultiSelectField
+                label="Equipo adicional"
+                options={EXERCISE_EQUIPMENT.filter((e) => e.id !== form.equipment)}
+                values={form.extraEquipment}
+                ai={ai('extraEquipment')}
+                onChange={(v) => set('extraEquipment', v)}
+                sheetHint="Otro equipo imprescindible, como un banco o un cajón."
+              />
+              <SelectField
+                label="Tipo"
+                options={EXERCISE_TYPES}
+                value={form.exerciseType}
+                ai={ai('exerciseType')}
+                onChange={(v) => set('exerciseType', v)}
+              />
+              <SelectField
+                label="Cómo se mide"
+                options={EXERCISE_METRICS}
+                value={form.metric}
+                ai={ai('metric')}
+                onChange={(v) => set('metric', v)}
+              />
+              <SelectField
+                label="Patrón de movimiento"
+                options={MOVEMENT_PATTERNS}
+                value={form.pattern}
+                ai={ai('pattern')}
+                onChange={(v) => set('pattern', v)}
+                sheetTitle="Patrón de movimiento"
+              />
+              <Text style={styles.hint}>
+                El tipo de movimiento (empujar, tirar, sentadilla…). Sirve para proponer alternativas equivalentes en las
+                rutinas.
+              </Text>
               <View>
-                <FieldLabel>Músculo principal</FieldLabel>
-                <SingleChoice
-                  options={MUSCLE_GROUPS}
-                  value={form.muscleGroup}
-                  onChange={(m) =>
-                    setForm((f) => ({
-                      ...f,
-                      muscleGroup: m,
-                      secondaryMuscles: f.secondaryMuscles.filter((sec) => sec !== m),
-                    }))
-                  }
-                />
-              </View>
-              <View>
-                <FieldLabel>Músculos secundarios</FieldLabel>
-                <MultiChoice
-                  options={MUSCLE_GROUPS.filter((m) => m.id !== form.muscleGroup)}
-                  values={form.secondaryMuscles}
-                  onChange={(v) => set('secondaryMuscles', v)}
-                />
-              </View>
-              <View>
-                <FieldLabel>Equipo principal</FieldLabel>
-                <SingleChoice options={EXERCISE_EQUIPMENT} value={form.equipment} onChange={(v) => set('equipment', v)} />
-              </View>
-              <View>
-                <FieldLabel>Equipo adicional</FieldLabel>
-                <MultiChoice
-                  options={EXERCISE_EQUIPMENT.filter((e) => e.id !== form.equipment)}
-                  values={form.extraEquipment}
-                  onChange={(v) => set('extraEquipment', v)}
-                />
-              </View>
-              <View>
-                <FieldLabel>Tipo</FieldLabel>
-                <SingleChoice options={EXERCISE_TYPES} value={form.exerciseType} onChange={(v) => set('exerciseType', v)} />
-              </View>
-              <View>
-                <FieldLabel>Cómo se mide</FieldLabel>
-                <SingleChoice options={EXERCISE_METRICS} value={form.metric} onChange={(v) => set('metric', v)} />
-                <Text style={styles.hint}>
-                  Ejemplo: {EXERCISE_METRICS.find((m) => m.id === form.metric)?.hint}
-                </Text>
-              </View>
-              <View>
-                <FieldLabel>Lateralidad</FieldLabel>
+                <FieldLabel ai={ai('laterality')}>Lateralidad</FieldLabel>
                 <SingleChoice options={LATERALITIES} value={form.laterality} onChange={(v) => set('laterality', v)} />
                 <Text style={styles.hint}>
                   {form.laterality === 'bilateral'
@@ -539,16 +662,12 @@ export function CreateExerciseModal({
                 </Text>
               </View>
               <View>
-                <FieldLabel>Patrón de movimiento</FieldLabel>
-                <SingleChoice options={MOVEMENT_PATTERNS} value={form.pattern} onChange={(v) => set('pattern', v)} />
-                <Text style={styles.hint}>
-                  El tipo de movimiento (empujar, tirar, sentadilla…). Sirve para proponer alternativas equivalentes
-                  en las rutinas.
-                </Text>
-              </View>
-              <View>
-                <FieldLabel>Nivel técnico</FieldLabel>
-                <SingleChoice options={TRAINING_LEVELS} value={form.difficulty} onChange={(v) => set('difficulty', v)} />
+                <FieldLabel ai={ai('difficulty')}>Nivel técnico</FieldLabel>
+                <SingleChoice
+                  options={TRAINING_LEVELS.map(({ id, label }) => ({ id, label }))}
+                  value={form.difficulty}
+                  onChange={(v) => set('difficulty', v)}
+                />
               </View>
             </FormSection>
 
@@ -570,7 +689,7 @@ export function CreateExerciseModal({
               </Pressable>
 
               <View>
-                <FieldLabel>Pasos de ejecución</FieldLabel>
+                <FieldLabel ai={ai('steps')}>Pasos de ejecución</FieldLabel>
                 <View style={styles.stepsList}>
                   {form.steps.map((stepText, idx) => (
                     <View key={idx} style={styles.stepRow}>
@@ -607,7 +726,7 @@ export function CreateExerciseModal({
               </View>
 
               <View>
-                <FieldLabel>Consejos y errores a evitar</FieldLabel>
+                <FieldLabel ai={ai('tips')}>Consejos y errores a evitar</FieldLabel>
                 <TextInput
                   value={form.tips}
                   onChangeText={(v) => set('tips', v)}
@@ -619,7 +738,7 @@ export function CreateExerciseModal({
               </View>
 
               <View>
-                <FieldLabel>Indicaciones de sala</FieldLabel>
+                <FieldLabel ai={ai('cues')}>Indicaciones de sala</FieldLabel>
                 <Text style={styles.hintTop}>Frases cortas que le dices al cliente mientras lo hace.</Text>
                 <TextListInput
                   values={form.cues}
@@ -631,7 +750,7 @@ export function CreateExerciseModal({
 
             <FormSection title="Seguridad y búsqueda" summary={safetySummary}>
               <View>
-                <FieldLabel>Evitar o adaptar si el cliente tiene</FieldLabel>
+                <FieldLabel ai={ai('contraindications')}>Evitar o adaptar si el cliente tiene</FieldLabel>
                 <TextListInput
                   values={form.contraindications}
                   onChange={(v) => set('contraindications', v)}
@@ -642,7 +761,7 @@ export function CreateExerciseModal({
                 </Text>
               </View>
               <View>
-                <FieldLabel>Otros nombres (sinónimos)</FieldLabel>
+                <FieldLabel ai={ai('aliases')}>Otros nombres (sinónimos)</FieldLabel>
                 <TextListInput
                   values={form.aliases}
                   onChange={(v) => set('aliases', v)}
@@ -798,25 +917,18 @@ export function CreateExerciseModal({
             </FormSection>
           </ScrollView>
 
-          <View style={styles.footer}>
+          <View style={[styles.footer, { paddingBottom: insets.bottom + s(12) }]}>
             <Button
               title={saving ? 'Guardando…' : isEditing ? 'Guardar cambios' : 'Guardar ejercicio'}
               onPress={handleSave}
               loading={saving}
             />
           </View>
-        </View>
-      </KeyboardAvoidingView>
-    </Modal>
+    </BottomSheet>
   );
 }
 
 const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    backgroundColor: 'rgba(15, 23, 42, 0.65)',
-    justifyContent: 'flex-end',
-  },
   sheet: {
     backgroundColor: colors.background,
     borderTopLeftRadius: radius.sheet,
@@ -886,6 +998,8 @@ const styles = StyleSheet.create({
   },
   aiBtnDisabled: { opacity: 0.45 },
   aiBtnText: { fontFamily: fonts.bodyBold, fontSize: fontSizes.sm, color: colors.navy },
+  descriptionInput: { minHeight: 64, textAlignVertical: 'top', paddingTop: s(10) },
+  quotaHint: { marginTop: s(8) },
   aiFilledBanner: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1022,7 +1136,6 @@ const styles = StyleSheet.create({
   removeMediaText: { fontFamily: fonts.bodySemi, fontSize: fontSizes.xs, color: colors.danger },
   footer: {
     padding: s(14),
-    paddingBottom: s(24),
     borderTopWidth: 1,
     borderTopColor: colors.border,
     backgroundColor: colors.surface,

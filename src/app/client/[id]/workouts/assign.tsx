@@ -2,7 +2,6 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Trash2, Users } from 'lucide-react-native';
 import { useState } from 'react';
 import {
-  Alert,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -14,11 +13,13 @@ import {
 import { AppBackground } from '@/components/ui/AppBackground';
 import { Button } from '@/components/ui/Button';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
+import { toast } from '@/components/ui/Toast';
 import { WorkoutStepper } from '@/features/workouts/components/WorkoutStepper';
 import { lateralitySuffix, targetFieldLabel } from '@/features/workouts/prescription';
 import { SingleExerciseExecution } from '@/features/workouts/types';
 import { useWorkoutBuilderStore } from '@/features/workouts/workoutBuilderStore';
-import { supabase } from '@/lib/supabase';
+import { publishWorkoutPlan, saveWorkoutDraft } from '@/features/workouts/workoutsRepository';
+import { friendlyError } from '@/lib/errors';
 import { s } from '@/theme/scale';
 import { colors, radius } from '@/theme/tokens';
 import { fonts, fontSizes } from '@/theme/typography';
@@ -84,96 +85,34 @@ export default function WorkoutAssignScreen() {
   }
 
   async function handleSaveDraft() {
-    if (!id) return;
+    if (!id || isSaving) return;
     setIsSaving(true);
     try {
-      // Guardar o reemplazar borrador
-      await supabase
-        .from('workout_plan_versions')
-        .delete()
-        .eq('client_id', id)
-        .filter('data->>is_draft', 'eq', 'true');
-
-      const { error } = await supabase.from('workout_plan_versions').insert({
-        client_id: id,
-        version: 0,
-        name: `${routineName.trim() || 'Rutina'} (Borrador)`,
-        is_current: false,
-        data: {
-          weekly_schedule: days,
-          notes: notes.trim() || undefined,
-          is_draft: true,
-        },
-      });
-
-      if (error) throw new Error(error.message);
-
-      Alert.alert('Borrador guardado 💾', 'Puedes continuar editando esta rutina en cualquier momento desde la ficha del cliente.', [
-        { text: 'Ir a la ficha', onPress: () => router.replace(`/client/${id}`) },
-      ]);
+      await saveWorkoutDraft(id, routineName, { weekly_schedule: days, notes: notes.trim() || undefined });
+      toast({ message: 'Borrador guardado. Puedes retomarlo desde la ficha.', tone: 'success' });
+      // Vuelve a la ficha ya abierta (sin apilar otra encima)
+      router.dismissTo(`/client/${id}`);
     } catch (e) {
-      Alert.alert('Error al guardar borrador', (e as Error).message);
+      toast({ message: `No se pudo guardar el borrador: ${friendlyError(e)}`, tone: 'danger' });
     } finally {
       setIsSaving(false);
     }
   }
 
   async function handlePublish() {
-    if (!id) return;
+    if (!id || isSaving) return;
     setIsSaving(true);
     try {
-      // 1. Eliminar cualquier borrador previo
-      await supabase
-        .from('workout_plan_versions')
-        .delete()
-        .eq('client_id', id)
-        .filter('data->>is_draft', 'eq', 'true');
-
-      // 2. Obtener última versión existente para incrementar versión
-      const { data: existingVersions } = await supabase
-        .from('workout_plan_versions')
-        .select('version')
-        .eq('client_id', id)
-        .order('version', { ascending: false })
-        .limit(1);
-
-      const nextVersion = (existingVersions?.[0]?.version ?? 0) + 1;
-
-      // 3. Marcar versiones anteriores como no vigentes
-      await supabase
-        .from('workout_plan_versions')
-        .update({ is_current: false })
-        .eq('client_id', id);
-
-      // 4. Insertar nueva versión vigente
-      const { error } = await supabase.from('workout_plan_versions').insert({
-        client_id: id,
-        version: nextVersion,
-        name: routineName.trim() || `Rutina Versión ${nextVersion}`,
-        is_current: true,
-        data: {
-          weekly_schedule: days,
-          notes: notes.trim() || undefined,
-          is_draft: false,
-        },
+      const created = await publishWorkoutPlan(id, routineName, {
+        weekly_schedule: days,
+        notes: notes.trim() || undefined,
       });
-
-      if (error) throw new Error(error.message);
-
       resetBuilder();
-      Alert.alert(
-        '¡Rutina publicada! 🎉',
-        `La versión ${nextVersion} del plan de entrenamiento ha sido asignada con éxito al asesorado.`,
-        [
-          {
-            text: 'Ver ficha del cliente',
-            onPress: () => router.replace(`/client/${id}`),
-          },
-        ]
-      );
+      // Se cierra el asistente y se abre la rutina publicada con su sello de «vigente»; «atrás» vuelve a la ficha
+      router.dismissTo(`/client/${id}`);
+      router.push(`/client/${id}/workouts/preview?versionId=${created.id}&published=1`);
     } catch (e) {
-      Alert.alert('Error al publicar rutina', (e as Error).message);
-    } finally {
+      toast({ message: `No se pudo publicar la rutina: ${friendlyError(e)}`, tone: 'danger' });
       setIsSaving(false);
     }
   }
@@ -360,7 +299,7 @@ export default function WorkoutAssignScreen() {
                           </Text>
                         </View>
                         <Text style={styles.subExerciseName}>{subEx.name}</Text>
-                        <Pressable
+                        <Pressable accessibilityRole="button" accessibilityLabel={`Quitar ${subEx.name}`}
                           hitSlop={8}
                           onPress={() => removeExerciseFromSuperset(activeDay.id, block.id, sIdx)}
                           style={styles.deleteSubExBtn}
@@ -465,18 +404,20 @@ export default function WorkoutAssignScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
   daysBar: {
-    maxHeight: s(42),
+    flexGrow: 0,
     backgroundColor: colors.surface,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
   daysBarContent: {
     paddingHorizontal: s(12),
+    paddingVertical: s(8),
     alignItems: 'center',
     gap: s(6),
   },
   dayTab: {
-    paddingVertical: s(6),
+    minHeight: 44,
+    justifyContent: 'center',
     paddingHorizontal: s(10),
     borderRadius: radius.chip,
     backgroundColor: colors.background,
@@ -489,7 +430,7 @@ const styles = StyleSheet.create({
   },
   dayTabText: {
     fontFamily: fonts.body,
-    fontSize: fontSizes.xs,
+    fontSize: fontSizes.sm,
     color: colors.textSecondary,
   },
   dayTabTextActive: {
@@ -534,7 +475,7 @@ const styles = StyleSheet.create({
   },
   numBadgeText: {
     fontFamily: fonts.bodyBold,
-    fontSize: s(8.5),
+    fontSize: fontSizes.label,
     color: colors.navy,
   },
   blockTitle: {
@@ -553,7 +494,7 @@ const styles = StyleSheet.create({
   },
   paramLabel: {
     fontFamily: fonts.body,
-    fontSize: s(8),
+    fontSize: fontSizes.label,
     color: colors.textMuted,
     textTransform: 'uppercase',
     textAlign: 'center',
@@ -606,7 +547,7 @@ const styles = StyleSheet.create({
   },
   supersetTagText: {
     fontFamily: fonts.bodyBold,
-    fontSize: s(8),
+    fontSize: fontSizes.label,
     color: colors.surface,
     letterSpacing: 0.5,
   },
@@ -654,7 +595,7 @@ const styles = StyleSheet.create({
   },
   subLetterText: {
     fontFamily: fonts.bodyBold,
-    fontSize: s(8),
+    fontSize: fontSizes.label,
     color: colors.navy,
   },
   subExerciseName: {
@@ -664,6 +605,10 @@ const styles = StyleSheet.create({
     color: colors.text,
   },
   deleteSubExBtn: {
+    minWidth: 44,
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
     padding: s(2),
   },
   subParamsGrid: {
@@ -676,7 +621,7 @@ const styles = StyleSheet.create({
   },
   subParamLabel: {
     fontFamily: fonts.body,
-    fontSize: s(8),
+    fontSize: fontSizes.label,
     color: colors.textMuted,
     textTransform: 'uppercase',
   },

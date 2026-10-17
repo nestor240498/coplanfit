@@ -1,3 +1,4 @@
+import { edgeFunctionError } from '@/lib/errors';
 import { supabase } from '@/lib/supabase';
 
 import { executionFromExercise } from './prescription';
@@ -51,10 +52,8 @@ export async function generateRoutineWithAi(
       })),
     },
   });
-  if (error || !data?.data?.days) {
-    const detail = await (error as { context?: Response } | null)?.context?.json?.().catch(() => null);
-    throw new Error(detail?.error ?? data?.error ?? 'La IA no respondió.');
-  }
+  if (error) throw await edgeFunctionError(error, 'La IA no respondió.');
+  if (!data?.data?.days) throw new Error(data?.error ?? 'La IA no respondió.');
 
   const byId = new Map(eligible.map((ex) => [ex.id, ex]));
   return days.map((day, index) => {

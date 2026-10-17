@@ -16,6 +16,8 @@
 // del entrenador logueado — por eso acá se usa ese JWT (no la service role)
 // para que RLS siga garantizando que solo puede pedir sugerencias de sus propios clientes.
 
+import { callGemini, geminiFailureMessage } from '../_shared/gemini.ts';
+import { checkAiQuota, recordAiGeneration } from '../_shared/quota.ts';
 import { createClient } from 'npm:@supabase/supabase-js@^2.45.0';
 
 const corsHeaders = {
@@ -126,6 +128,14 @@ Deno.serve(async (req) => {
       global: { headers: { Authorization: authHeader } },
     });
 
+    const blocked = await checkAiQuota(supabase, 'Mientras tanto puedes armar el plan a mano.');
+    if (blocked) {
+      return new Response(JSON.stringify(blocked.body), {
+        status: blocked.status,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     const [
       { data: client, error: clientError },
       { data: tags, error: tagsError },
@@ -234,40 +244,19 @@ Para cada uno de los 6 grupos (carbohidratos, proteinas, vegetales, frutas, gras
       },
     };
 
-    // Intentar primero con gemini-3.5-flash, fallback a gemini-flash-latest
-    const models = ['gemini-3.5-flash', 'gemini-flash-latest', 'gemini-3.7-flash'];
-    let lastError = '';
-    let generatedText = null;
-
-    for (const model of models) {
-      try {
-        const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiApiKey}`;
-        const aiRes = await fetch(geminiUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(geminiPayload),
-        });
-
-        if (!aiRes.ok) {
-          const errorText = await aiRes.text();
-          lastError = `[${model}] Error ${aiRes.status}: ${errorText}`;
-          continue;
-        }
-
-        const aiData = await aiRes.json();
-        const text = aiData.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (text) {
-          generatedText = text;
-          break;
-        }
-      } catch (err) {
-        lastError = (err as Error).message;
-      }
+    const result = await callGemini(geminiApiKey, geminiPayload);
+    if (!result.ok) {
+      console.error('generate-plan-suggestions sin respuesta de Gemini:', result.detail);
+      return new Response(
+        JSON.stringify({
+          error: geminiFailureMessage(result, 'Prueba de nuevo en un minuto: lo que configuraste queda guardado.'),
+          detail: result.detail,
+        }),
+        { status: result.transient ? 503 : 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
-
-    if (!generatedText) {
-      throw new Error(`Gemini no devolvió sugerencias válidas: ${lastError}`);
-    }
+    const generatedText = result.text;
+    await recordAiGeneration(supabase, 'plan', body.clientId);
 
     return new Response(generatedText, {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

@@ -120,7 +120,7 @@ const styles = StyleSheet.create({
     marginTop: s(4),
   },
   input: {
-    height: s(34),
+    minHeight: 44,
     borderRadius: radius.input,
     borderWidth: 1,
     borderColor: colors.border,
@@ -152,11 +152,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   radioSelected: { backgroundColor: colors.lime, borderColor: colors.lime },
-  radioMark: { fontFamily: fonts.bodyBold, fontSize: s(9), color: colors.surface },
+  radioMark: { fontFamily: fonts.bodyBold, fontSize: fontSizes.label, color: colors.surface },
   footer: { flexDirection: 'row', gap: s(8), marginTop: s(6) },
   cancelBtn: {
     flex: 1,
-    height: s(38),
+    minHeight: 48,
     borderRadius: radius.button,
     borderWidth: 1,
     borderColor: colors.border,
@@ -166,7 +166,7 @@ const styles = StyleSheet.create({
   cancelText: { fontFamily: fonts.bodyBold, fontSize: fontSizes.sm, color: colors.textSecondary },
   deleteBtn: {
     flex: 1,
-    height: s(38),
+    minHeight: 48,
     borderRadius: radius.button,
     borderWidth: 1,
     borderColor: colors.dangerBg,
@@ -176,7 +176,7 @@ const styles = StyleSheet.create({
   deleteText: { fontFamily: fonts.bodyBold, fontSize: fontSizes.xs, color: colors.danger },
   saveBtn: {
     flex: 1,
-    height: s(38),
+    minHeight: 48,
     borderRadius: radius.button,
     backgroundColor: colors.lime,
     alignItems: 'center',

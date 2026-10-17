@@ -14,16 +14,19 @@ import {
 } from 'react-native';
 
 import { AppBackground } from '@/components/ui/AppBackground';
+import { toast } from '@/components/ui/Toast';
 import { Button } from '@/components/ui/Button';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { EditMealOptionSheet } from '@/features/clients/components/EditMealOptionSheet';
 import { PlanStepper } from '@/features/clients/components/PlanStepper';
 import { usePlanBuilderStore } from '@/features/clients/planBuilderStore';
 import { createPlanVersion } from '@/features/clients/plansRepository';
+import { friendlyError } from '@/lib/errors';
+import { useRetained } from '@/lib/useRetained';
 import { getClient } from '@/features/clients/repository';
 import { s } from '@/theme/scale';
 import { colors, radius } from '@/theme/tokens';
-import { fonts, fontSizes } from '@/theme/typography';
+import { fonts, fontSizes, lineHeights } from '@/theme/typography';
 
 type ActiveEditState = {
   slotId: string;
@@ -49,6 +52,9 @@ export default function MealAssignmentScreen() {
 
   // Estado del drawer de edición
   const [activeEdit, setActiveEdit] = useState<ActiveEditState>(null);
+  // La hoja sigue mostrando la opción mientras se cierra; la key la reinicia en cada apertura
+  const shownEdit = useRetained(activeEdit);
+  const [editNonce, setEditNonce] = useState(0);
 
   const {
     mealSlots,
@@ -76,6 +82,7 @@ export default function MealAssignmentScreen() {
 
   function openEditDrawer(slotId: string, mealName: string, optionKey: 'option1' | 'option2') {
     const currentAssignment = mealAssignments[slotId] ?? { option1: '', option2: '' };
+    setEditNonce((n) => n + 1);
     setActiveEdit({
       slotId,
       mealName,
@@ -88,18 +95,20 @@ export default function MealAssignmentScreen() {
     setSavingDraft(true);
     try {
       await saveDraftToDb(3);
-      router.push(`/client/${id}`);
+      toast({ message: 'Borrador guardado. Puedes retomarlo desde la ficha.', tone: 'success' });
+      router.dismissTo(`/client/${id}`);
     } catch (e) {
-      setError((e as Error).message);
+      setError(friendlyError(e));
       setSavingDraft(false);
     }
   }
 
   async function handleSavePlan() {
+    if (saving) return;
     setSaving(true);
     setError(null);
     try {
-      await createPlanVersion(id, {
+      const created = await createPlanVersion(id, {
         mealSlots,
         waterLiters,
         supplements,
@@ -107,9 +116,11 @@ export default function MealAssignmentScreen() {
         suggestions,
         meals: mealAssignments,
       });
-      router.push(`/client/${id}/plans/preview`);
+      // Se cierra el asistente y se abre el plan publicado con su sello de «vigente»; «atrás» vuelve a la ficha
+      router.dismissTo(`/client/${id}`);
+      router.push(`/client/${id}/plans/preview?versionId=${created.id}&published=1`);
     } catch (e) {
-      setError((e as Error).message);
+      setError(friendlyError(e));
       setSaving(false);
     }
   }
@@ -229,15 +240,16 @@ export default function MealAssignmentScreen() {
       </View>
 
       {/* Drawer BottomSheet para editar la opción seleccionada */}
-      {activeEdit && (
+      {shownEdit && (
         <EditMealOptionSheet
+          key={editNonce}
           visible={activeEdit !== null}
-          mealName={activeEdit.mealName}
-          optionKey={activeEdit.optionKey}
-          initialText={activeEdit.currentText}
+          mealName={shownEdit.mealName}
+          optionKey={shownEdit.optionKey}
+          initialText={shownEdit.currentText}
           onClose={() => setActiveEdit(null)}
           onSave={(updatedText) => {
-            setMealAssignment(activeEdit.slotId, activeEdit.optionKey, updatedText);
+            setMealAssignment(shownEdit.slotId, shownEdit.optionKey, updatedText);
             setActiveEdit(null);
           }}
         />
@@ -366,7 +378,7 @@ const styles = StyleSheet.create({
   },
   optionTag: {
     fontFamily: fonts.bodyBold,
-    fontSize: s(9),
+    fontSize: fontSizes.label,
     color: colors.textSecondary,
     letterSpacing: 0.3,
   },
@@ -377,14 +389,14 @@ const styles = StyleSheet.create({
   },
   editActionText: {
     fontFamily: fonts.bodySemi,
-    fontSize: s(9),
+    fontSize: fontSizes.label,
     color: colors.navy,
   },
   optionContentText: {
     fontFamily: fonts.bodyMedium,
     fontSize: fontSizes.xs,
     color: colors.text,
-    lineHeight: s(16),
+    lineHeight: lineHeights.xs,
   },
   optionContentEmpty: {
     color: colors.textMuted,

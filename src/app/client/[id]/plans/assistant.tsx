@@ -16,6 +16,7 @@ import {
 } from 'lucide-react-native';
 
 import { AppBackground } from '@/components/ui/AppBackground';
+import { toast } from '@/components/ui/Toast';
 import { Button } from '@/components/ui/Button';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { AddFoodSheet } from '@/features/clients/components/AddFoodSheet';
@@ -70,7 +71,8 @@ export default function AiAssistantScreen() {
     setSavingDraft(true);
     try {
       await saveDraftToDb(2);
-      router.push(`/client/${id}`);
+      toast({ message: 'Borrador guardado. Puedes retomarlo desde la ficha.', tone: 'success' });
+      router.dismissTo(`/client/${id}`);
     } catch {
       setSavingDraft(false);
     }
@@ -164,7 +166,7 @@ function FoodRow({
 
   return (
     <View style={styles.row}>
-      <Pressable
+      <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: item.checked }} accessibilityLabel={item.name}
         onPress={onToggle}
         style={[styles.checkbox, item.checked && styles.checkboxChecked]}
       >

@@ -1,4 +1,7 @@
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import Animated, { FadeInLeft, FadeInRight, useReducedMotion } from 'react-native-reanimated';
+import { scheduleOnRN } from 'react-native-worklets';
 import { Dumbbell, HeartPulse, Pencil, Scale, User, Users, UtensilsCrossed } from 'lucide-react-native';
 import { useCallback, useState } from 'react';
 import {
@@ -13,6 +16,8 @@ import {
 
 import { StorageImage } from '@/components/ui/StorageImage';
 import { AppBackground } from '@/components/ui/AppBackground';
+import { PressableScale } from '@/components/ui/PressableScale';
+import { toast } from '@/components/ui/Toast';
 import { Button } from '@/components/ui/Button';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { TabBar, TabItem } from '@/components/ui/TabBar';
@@ -47,9 +52,11 @@ import {
 import { EntrenamientoTab } from '@/features/workouts/components/EntrenamientoTab';
 import { WorkoutPlanVersion } from '@/features/workouts/types';
 import { useWorkoutBuilderStore } from '@/features/workouts/workoutBuilderStore';
-import { listWorkoutPlanVersions } from '@/features/workouts/workoutsRepository';
+import { deleteWorkoutDraft, listWorkoutPlanVersions } from '@/features/workouts/workoutsRepository';
+import { friendlyError } from '@/lib/errors';
+import { describeMeasurementChange } from '@/lib/measurementTrends';
+import { DURATION, EASE_OUT, hapticSelection, hapticSuccess } from '@/lib/motion';
 import { calculateAge, formatDateShort, formatMonthYear } from '@/lib/format';
-import { supabase } from '@/lib/supabase';
 import { s } from '@/theme/scale';
 import { colors, radius } from '@/theme/tokens';
 import { fonts, fontSizes } from '@/theme/typography';
@@ -115,6 +122,8 @@ export default function ClientDetailScreen() {
   const [isEditingMeasurements, setIsEditingMeasurements] = useState(false);
   const [savingMeasurement, setSavingMeasurement] = useState(false);
   const [measurementForm, setMeasurementForm] = useState<MeasurementFormState>(EMPTY_MEASUREMENT_FORM);
+  // Copia del formulario al empezar a editar: permite saber si hay cambios sin guardar
+  const [measurementFormInitial, setMeasurementFormInitial] = useState<MeasurementFormState>(EMPTY_MEASUREMENT_FORM);
 
   const loadDraftToStore = usePlanBuilderStore((s) => s.loadDraft);
 
@@ -140,7 +149,7 @@ export default function ClientDetailScreen() {
         setWorkoutVersions(wv);
       })
       .catch((e: Error) => {
-        if (!cancelled) setError(e.message);
+        if (!cancelled) setError(friendlyError(e));
       });
     return () => {
       cancelled = true;
@@ -180,6 +189,18 @@ export default function ClientDetailScreen() {
     }
   }
 
+  /** Descartar un borrador lo borra de la base de datos: se pide confirmación. */
+  function confirmDiscardDraft(kind: 'plan' | 'rutina', onConfirm: () => void) {
+    Alert.alert(
+      kind === 'plan' ? '¿Descartar el borrador del plan?' : '¿Descartar el borrador de la rutina?',
+      'Se perderá todo lo que llevas hecho en él. Las versiones ya publicadas no se tocan.',
+      [
+        { text: 'Seguir editando', style: 'cancel' },
+        { text: 'Descartar', style: 'destructive', onPress: onConfirm },
+      ]
+    );
+  }
+
   async function handleDeleteDraft() {
     if (!id) return;
     try {
@@ -193,7 +214,7 @@ export default function ClientDetailScreen() {
       const updatedVersions = await listPlanVersions(id);
       setPlanVersions(updatedVersions);
     } catch (e) {
-      console.error('Error al descartar borrador:', e);
+      toast({ message: `No se pudo descartar el borrador: ${friendlyError(e)}`, tone: 'danger' });
     }
   }
 
@@ -214,23 +235,73 @@ export default function ClientDetailScreen() {
     if (!id) return;
     try {
       setWorkoutVersions((prev) => prev.filter((v) => v.id !== draftId));
-      await supabase.from('workout_plan_versions').delete().eq('id', draftId);
+      await deleteWorkoutDraft(draftId);
       const updated = await listWorkoutPlanVersions(id);
       setWorkoutVersions(updated);
     } catch (e) {
-      console.error('Error al descartar borrador de entrenamiento:', e);
+      toast({ message: `No se pudo descartar el borrador: ${friendlyError(e)}`, tone: 'danger' });
     }
   }
 
-  function handleTabChange(nextTab: 'datos' | 'salud' | 'antropometria' | 'planes' | 'entrenamiento') {
-    if (tab === 'antropometria' && isEditingMeasurements) {
+  /** Salir de la edición de medidas: si hay cambios sin guardar, se confirma antes de perderlos. */
+  function leaveMeasurementEditing(onLeave: () => void) {
+    const dirty = JSON.stringify(measurementForm) !== JSON.stringify(measurementFormInitial);
+    if (!dirty) {
       setIsEditingMeasurements(false);
+      onLeave();
+      return;
+    }
+    Alert.alert('¿Descartar los cambios?', 'La medición que estás editando no se ha guardado.', [
+      { text: 'Seguir editando', style: 'cancel' },
+      {
+        text: 'Descartar',
+        style: 'destructive',
+        onPress: () => {
+          setIsEditingMeasurements(false);
+          onLeave();
+        },
+      },
+    ]);
+  }
+
+  // Deslizar el contenido cambia de pestaña. Solo con movimiento claramente horizontal, para no
+  // interferir con el scroll vertical; desactivado mientras se edita una medición.
+  const [tabDirection, setTabDirection] = useState<1 | -1>(1);
+  const reduceMotion = useReducedMotion();
+  const tabEntering = reduceMotion
+    ? undefined
+    : (tabDirection === 1 ? FadeInRight : FadeInLeft).duration(DURATION.state).easing(EASE_OUT);
+
+  function goToAdjacentTab(step: 1 | -1) {
+    const index = TABS.findIndex((t) => t.key === tab);
+    const next = TABS[index + step];
+    if (!next) return;
+    hapticSelection();
+    handleTabChange(next.key);
+  }
+
+  const swipeTabs = Gesture.Pan()
+    .enabled(!isEditingMeasurements)
+    .activeOffsetX([-30, 30])
+    .failOffsetY([-12, 12])
+    .onEnd((e) => {
+      if (e.translationX < -60 || e.velocityX < -700) scheduleOnRN(goToAdjacentTab, 1);
+      else if (e.translationX > 60 || e.velocityX > 700) scheduleOnRN(goToAdjacentTab, -1);
+    });
+
+  function handleTabChange(nextTab: 'datos' | 'salud' | 'antropometria' | 'planes' | 'entrenamiento') {
+    const from = TABS.findIndex((t) => t.key === tab);
+    const to = TABS.findIndex((t) => t.key === nextTab);
+    setTabDirection(to >= from ? 1 : -1);
+    if (tab === 'antropometria' && isEditingMeasurements) {
+      leaveMeasurementEditing(() => setTab(nextTab));
+      return;
     }
     setTab(nextTab);
   }
 
   function handleStartEditingMeasurements() {
-    setMeasurementForm({
+    const initialForm: MeasurementFormState = {
       photos: measurement?.photos ? [...measurement.photos] : [],
       weight: measurement?.weight_kg != null ? String(measurement.weight_kg) : '',
       height: measurement?.height_cm != null ? String(measurement.height_cm) : '',
@@ -268,7 +339,9 @@ export default function ClientDetailScreen() {
       thighSkin: measurement?.thigh_mm != null ? String(measurement.thigh_mm) : '',
       calfSkin: measurement?.calf_mm != null ? String(measurement.calf_mm) : '',
       chestSkin: measurement?.chest_mm != null ? String(measurement.chest_mm) : '',
-    });
+    };
+    setMeasurementForm(initialForm);
+    setMeasurementFormInitial(initialForm);
     setIsEditingMeasurements(true);
   }
 
@@ -326,11 +399,13 @@ export default function ClientDetailScreen() {
         chest_mm: num(measurementForm.chestSkin),
       });
 
+      const change = describeMeasurementChange(measurement, created, client?.goal ?? null);
       setMeasurement(created);
       setIsEditingMeasurements(false);
-      Alert.alert('Medición guardada', 'La nueva medición ha sido registrada exitosamente.');
+      hapticSuccess();
+      toast({ message: change.message, tone: 'success', duration: 5000 });
     } catch (e) {
-      Alert.alert('Error al guardar medición', (e as Error).message);
+      toast({ message: `No se pudo guardar la medición: ${friendlyError(e)}`, tone: 'danger' });
     } finally {
       setSavingMeasurement(false);
     }
@@ -404,12 +479,14 @@ export default function ClientDetailScreen() {
 
       <TabBar items={TABS} active={tab} onChange={handleTabChange} />
 
+      <GestureDetector gesture={swipeTabs}>
       <ScrollView
         style={styles.tabContentScroll}
         contentContainerStyle={styles.tabContentScrollContent}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
+        <Animated.View key={tab} entering={tabEntering}>
         {tab === 'datos' && (
           <DatosTab
             client={client}
@@ -454,7 +531,7 @@ export default function ClientDetailScreen() {
             draft={planDraft}
             onNewVersion={() => router.push(`/client/${id}/plans/new`)}
             onResumeDraft={handleResumeDraft}
-            onDeleteDraft={handleDeleteDraft}
+            onDeleteDraft={() => confirmDiscardDraft('plan', handleDeleteDraft)}
             onCompare={([a, b]) => router.push(`/client/${id}/plans/compare?a=${a}&b=${b}`)}
             onViewVersion={(versionId) => router.push(`/client/${id}/plans/preview?versionId=${versionId}`)}
           />
@@ -468,23 +545,25 @@ export default function ClientDetailScreen() {
             onNewWorkoutPlan={() => router.push(`/client/${id}/workouts/new`)}
             onViewWorkoutPlan={(versionId) => router.push(`/client/${id}/workouts/preview?versionId=${versionId}`)}
             onResumeDraft={handleResumeWorkoutDraft}
-            onDeleteDraft={handleDeleteWorkoutDraft}
+            onDeleteDraft={(draftId: string) => confirmDiscardDraft('rutina', () => handleDeleteWorkoutDraft(draftId))}
           />
         )}
+        </Animated.View>
       </ScrollView>
+      </GestureDetector>
 
       {tab === 'antropometria' && (
         <View style={styles.fixedTabFooter}>
           {isEditingMeasurements ? (
             <View style={styles.editButtonsRow}>
-              <Pressable
+              <PressableScale
                 accessibilityRole="button"
-                onPress={() => setIsEditingMeasurements(false)}
+                onPress={() => leaveMeasurementEditing(() => {})}
                 disabled={savingMeasurement}
                 style={styles.cancelBtn}
               >
                 <Text style={styles.cancelBtnText}>Cancelar</Text>
-              </Pressable>
+              </PressableScale>
               <Button
                 title={savingMeasurement ? 'Guardando…' : 'Guardar medición'}
                 onPress={handleSaveMeasurements}
@@ -531,7 +610,7 @@ const styles = StyleSheet.create({
     gap: s(8),
   },
   cancelBtn: {
-    height: s(40),
+    minHeight: 48,
     paddingHorizontal: s(16),
     borderRadius: radius.button,
     borderWidth: 1,
@@ -542,7 +621,7 @@ const styles = StyleSheet.create({
   },
   cancelBtnText: {
     fontFamily: fonts.bodyBold,
-    fontSize: s(10),
+    fontSize: fontSizes.xs,
     color: colors.textSecondary,
   },
   errorText: {
@@ -552,10 +631,12 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   editBtn: {
-    padding: s(4),
-    borderRadius: radius.pill,
+    minWidth: 44,
+    minHeight: 44,
     alignItems: 'center',
     justifyContent: 'center',
+    padding: s(4),
+    borderRadius: radius.pill,
     backgroundColor: 'rgba(255, 255, 255, 0.08)',
   },
   headerRight: {
@@ -583,7 +664,7 @@ const styles = StyleSheet.create({
   },
   headerAvatarInitials: {
     fontFamily: fonts.bodyBold,
-    fontSize: s(11),
+    fontSize: fontSizes.sm,
     color: colors.surface,
   },
   avatarBadge: {

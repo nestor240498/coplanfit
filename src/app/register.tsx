@@ -18,7 +18,7 @@ import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { useAuth } from '@/features/auth/useAuth';
 import { s } from '@/theme/scale';
 import { colors, radius, spacing } from '@/theme/tokens';
-import { fonts, fontSizes } from '@/theme/typography';
+import { fonts, fontSizes, lineHeights } from '@/theme/typography';
 
 export default function RegisterScreen() {
   const router = useRouter();
@@ -197,6 +197,6 @@ const styles = StyleSheet.create({
     fontFamily: fonts.body,
     fontSize: fontSizes.sm,
     color: colors.textSecondary,
-    lineHeight: 20,
+    lineHeight: lineHeights.sm,
   },
 });

@@ -3,7 +3,7 @@ import { CreditCard, Dumbbell, User, Users } from 'lucide-react-native';
 
 import { s } from '@/theme/scale';
 import { colors } from '@/theme/tokens';
-import { fonts } from '@/theme/typography';
+import { fonts, fontSizes } from '@/theme/typography';
 
 export default function TabsLayout() {
   return (
@@ -14,7 +14,7 @@ export default function TabsLayout() {
         tabBarInactiveTintColor: colors.textMuted,
         tabBarLabelStyle: {
           fontFamily: fonts.bodySemi,
-          fontSize: s(9),
+          fontSize: fontSizes.label,
           marginTop: s(2),
         },
         tabBarItemStyle: {

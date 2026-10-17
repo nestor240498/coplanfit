@@ -3,7 +3,10 @@ import { Download, MessageCircle, Send } from 'lucide-react-native';
 import { ReactNode, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { friendlyError } from '@/lib/errors';
 import { BottomSheet } from '@/components/ui/BottomSheet';
+import { toast } from '@/components/ui/Toast';
+import { hapticSuccess } from '@/lib/motion';
 import { s } from '@/theme/scale';
 import { colors, radius } from '@/theme/tokens';
 import { fonts, fontSizes } from '@/theme/typography';
@@ -34,8 +37,10 @@ export function SendDocumentSheet({ visible, onClose, document, clientName, clie
     try {
       if (action === 'send') {
         await sendDocument(document, clientName);
+        hapticSuccess();
         onSent?.();
         onClose();
+        toast({ message: `Anotado en el historial de envíos de ${firstName}.`, tone: 'success' });
       } else if (action === 'download') {
         await downloadDocument(document);
       } else if (clientPhone) {
@@ -43,7 +48,7 @@ export function SendDocumentSheet({ visible, onClose, document, clientName, clie
         await Linking.openURL(`https://wa.me/${clientPhone}?text=${encodeURIComponent(text)}`);
       }
     } catch (e) {
-      Alert.alert('No se pudo completar', (e as Error).message);
+      Alert.alert('No se pudo completar', friendlyError(e));
     } finally {
       setBusy(null);
     }

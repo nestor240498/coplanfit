@@ -68,21 +68,21 @@ export const Input = forwardRef<TextInput, Props>(function Input(
 const styles = StyleSheet.create({
   label: {
     fontFamily: fonts.bodyBold,
-    fontSize: s(8.5),
+    fontSize: fontSizes.label,
     color: colors.textSecondary,
     textTransform: 'uppercase',
     letterSpacing: 0.3,
     marginBottom: s(2),
   },
   inputWrapper: {
-    minHeight: s(32),
+    minHeight: 44,
     borderRadius: radius.input,
     borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: colors.surface,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: s(8),
+    paddingHorizontal: s(10),
   },
   inputWrapperFocused: {
     borderColor: colors.navy,
@@ -102,11 +102,11 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
-    height: '100%',
-    paddingVertical: 0,
+    minHeight: 44,
+    paddingVertical: s(8),
     paddingHorizontal: 0,
     fontFamily: fonts.body,
-    fontSize: fontSizes.xs,
+    fontSize: fontSizes.base,
     color: colors.text,
     ...Platform.select({
       web: {
@@ -117,7 +117,7 @@ const styles = StyleSheet.create({
   },
   error: {
     fontFamily: fonts.bodyMedium,
-    fontSize: s(8.5),
+    fontSize: fontSizes.label,
     color: colors.danger,
     marginTop: s(3),
   },

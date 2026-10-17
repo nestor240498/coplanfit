@@ -11,14 +11,18 @@ import {
   Utensils,
 } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
-import { Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
+import { friendlyError } from '@/lib/errors';
+import { AiProgressModal } from '@/components/ui/AiProgressModal';
 import { AppBackground } from '@/components/ui/AppBackground';
+import { toast, toastWithUndo } from '@/components/ui/Toast';
 import { Button } from '@/components/ui/Button';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
+import { AiQuotaHint } from '@/features/ai/components/AiQuotaHint';
+import { quotaHint, useAiQuota } from '@/features/ai/quota';
 import { AddMealSheet } from '@/features/clients/components/AddMealSheet';
 import { AddSupplementSheet } from '@/features/clients/components/AddSupplementSheet';
-import { AiPreloaderModal } from '@/features/clients/components/AiPreloaderModal';
 import { PlanStepper } from '@/features/clients/components/PlanStepper';
 import { usePlanBuilderStore } from '@/features/clients/planBuilderStore';
 import { Supplement } from '@/features/clients/planBuilderTypes';
@@ -113,6 +117,8 @@ export default function PlanBuilderScreen() {
   const [supplementSheetNonce, setSupplementSheetNonce] = useState(0);
   const [noSupplements, setNoSupplements] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
+  const quota = useAiQuota((st) => st.quota);
+  const refreshQuota = useAiQuota((st) => st.refresh);
   const [savingDraft, setSavingDraft] = useState(false);
 
   // Estados para Drag & Drop visual
@@ -148,6 +154,23 @@ export default function PlanBuilderScreen() {
     saveDraftToDb,
   } = usePlanBuilderStore();
 
+  // Quitar es inmediato y reversible: se guarda la lista anterior para «Deshacer»
+  function handleRemoveMealSlot(slotId: string, name: string) {
+    const previous = usePlanBuilderStore.getState().mealSlots;
+    removeMealSlot(slotId);
+    toastWithUndo(`«${name}» quitada del plan`, () => usePlanBuilderStore.getState().setMealSlots(previous));
+  }
+
+  function handleRemoveSupplement(supplementId: string, name: string) {
+    const previous = usePlanBuilderStore.getState().supplements;
+    removeSupplement(supplementId);
+    toastWithUndo(`«${name}» quitado del plan`, () => usePlanBuilderStore.getState().setSupplements(previous));
+  }
+
+  useEffect(() => {
+    refreshQuota();
+  }, [refreshQuota]);
+
   useEffect(() => {
     initBuilderForNewPlan(id);
     getClient(id).then((c) => setClientName(c.full_name)).catch(() => {});
@@ -157,9 +180,10 @@ export default function PlanBuilderScreen() {
     setSavingDraft(true);
     try {
       await saveDraftToDb(1);
-      router.push(`/client/${id}`);
+      toast({ message: 'Borrador guardado. Puedes retomarlo desde la ficha.', tone: 'success' });
+      router.dismissTo(`/client/${id}`);
     } catch (e) {
-      setValidationError((e as Error).message);
+      setValidationError(friendlyError(e));
       setSavingDraft(false);
     }
   }
@@ -187,7 +211,17 @@ export default function PlanBuilderScreen() {
       // Si falla guardar borrador en BD no bloqueamos la generación con IA
     }
 
+    const blocked = quotaHint(quota);
+    if (blocked?.blocked) {
+      Alert.alert('Sin generaciones con IA', `${blocked.text}\n\nMientras tanto puedes elegir los alimentos a mano en el paso 2.`, [
+        { text: 'Cancelar', style: 'cancel' },
+        { text: 'Continuar sin IA', onPress: () => router.push(`/client/${id}/plans/assistant`) },
+      ]);
+      return;
+    }
+
     await generateSuggestions();
+    refreshQuota();
     if (usePlanBuilderStore.getState().generateError == null) {
       router.push(`/client/${id}/plans/assistant`);
     }
@@ -260,7 +294,12 @@ export default function PlanBuilderScreen() {
               <View style={styles.timeBadge}>
                 <Text style={styles.timeBadgeText}>{slot.time}</Text>
               </View>
-              <Pressable accessibilityLabel={`Quitar ${slot.name}`} onPress={() => removeMealSlot(slot.id)} hitSlop={8}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={`Quitar ${slot.name}`}
+                onPress={() => handleRemoveMealSlot(slot.id, slot.name)}
+                hitSlop={12}
+              >
                 <Trash2 size={s(13)} color={colors.textMuted} />
               </Pressable>
             </DraggableRowWrapper>
@@ -365,9 +404,10 @@ export default function PlanBuilderScreen() {
                     accessibilityLabel={`Quitar ${sup.name}`}
                     onPress={(e) => {
                       e.stopPropagation?.();
-                      removeSupplement(sup.id);
+                      handleRemoveSupplement(sup.id, sup.name);
                     }}
-                    hitSlop={8}
+                    accessibilityRole="button"
+                    hitSlop={12}
                   >
                     <Trash2 size={s(13)} color={colors.textMuted} />
                   </Pressable>
@@ -400,6 +440,7 @@ export default function PlanBuilderScreen() {
         )}
 
         {generateError != null && <Text style={styles.error}>{generateError}</Text>}
+        <AiQuotaHint quota={quota} />
       </ScrollView>
 
       {/* Footer fijo con botones uno al lado del otro */}
@@ -428,7 +469,21 @@ export default function PlanBuilderScreen() {
         onSave={(sup) => (editingSupplement ? updateSupplement(sup) : addSupplement(sup))}
         onDelete={removeSupplement}
       />
-      <AiPreloaderModal visible={generating} clientName={clientName} />
+      <AiProgressModal
+        visible={generating}
+        title="Proponiendo alimentos"
+        clientName={clientName}
+        inputs={[
+          `${mealSlots.length} ${mealSlots.length === 1 ? 'comida' : 'comidas'} al día · ${waterLiters || '—'} L de agua`,
+          supplements.length > 0
+            ? `${supplements.length} ${supplements.length === 1 ? 'suplemento' : 'suplementos'}`
+            : 'Sin suplementos',
+          'Objetivo, alergias, condiciones y alimentos a evitar de su ficha',
+          'Su última medición',
+          ...(aiNote.trim() ? ['Tu nota para la IA'] : []),
+        ]}
+        slowHint="Está tardando más de lo normal. Si no responde, podrás reintentarlo: lo que configuraste queda guardado."
+      />
     </View>
   );
 }
@@ -565,7 +620,7 @@ const styles = StyleSheet.create({
   checkboxCheck: {
     color: colors.navy,
     fontFamily: fonts.bodyBold,
-    fontSize: s(10),
+    fontSize: fontSizes.xs,
     fontWeight: '800',
   },
   noSupText: {

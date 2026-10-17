@@ -6,7 +6,7 @@ import { Chip } from '@/components/ui/Chip';
 import { Client, ClientTag } from '@/features/clients/types';
 import { s } from '@/theme/scale';
 import { colors, radius } from '@/theme/tokens';
-import { fonts, fontSizes } from '@/theme/typography';
+import { fonts, fontSizes, lineHeights } from '@/theme/typography';
 
 import {
   EQUIPMENT_OPTIONS,
@@ -272,7 +272,7 @@ const styles = StyleSheet.create({
     fontFamily: fonts.body,
     fontSize: fontSizes.label,
     color: colors.textMuted,
-    lineHeight: s(14),
+    lineHeight: lineHeights.label,
   },
   fieldsGroup: {
     gap: s(8),
@@ -342,7 +342,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.3,
   },
   newPlanCta: {
-    height: s(36),
+    minHeight: 44,
     flexDirection: 'row',
     gap: s(6),
     borderRadius: radius.input,
@@ -396,7 +396,7 @@ const styles = StyleSheet.create({
   },
   draftBadge: {
     fontFamily: fonts.bodyBold,
-    fontSize: s(7.5),
+    fontSize: fontSizes.micro,
     color: colors.navy,
     backgroundColor: colors.lime,
     alignSelf: 'flex-start',

@@ -6,8 +6,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { BreadcrumbItem, Breadcrumbs } from '@/components/ui/Breadcrumbs';
 import { s } from '@/theme/scale';
-import { colors, radius } from '@/theme/tokens';
-import { fonts, fontSizes } from '@/theme/typography';
+import { colors } from '@/theme/tokens';
+import { fonts, fontSizes, TIGHT_FONT_SCALE } from '@/theme/typography';
 
 type Props = {
   title: string;
@@ -54,23 +54,24 @@ export function ScreenHeader({
               accessibilityRole="button"
               accessibilityLabel="Volver"
               onPress={handleBack}
-              hitSlop={12}
               style={styles.backHit}
             >
               <ChevronLeft size={s(20)} color={colors.surface} strokeWidth={2.5} />
             </Pressable>
           )}
 
-          
-
-          <Text style={styles.title} numberOfLines={2}>
+          <Text style={styles.title} numberOfLines={2} maxFontSizeMultiplier={TIGHT_FONT_SCALE}>
             {title}
           </Text>
         </View>
         {right}
       </View>
 
-      {subtitle != null && <Text style={styles.subtitle}>{subtitle}</Text>}
+      {subtitle != null && (
+        <Text style={styles.subtitle} maxFontSizeMultiplier={TIGHT_FONT_SCALE}>
+          {subtitle}
+        </Text>
+      )}
     </View>
   );
 }
@@ -97,20 +98,14 @@ const styles = StyleSheet.create({
     gap: s(6),
     flexShrink: 1,
   },
+  // Área táctil de 44 pt; el margen negativo mantiene el chevron alineado con el borde
   backHit: {
-    width: s(24),
-    height: s(24),
+    width: 44,
+    height: 44,
     alignItems: 'center',
     justifyContent: 'center',
-    marginLeft: -s(6),
-  },
-  homeBtn: {
-    width: s(28),
-    height: s(28),
-    borderRadius: radius.pill,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
-    alignItems: 'center',
-    justifyContent: 'center',
+    marginLeft: -14,
+    marginRight: -6,
   },
   title: {
     fontFamily: fonts.heading,
@@ -120,7 +115,7 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     fontFamily: fonts.body,
-    fontSize: s(8),
+    fontSize: fontSizes.xs,
     color: colors.onNavyMuted,
   },
 });

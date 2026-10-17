@@ -93,7 +93,7 @@ const styles = StyleSheet.create({
     marginTop: s(4),
   },
   input: {
-    height: s(36),
+    minHeight: 44,
     borderRadius: radius.input,
     borderWidth: 1,
     borderColor: colors.border,
@@ -106,7 +106,7 @@ const styles = StyleSheet.create({
   typeRow: { flexDirection: 'row', gap: s(6) },
   typePill: {
     flex: 1,
-    height: s(32),
+    minHeight: 44,
     borderRadius: radius.input,
     borderWidth: 1,
     borderColor: colors.border,

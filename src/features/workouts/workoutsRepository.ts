@@ -1,6 +1,6 @@
 import { supabase } from '@/lib/supabase';
 
-import { WorkoutPlanVersion } from './types';
+import { WorkoutPlanData, WorkoutPlanVersion } from './types';
 
 async function withRetry<T>(fn: () => Promise<T>, retries = 2): Promise<T> {
   try {
@@ -52,3 +52,84 @@ export async function getWorkoutPlanVersionById(id: string): Promise<WorkoutPlan
   });
 }
 
+
+/** Borra un borrador de rutina (nunca una versión publicada). */
+export async function deleteWorkoutDraft(draftId: string): Promise<void> {
+  const { error } = await supabase.from('workout_plan_versions').delete().eq('id', draftId).eq('is_current', false);
+  if (error) throw new Error(error.message);
+}
+
+/** Guarda (reemplaza) el borrador de rutina del cliente. Solo hay uno por cliente. */
+export async function saveWorkoutDraft(clientId: string, name: string, data: WorkoutPlanData): Promise<void> {
+  const { error: deleteError } = await supabase
+    .from('workout_plan_versions')
+    .delete()
+    .eq('client_id', clientId)
+    .eq('is_current', false)
+    .filter('data->>is_draft', 'eq', 'true');
+  if (deleteError) throw new Error(deleteError.message);
+
+  const { error } = await supabase.from('workout_plan_versions').insert({
+    client_id: clientId,
+    version: 0,
+    name: `${name.trim() || 'Rutina'} (Borrador)`,
+    is_current: false,
+    data: { ...data, is_draft: true },
+  });
+  if (error) throw new Error(error.message);
+}
+
+/**
+ * Publica una nueva versión vigente de la rutina: borra el borrador, desmarca la vigente anterior
+ * e inserta la nueva. Si la inserción falla, se vuelve a marcar como vigente la anterior.
+ */
+export async function publishWorkoutPlan(
+  clientId: string,
+  name: string,
+  data: WorkoutPlanData
+): Promise<WorkoutPlanVersion> {
+  const { data: latest, error: latestError } = await supabase
+    .from('workout_plan_versions')
+    .select('id, version, is_current')
+    .eq('client_id', clientId)
+    .order('version', { ascending: false })
+    .limit(20);
+  if (latestError) throw new Error(latestError.message);
+
+  const nextVersion = Math.max(0, ...(latest ?? []).map((v) => v.version)) + 1;
+  const previousCurrent = (latest ?? []).find((v) => v.is_current);
+
+  if (previousCurrent) {
+    const { error } = await supabase.from('workout_plan_versions').update({ is_current: false }).eq('id', previousCurrent.id);
+    if (error) throw new Error(error.message);
+  }
+
+  const { data: created, error: insertError } = await supabase
+    .from('workout_plan_versions')
+    .insert({
+      client_id: clientId,
+      version: nextVersion,
+      name: name.trim() || `Rutina versión ${nextVersion}`,
+      is_current: true,
+      data: { ...data, is_draft: false },
+    })
+    .select()
+    .single();
+
+  if (insertError) {
+    // No dejar al cliente sin rutina vigente
+    if (previousCurrent) {
+      await supabase.from('workout_plan_versions').update({ is_current: true }).eq('id', previousCurrent.id);
+    }
+    throw new Error(insertError.message);
+  }
+
+  await supabase
+    .from('workout_plan_versions')
+    .delete()
+    .eq('client_id', clientId)
+    .eq('is_current', false)
+    .filter('data->>is_draft', 'eq', 'true');
+
+  return created as WorkoutPlanVersion;
+}

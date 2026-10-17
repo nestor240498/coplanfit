@@ -1,12 +1,16 @@
-import { ChevronDown, ChevronUp, Plus, X } from 'lucide-react-native';
+import { Check, ChevronDown, ChevronRight, ChevronUp, Plus, Sparkles, X } from 'lucide-react-native';
 import { ReactNode, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Keyboard, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
+import { BottomSheet } from '@/components/ui/BottomSheet';
+import { Button } from '@/components/ui/Button';
+import { PressableScale } from '@/components/ui/PressableScale';
+import { hapticSelection } from '@/lib/motion';
 import { s } from '@/theme/scale';
 import { colors, radius } from '@/theme/tokens';
 import { fonts, fontSizes } from '@/theme/typography';
 
-type Option<T extends string> = { id: T; label: string };
+type Option<T extends string> = { id: T; label: string; hint?: string; description?: string };
 
 /** Sección plegable del formulario: muestra un resumen cuando está cerrada. */
 export function FormSection({
@@ -45,11 +49,26 @@ export function FormSection({
   );
 }
 
-export function FieldLabel({ children }: { children: string }) {
-  return <Text style={styles.label}>{children}</Text>;
+/** Marca de «lo rellenó la IA»: desaparece en cuanto el entrenador cambia ese campo. */
+export function AiBadge() {
+  return (
+    <View style={styles.aiBadge} accessibilityLabel="Propuesto por la IA">
+      <Sparkles size={11} color={colors.success} />
+      <Text style={styles.aiBadgeText}>IA</Text>
+    </View>
+  );
 }
 
-/** Fila horizontal de chips con selección única. */
+export function FieldLabel({ children, ai }: { children: string; ai?: boolean }) {
+  return (
+    <View style={styles.labelRow}>
+      <Text style={styles.label}>{children}</Text>
+      {ai ? <AiBadge /> : null}
+    </View>
+  );
+}
+
+/** Pocas opciones (2-4) a la vista, en varias líneas si hace falta; selección única. */
 export function SingleChoice<T extends string>({
   options,
   value,
@@ -60,7 +79,7 @@ export function SingleChoice<T extends string>({
   onChange: (value: T) => void;
 }) {
   return (
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipsRow}>
+    <View style={styles.chipsWrap} accessibilityRole="radiogroup">
       {options.map((opt) => {
         const active = opt.id === value;
         return (
@@ -68,46 +87,204 @@ export function SingleChoice<T extends string>({
             key={opt.id}
             accessibilityRole="radio"
             accessibilityState={{ selected: active }}
-            onPress={() => onChange(opt.id)}
+            onPress={() => {
+              if (!active) hapticSelection();
+              onChange(opt.id);
+            }}
             style={[styles.chip, active && styles.chipActive]}
           >
             <Text style={[styles.chipText, active && styles.chipTextActive]}>{opt.label}</Text>
           </Pressable>
         );
       })}
-    </ScrollView>
+    </View>
   );
 }
 
-/** Fila horizontal de chips con selección múltiple. */
-export function MultiChoice<T extends string>({
+/** Fila que muestra lo elegido y abre una hoja con todas las opciones. */
+function SelectRow({
+  label,
+  value,
+  empty,
+  ai,
+  onPress,
+}: {
+  label: string;
+  value: string | null;
+  empty: string;
+  ai?: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <PressableScale
+      pressedScale={0.99}
+      accessibilityRole="button"
+      accessibilityLabel={`${label}: ${value ?? empty}${ai ? ', propuesto por la IA' : ''}. Cambiar`}
+      onPress={() => {
+        // El teclado taparía la hoja de opciones
+        Keyboard.dismiss();
+        onPress();
+      }}
+      style={[styles.selectRow, ai && styles.selectRowAi]}
+    >
+      <View style={styles.selectTexts}>
+        <View style={styles.labelRow}>
+          <Text style={styles.selectLabel}>{label}</Text>
+          {ai ? <AiBadge /> : null}
+        </View>
+        <Text style={[styles.selectValue, !value && styles.selectValueEmpty]}>{value ?? empty}</Text>
+      </View>
+      <ChevronRight size={18} color={colors.textMuted} />
+    </PressableScale>
+  );
+}
+
+/** Selección única con hoja: para listas largas (músculos, equipo, patrón…). */
+export function SelectField<T extends string>({
+  label,
+  options,
+  value,
+  onChange,
+  ai,
+  empty = 'Sin elegir',
+  sheetTitle,
+}: {
+  label: string;
+  options: Option<T>[];
+  value: T | null | undefined;
+  onChange: (value: T) => void;
+  ai?: boolean;
+  empty?: string;
+  sheetTitle?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const selected = options.find((o) => o.id === value) ?? null;
+  // Con explicación por opción se usa una lista; si no, todas las opciones como chips a la vista
+  const detailed = options.some((o) => o.hint || o.description);
+
+  function choose(id: T) {
+    if (id !== value) hapticSelection();
+    onChange(id);
+    setOpen(false);
+  }
+
+  return (
+    <>
+      <SelectRow label={label} value={selected?.label ?? null} empty={empty} ai={ai} onPress={() => setOpen(true)} />
+      <BottomSheet visible={open} onClose={() => setOpen(false)} title={sheetTitle ?? label}>
+        <ScrollView style={styles.sheetScroll} contentContainerStyle={detailed ? styles.optionList : styles.chipsWrap}>
+          {options.map((opt) => {
+            const active = opt.id === value;
+            if (detailed) {
+              return (
+                <Pressable
+                  key={opt.id}
+                  accessibilityRole="radio"
+                  accessibilityState={{ selected: active }}
+                  onPress={() => choose(opt.id)}
+                  style={[styles.optionRow, active && styles.optionRowActive]}
+                >
+                  <View style={styles.selectTexts}>
+                    <Text style={[styles.optionLabel, active && styles.optionLabelActive]}>{opt.label}</Text>
+                    {opt.hint || opt.description ? (
+                      <Text style={styles.optionHint}>{opt.hint ? `Ej.: ${opt.hint}` : opt.description}</Text>
+                    ) : null}
+                  </View>
+                  {active ? <Check size={18} color={colors.navy} strokeWidth={2.5} /> : null}
+                </Pressable>
+              );
+            }
+            return (
+              <Pressable
+                key={opt.id}
+                accessibilityRole="radio"
+                accessibilityState={{ selected: active }}
+                onPress={() => choose(opt.id)}
+                style={[styles.sheetChip, active && styles.chipActive]}
+              >
+                <Text style={[styles.sheetChipText, active && styles.chipTextActive]}>{opt.label}</Text>
+              </Pressable>
+            );
+          })}
+        </ScrollView>
+      </BottomSheet>
+    </>
+  );
+}
+
+/** Selección múltiple con hoja: se marcan varias y se confirma con «Listo». */
+export function MultiSelectField<T extends string>({
+  label,
   options,
   values,
   onChange,
+  ai,
+  empty = 'Ninguno',
+  sheetTitle,
+  sheetHint,
 }: {
+  label: string;
   options: Option<T>[];
   values: T[];
   onChange: (values: T[]) => void;
+  ai?: boolean;
+  empty?: string;
+  sheetTitle?: string;
+  sheetHint?: string;
 }) {
+  const [open, setOpen] = useState(false);
+  const [draft, setDraft] = useState<T[]>(values);
+  const summary = options.filter((o) => values.includes(o.id)).map((o) => o.label).join(', ');
+
+  function openSheet() {
+    setDraft(values);
+    setOpen(true);
+  }
+
+  function toggle(id: T) {
+    hapticSelection();
+    setDraft((d) => (d.includes(id) ? d.filter((v) => v !== id) : [...d, id]));
+  }
+
   return (
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipsRow}>
-      {options.map((opt) => {
-        const active = values.includes(opt.id);
-        return (
-          <Pressable
-            key={opt.id}
-            accessibilityRole="checkbox"
-            accessibilityState={{ checked: active }}
-            onPress={() => onChange(active ? values.filter((v) => v !== opt.id) : [...values, opt.id])}
-            style={[styles.chip, active && styles.chipMultiActive]}
-          >
-            <Text style={[styles.chipText, active && styles.chipMultiTextActive]}>
-              {active ? `✓ ${opt.label}` : opt.label}
-            </Text>
-          </Pressable>
-        );
-      })}
-    </ScrollView>
+    <>
+      <SelectRow label={label} value={summary || null} empty={empty} ai={ai} onPress={openSheet} />
+      <BottomSheet visible={open} onClose={() => setOpen(false)} title={sheetTitle ?? label}>
+        {sheetHint ? <Text style={styles.sheetHint}>{sheetHint}</Text> : null}
+        <ScrollView style={styles.sheetScroll} contentContainerStyle={styles.chipsWrap}>
+          {options.map((opt) => {
+            const active = draft.includes(opt.id);
+            return (
+              <Pressable
+                key={opt.id}
+                accessibilityRole="checkbox"
+                accessibilityState={{ checked: active }}
+                onPress={() => toggle(opt.id)}
+                style={[styles.sheetChip, active && styles.chipMultiActive]}
+              >
+                {active ? <Check size={14} color={colors.success} strokeWidth={3} /> : null}
+                <Text style={[styles.sheetChipText, active && styles.chipMultiTextActive]}>{opt.label}</Text>
+              </Pressable>
+            );
+          })}
+        </ScrollView>
+        <View style={styles.sheetFooter}>
+          {draft.length > 0 ? (
+            <Pressable accessibilityRole="button" onPress={() => setDraft([])} style={styles.clearBtn}>
+              <Text style={styles.clearText}>Quitar todos</Text>
+            </Pressable>
+          ) : null}
+          <Button
+            title={draft.length > 0 ? `Listo (${draft.length})` : 'Listo'}
+            onPress={() => {
+              onChange(draft);
+              setOpen(false);
+            }}
+            style={styles.doneBtn}
+          />
+        </View>
+      </BottomSheet>
+    </>
   );
 }
 
@@ -206,6 +383,7 @@ const styles = StyleSheet.create({
     paddingBottom: s(12),
     gap: s(12),
   },
+  labelRow: { flexDirection: 'row', alignItems: 'center', gap: s(6) },
   label: {
     fontFamily: fonts.bodyBold,
     fontSize: fontSizes.label,
@@ -213,12 +391,78 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     marginBottom: s(4),
   },
-  chipsRow: {
-    gap: s(6),
-    paddingVertical: s(2),
+  aiBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: radius.pill,
+    backgroundColor: colors.successBg,
+    marginBottom: s(4),
   },
+  aiBadgeText: { fontFamily: fonts.bodyBold, fontSize: fontSizes.micro, color: colors.success },
+  chipsWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: s(8) },
+  selectRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: s(10),
+    minHeight: 56,
+    paddingHorizontal: s(12),
+    paddingVertical: s(8),
+    borderRadius: radius.input,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  // Lo rellenó la IA: borde lima hasta que el entrenador lo revise y cambie
+  selectRowAi: { borderColor: colors.lime, backgroundColor: '#FAFDF5' },
+  selectTexts: { flex: 1, gap: 2 },
+  selectLabel: {
+    fontFamily: fonts.bodyBold,
+    fontSize: fontSizes.label,
+    color: colors.textSecondary,
+    textTransform: 'uppercase',
+    marginBottom: s(4),
+  },
+  selectValue: { fontFamily: fonts.bodySemi, fontSize: fontSizes.base, color: colors.navy },
+  selectValueEmpty: { fontFamily: fonts.body, color: colors.textMuted },
+  sheetScroll: { maxHeight: 420 },
+  sheetHint: { fontFamily: fonts.body, fontSize: fontSizes.xs, color: colors.textSecondary, marginBottom: s(4) },
+  sheetChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: s(5),
+    minHeight: 44,
+    paddingHorizontal: s(14),
+    borderRadius: radius.chip,
+    backgroundColor: colors.background,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  sheetChipText: { fontFamily: fonts.bodyMedium, fontSize: fontSizes.sm, color: colors.text },
+  optionList: { gap: s(6) },
+  optionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: s(10),
+    minHeight: 56,
+    paddingHorizontal: s(12),
+    paddingVertical: s(8),
+    borderRadius: radius.input,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  optionRowActive: { borderColor: colors.navy, backgroundColor: colors.background },
+  optionLabel: { fontFamily: fonts.bodySemi, fontSize: fontSizes.base, color: colors.text },
+  optionLabelActive: { color: colors.navy },
+  optionHint: { fontFamily: fonts.body, fontSize: fontSizes.xs, color: colors.textSecondary },
+  sheetFooter: { flexDirection: 'row', alignItems: 'center', gap: s(8), marginTop: s(10) },
+  clearBtn: { minHeight: 48, paddingHorizontal: s(12), justifyContent: 'center' },
+  clearText: { fontFamily: fonts.bodyBold, fontSize: fontSizes.sm, color: colors.textSecondary },
+  doneBtn: { flex: 1 },
   chip: {
-    minHeight: 36,
+    minHeight: 44,
     justifyContent: 'center',
     paddingHorizontal: s(10),
     borderRadius: radius.chip,
@@ -235,8 +479,8 @@ const styles = StyleSheet.create({
     borderColor: colors.lime,
   },
   chipText: {
-    fontFamily: fonts.body,
-    fontSize: fontSizes.xs,
+    fontFamily: fonts.bodyMedium,
+    fontSize: fontSizes.sm,
     color: colors.textSecondary,
   },
   chipTextActive: {

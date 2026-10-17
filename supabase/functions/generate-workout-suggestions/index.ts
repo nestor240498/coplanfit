@@ -6,6 +6,8 @@
 // Despliegue: supabase functions deploy generate-workout-suggestions --no-verify-jwt
 // Secret requerido: GEMINI_API_KEY.
 
+import { callGemini, geminiFailureMessage } from '../_shared/gemini.ts';
+import { checkAiQuota, recordAiGeneration } from '../_shared/quota.ts';
 import { createClient } from 'npm:@supabase/supabase-js@^2.45.0';
 
 const corsHeaders = {
@@ -103,6 +105,9 @@ Deno.serve(async (req) => {
     const { data: userData } = await supabase.auth.getUser();
     if (!userData.user) return json({ error: 'Sesión no válida.' }, 401);
 
+    const blocked = await checkAiQuota(supabase, 'Mientras tanto se arma la propuesta con tu banco.');
+    if (blocked) return json(blocked.body, blocked.status);
+
     const body = (await req.json()) as RequestBody;
     const exercisesPerDay = Math.min(Math.max(Math.round(body.exercisesPerDay || 6), 1), 12);
     const catalogIds = [...new Set((body.catalog ?? []).map((c) => c.id))].slice(0, 400);
@@ -199,32 +204,22 @@ REGLAS:
       },
     };
 
-    let lastError = '';
+    const result = await callGemini(geminiApiKey, payload);
     let parsed: { days?: { day_index: number; blocks: any[] }[] } | null = null;
-    for (const model of ['gemini-3.5-flash', 'gemini-flash-latest', 'gemini-2.5-flash']) {
+    if (result.ok) {
       try {
-        const res = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiApiKey}`,
-          { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }
-        );
-        if (!res.ok) {
-          lastError = `[${model}] ${res.status}: ${await res.text()}`;
-          continue;
-        }
-        const data = await res.json();
-        const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (text) {
-          parsed = JSON.parse(text);
-          break;
-        }
-        lastError = `[${model}] respuesta vacía`;
-      } catch (err) {
-        lastError = `[${model}] ${(err as Error).message}`;
+        parsed = JSON.parse(result.text);
+      } catch {
+        parsed = null;
       }
     }
     if (!parsed?.days) {
-      console.error('generate-workout-suggestions sin respuesta de Gemini:', lastError);
-      return json({ error: 'La IA no respondió. Se usará la propuesta automática con tu banco.' }, 502);
+      const detail = result.ok ? 'JSON no válido' : result.detail;
+      console.error('generate-workout-suggestions sin respuesta de Gemini:', detail);
+      const message = result.ok
+        ? 'La IA no respondió bien. Se usará la propuesta automática con tu banco.'
+        : geminiFailureMessage(result, 'Se usará la propuesta automática con tu banco.');
+      return json({ error: message, detail }, 502);
     }
 
     // Validación final: solo ids del catálogo permitido, sin repetir dentro del día
@@ -251,6 +246,7 @@ REGLAS:
       return { day_index: day.day_index, blocks };
     });
 
+    await recordAiGeneration(supabase, 'rutina', body.clientId);
     return json({ success: true, data: { days } });
   } catch (err) {
     return json({ error: (err as Error).message }, 500);

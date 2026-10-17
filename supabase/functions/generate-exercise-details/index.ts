@@ -1,5 +1,8 @@
 import { createClient } from 'npm:@supabase/supabase-js@^2.45.0';
 
+import { callGemini, geminiFailureMessage } from '../_shared/gemini.ts';
+import { checkAiQuota, recordAiGeneration } from '../_shared/quota.ts';
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
@@ -73,6 +76,8 @@ Deno.serve(async (req) => {
       custom_steps,
     } = body;
 
+    // Técnica pedida dentro de «Completar datos con IA»: ya contó con la clasificación
+    const bundled = body.bundled === true;
     const generate_instructions = body.generate_instructions !== false;
     const generate_tips = body.generate_tips !== false;
 
@@ -135,56 +140,27 @@ Genera una respuesta en JSON estricto con:
         },
       };
 
-      const models = ['gemini-2.5-flash', 'gemini-flash-latest', 'gemini-2.0-flash'];
-      let generatedText: string | null = null;
-      let lastError = '';
-
-      // Auto-discovery de modelos activos
-      try {
-        const listUrl = `https://generativelanguage.googleapis.com/v1beta/models?key=${geminiApiKey}`;
-        const listRes = await fetch(listUrl);
-        if (listRes.ok) {
-          const listData = await listRes.json();
-          const available = (listData.models || [])
-            .filter((m: any) => m.supportedGenerationMethods?.includes('generateContent'))
-            .map((m: any) => m.name.replace('models/', ''));
-
-          if (available.length > 0) {
-            available.sort((a: string, b: string) => (a.includes('flash') ? -1 : 1));
-            models.unshift(...available);
-          }
-        }
-      } catch {
-        // continuar con estática
+      const blocked = await checkAiQuota(supabase, 'Mientras tanto puedes escribir la técnica a mano.', bundled);
+      if (blocked) {
+        return new Response(JSON.stringify(blocked.body), {
+          status: blocked.status,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
       }
 
-      const uniqueModels = [...new Set(models)];
-
-      for (const model of uniqueModels) {
-        try {
-          const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiApiKey}`;
-          const aiRes = await fetch(geminiUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(geminiPayload),
-          });
-
-          if (!aiRes.ok) {
-            const errorText = await aiRes.text();
-            lastError = `[${model}] Error ${aiRes.status}: ${errorText}`;
-            continue;
-          }
-
-          const aiData = await aiRes.json();
-          const text = aiData.candidates?.[0]?.content?.parts?.[0]?.text;
-          if (text) {
-            generatedText = text;
-            break;
-          }
-        } catch (err) {
-          lastError = (err as Error).message;
-        }
+      const result = await callGemini(geminiApiKey, geminiPayload);
+      if (!result.ok) {
+        console.error('generate-exercise-details sin respuesta de Gemini:', result.detail);
+        return new Response(
+          JSON.stringify({
+            error: geminiFailureMessage(result, 'Prueba de nuevo en un minuto o escribe la técnica a mano.'),
+            detail: result.detail,
+          }),
+          { status: result.transient ? 503 : 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
       }
+      const generatedText = result.text;
+      await recordAiGeneration(supabase, 'ejercicio', null, bundled);
 
       if (generatedText) {
         try {

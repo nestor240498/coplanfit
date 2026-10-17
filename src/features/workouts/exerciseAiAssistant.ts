@@ -1,3 +1,4 @@
+import { edgeFunctionError, isQuotaError } from '@/lib/errors';
 import { supabase } from '@/lib/supabase';
 import {
   ExerciseMetric,
@@ -23,16 +24,14 @@ export type ExerciseClassification = {
   cues: string[];
   contraindications: string[];
   aliases: string[];
+  /** Una frase: qué es y qué trabaja (tarjeta del banco). */
+  description: string;
 };
 
 /** Clasifica un ejercicio a partir de su nombre (Edge Function classify-exercise, Gemini). */
 export async function classifyExercise(name: string): Promise<ExerciseClassification> {
   const { data, error } = await supabase.functions.invoke('classify-exercise', { body: { name: name.trim() } });
-  if (error) {
-    // FunctionsHttpError trae el cuerpo con el mensaje de la función
-    const detail = await (error as { context?: Response }).context?.json?.().catch(() => null);
-    throw new Error(detail?.error ?? 'No se pudo completar con IA. Rellena los datos a mano.');
-  }
+  if (error) throw await edgeFunctionError(error, 'No se pudo completar con IA. Rellena los datos a mano.');
   return data as ExerciseClassification;
 }
 
@@ -44,6 +43,8 @@ export type ExerciseAiDetails = {
   steps?: ExerciseStep[];
   tempo?: string;
   primary_muscles?: string[];
+  /** 'ai' si lo redactó Gemini; 'local' si es el texto genérico de respaldo. */
+  source: 'ai' | 'local';
 };
 
 export type GenerateAiOptions = {
@@ -51,6 +52,8 @@ export type GenerateAiOptions = {
   tips?: boolean;
   images?: boolean;
   customSteps?: string[];
+  /** Dentro de «Completar datos con IA»: la técnica ya está incluida en esa generación. */
+  bundled?: boolean;
 };
 
 /**
@@ -88,8 +91,15 @@ export async function generateExerciseAiDetails(
         generate_instructions: generateInstructions,
         generate_tips: generateTips,
         generate_images: generateImages,
+        bundled: options.bundled === true,
       },
     });
+
+    // Sin generaciones disponibles no se inventa un texto genérico: se avisa
+    if (error) {
+      const failure = await edgeFunctionError(error, 'La IA no respondió.');
+      if (isQuotaError(failure)) throw failure;
+    }
 
     if (!error && data) {
       const rawSteps = Array.isArray(data.steps) ? data.steps : [];
@@ -105,9 +115,11 @@ export async function generateExerciseAiDetails(
         steps: rawSteps,
         tempo: data.tempo,
         primary_muscles: data.primary_muscles,
+        source: 'ai',
       };
     }
   } catch (err) {
+    if (isQuotaError(err)) throw err;
     console.warn('Fallback a generador local por error en Edge Function:', err);
   }
 
@@ -151,5 +163,6 @@ export async function generateExerciseAiDetails(
     tips,
     pattern,
     images,
+    source: 'local',
   };
 }

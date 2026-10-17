@@ -1,11 +1,15 @@
 import { AlertTriangle, Copy, Dumbbell, Edit3, Flame, GitBranch, Info, Lightbulb, Trash2, X } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { friendlyError } from '@/lib/errors';
+import { useRetained } from '@/lib/useRetained';
+import { BottomSheet } from '@/components/ui/BottomSheet';
 import { Button } from '@/components/ui/Button';
 import { s } from '@/theme/scale';
 import { colors, radius } from '@/theme/tokens';
-import { fonts, fontSizes } from '@/theme/typography';
+import { fonts, fontSizes, lineHeights } from '@/theme/typography';
 import { findSubstitutes, personalCopyTemplate, variantTemplate } from '../exerciseSearch';
 import { getCurrentUserRole, removeExercise, RemoveExerciseResult } from '../exerciseService';
 import {
@@ -50,7 +54,7 @@ function parseInstructionsToSteps(text?: string | null): string[] {
 }
 
 export function ExerciseDetailModal({
-  exercise,
+  exercise: exerciseProp,
   visible,
   onClose,
   onSelect,
@@ -60,6 +64,9 @@ export function ExerciseDetailModal({
   onOpenExercise,
   onCreateFrom,
 }: Props) {
+  const insets = useSafeAreaInsets();
+  // Al cerrar, el padre pone el ejercicio a null: se sigue mostrando el último mientras la hoja sale
+  const exercise = useRetained(exerciseProp);
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [removing, setRemoving] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
@@ -73,7 +80,7 @@ export function ExerciseDetailModal({
     }
   }, [visible]);
 
-  if (!exercise || !visible) return null;
+  if (!exercise) return null;
 
   const secondaryLabels = (exercise.secondary_muscles ?? []).map(muscleLabel);
   const canEdit = isSuperAdmin || (exercise.is_custom && exercise.created_by === currentUserId);
@@ -97,7 +104,7 @@ export function ExerciseDetailModal({
             onClose();
             onRemoved?.(target, result);
           } catch (e) {
-            Alert.alert('No se pudo quitar el ejercicio', (e as Error).message);
+            Alert.alert('No se pudo quitar el ejercicio', friendlyError(e));
           } finally {
             setRemoving(false);
           }
@@ -123,10 +130,12 @@ export function ExerciseDetailModal({
   }
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <View style={styles.overlay}>
-        <View style={styles.sheet}>
-          {/* Header */}
+    <BottomSheet
+      visible={visible}
+      onClose={onClose}
+      bare
+      sheetStyle={[styles.sheet, { paddingBottom: insets.bottom + s(12) }]}
+      header={
           <View style={styles.header}>
             <View style={styles.titleWrap}>
               <Text style={styles.title}>{exercise.name}</Text>
@@ -147,12 +156,14 @@ export function ExerciseDetailModal({
                 <Text style={styles.secondaryText}>También trabaja: {secondaryLabels.join(', ')}</Text>
               )}
             </View>
-            <Pressable onPress={onClose} style={styles.closeBtn} hitSlop={10}>
+            <Pressable accessibilityRole="button" accessibilityLabel="Cerrar" onPress={onClose} style={styles.closeBtn} hitSlop={10}>
               <X size={s(18)} color={colors.textSecondary} />
             </Pressable>
           </View>
-
+      }
+    >
           <ScrollView style={styles.body} contentContainerStyle={styles.bodyContent} showsVerticalScrollIndicator={false}>
+            {exercise.description ? <Text style={styles.description}>{exercise.description}</Text> : null}
             {/* Vídeo propio si lo hay; si no, las fotos de los pasos */}
             {exercise.video_path ? (
               <ExerciseVideo key={exercise.id} videoRef={exercise.video_path} height={s(190)} />
@@ -383,24 +394,17 @@ export function ExerciseDetailModal({
               />
             )}
           </View>
-        </View>
-      </View>
-    </Modal>
+    </BottomSheet>
   );
 }
 
 const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    backgroundColor: 'rgba(15, 23, 42, 0.65)',
-    justifyContent: 'flex-end',
-  },
+  description: { fontFamily: fonts.body, fontSize: fontSizes.sm, color: colors.text, lineHeight: lineHeights.sm },
   sheet: {
     backgroundColor: colors.surface,
     borderTopLeftRadius: radius.card,
     borderTopRightRadius: radius.card,
-    maxHeight: '80%',
-    paddingBottom: s(24),
+    maxHeight: '85%',
   },
   header: {
     flexDirection: 'row',
@@ -435,7 +439,7 @@ const styles = StyleSheet.create({
   },
   muscleBadgeText: {
     fontFamily: fonts.bodyBold,
-    fontSize: s(7.5),
+    fontSize: fontSizes.micro,
     color: colors.surface,
     textTransform: 'uppercase',
   },
@@ -449,7 +453,7 @@ const styles = StyleSheet.create({
   },
   equipBadgeText: {
     fontFamily: fonts.bodyBold,
-    fontSize: s(7.5),
+    fontSize: fontSizes.micro,
     color: colors.navy,
     textTransform: 'capitalize',
   },
@@ -460,7 +464,7 @@ const styles = StyleSheet.create({
   },
   typeBadgeText: {
     fontFamily: fonts.body,
-    fontSize: s(7.5),
+    fontSize: fontSizes.micro,
   },
   customBadge: {
     backgroundColor: colors.background,
@@ -478,6 +482,10 @@ const styles = StyleSheet.create({
     color: colors.navy,
   },
   closeBtn: {
+    minWidth: 44,
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
     padding: s(4),
   },
   body: {
@@ -516,13 +524,13 @@ const styles = StyleSheet.create({
   },
   metaLabel: {
     fontFamily: fonts.bodyBold,
-    fontSize: s(6.8),
+    fontSize: fontSizes.micro,
     color: colors.textMuted,
     letterSpacing: 0.2,
   },
   metaValue: {
     fontFamily: fonts.bodyBold,
-    fontSize: s(10),
+    fontSize: fontSizes.xs,
     color: colors.navy,
     textTransform: 'capitalize',
     marginTop: 1,
@@ -543,7 +551,7 @@ const styles = StyleSheet.create({
   },
   stepsBadgeText: {
     fontFamily: fonts.bodyBold,
-    fontSize: s(8),
+    fontSize: fontSizes.label,
     color: colors.textSecondary,
   },
   stepsList: {
@@ -570,7 +578,7 @@ const styles = StyleSheet.create({
   },
   stepNumText: {
     fontFamily: fonts.bodyBold,
-    fontSize: s(8.5),
+    fontSize: fontSizes.label,
     color: colors.surface,
   },
   stepCardText: {
@@ -578,7 +586,7 @@ const styles = StyleSheet.create({
     fontFamily: fonts.body,
     fontSize: fontSizes.xs,
     color: colors.text,
-    lineHeight: s(15),
+    lineHeight: lineHeights.xs,
   },
   tipsSection: {
     backgroundColor: 'rgba(139, 197, 63, 0.12)',
@@ -591,7 +599,7 @@ const styles = StyleSheet.create({
     fontFamily: fonts.body,
     fontSize: fontSizes.xs,
     color: colors.navy,
-    lineHeight: s(15),
+    lineHeight: lineHeights.xs,
   },
   footer: {
     paddingHorizontal: s(20),
@@ -678,7 +686,7 @@ const styles = StyleSheet.create({
   },
   createOptionTexts: { flex: 1, gap: s(2) },
   createOptionTitle: { fontFamily: fonts.bodyBold, fontSize: fontSizes.sm, color: colors.navy },
-  createOptionText: { fontFamily: fonts.body, fontSize: fontSizes.xs, color: colors.textSecondary, lineHeight: s(14) },
+  createOptionText: { fontFamily: fonts.body, fontSize: fontSizes.xs, color: colors.textSecondary, lineHeight: lineHeights.xs },
   secondaryText: {
     fontFamily: fonts.body,
     fontSize: fontSizes.xs,

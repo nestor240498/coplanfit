@@ -12,7 +12,7 @@ import {
 
 import { s } from '@/theme/scale';
 import { colors } from '@/theme/tokens';
-import { fonts } from '@/theme/typography';
+import { fonts, fontSizes } from '@/theme/typography';
 
 const ITEM_HEIGHT = s(26);
 const VISIBLE_ROWS = 5;
@@ -119,12 +119,12 @@ const styles = StyleSheet.create({
   },
   rowText: {
     fontFamily: fonts.bodyMedium,
-    fontSize: s(11),
+    fontSize: fontSizes.sm,
     color: '#B0B8C8',
   },
   rowTextSelected: {
     fontFamily: fonts.heading,
-    fontSize: s(13),
+    fontSize: fontSizes.headline,
     color: colors.navy,
     fontWeight: '800',
   },

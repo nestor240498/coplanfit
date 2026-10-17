@@ -1,9 +1,8 @@
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Users } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -11,9 +10,12 @@ import {
   View,
 } from 'react-native';
 
+import { friendlyError } from '@/lib/errors';
+import { toast } from '@/components/ui/Toast';
 import { AppBackground } from '@/components/ui/AppBackground';
 import { Button } from '@/components/ui/Button';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
+import { PublishedBanner } from '@/features/clients/components/PublishedBanner';
 import { SendDocumentSheet } from '@/features/clients/components/SendDocumentSheet';
 import { getClient } from '@/features/clients/repository';
 import { DocumentToDeliver } from '@/features/clients/sentLogRepository';
@@ -26,16 +28,19 @@ import { buildWorkoutPdfHtml } from '@/features/workouts/workoutPdf';
 import { getWorkoutPlanVersionById } from '@/features/workouts/workoutsRepository';
 import { s } from '@/theme/scale';
 import { colors, radius } from '@/theme/tokens';
-import { fonts, fontSizes } from '@/theme/typography';
+import { fonts, fontSizes, lineHeights } from '@/theme/typography';
 
 export default function WorkoutPreviewScreen() {
-  const { id, versionId } = useLocalSearchParams<{ id: string; versionId: string }>();
+  const { id, versionId, published } = useLocalSearchParams<{ id: string; versionId: string; published?: string }>();
+  const router = useRouter();
 
   const [client, setClient] = useState<Client | null>(null);
   const [version, setVersion] = useState<WorkoutPlanVersion | null>(null);
   const [activeDayIndex, setActiveDayIndex] = useState(0);
   const [loading, setLoading] = useState(true);
   const [sendOpen, setSendOpen] = useState(false);
+  const [sent, setSent] = useState(false);
+  const justPublished = published === '1';
 
   const workoutDocument: DocumentToDeliver | null =
     client && version
@@ -62,7 +67,7 @@ export default function WorkoutPreviewScreen() {
         }
       })
       .catch((e: Error) => {
-        if (!cancelled) Alert.alert('Error', e.message);
+        if (!cancelled) toast({ message: `No se pudo cargar la rutina: ${friendlyError(e)}`, tone: 'danger' });
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -129,6 +134,9 @@ export default function WorkoutPreviewScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
+        {justPublished && version ? (
+          <PublishedBanner documentName="Rutina" version={version.version} clientName={client?.full_name ?? ''} sent={sent} />
+        ) : null}
         {activeDay && (
           <>
             <View style={styles.dayHeader}>
@@ -229,10 +237,24 @@ export default function WorkoutPreviewScreen() {
         document={workoutDocument}
         clientName={client?.full_name ?? ''}
         clientPhone={client?.phone}
+        onSent={() => setSent(true)}
       />
 
       <View style={styles.footer}>
-        <Button title="Enviar o descargar" onPress={() => setSendOpen(true)} disabled={!workoutDocument} />
+        {justPublished && !sent ? (
+          <Button
+            title={`Enviar a ${client?.full_name.split(' ')[0] ?? 'el cliente'}`}
+            onPress={() => setSendOpen(true)}
+            disabled={!workoutDocument}
+          />
+        ) : justPublished ? (
+          <View style={styles.footerRow}>
+            <Button title="Reenviar o descargar" variant="secondary" onPress={() => setSendOpen(true)} style={styles.footerBtn} />
+            <Button title="Ficha del cliente" onPress={() => router.dismissTo(`/client/${id}`)} style={styles.footerBtn} />
+          </View>
+        ) : (
+          <Button title="Enviar o descargar" onPress={() => setSendOpen(true)} disabled={!workoutDocument} />
+        )}
       </View>
     </View>
   );
@@ -242,18 +264,20 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
   centerBox: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   daysBar: {
-    maxHeight: s(42),
+    flexGrow: 0,
     backgroundColor: colors.surface,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
   daysBarContent: {
     paddingHorizontal: s(12),
+    paddingVertical: s(8),
     alignItems: 'center',
     gap: s(6),
   },
   dayTab: {
-    paddingVertical: s(6),
+    minHeight: 44,
+    justifyContent: 'center',
     paddingHorizontal: s(10),
     borderRadius: radius.chip,
     backgroundColor: colors.background,
@@ -266,7 +290,7 @@ const styles = StyleSheet.create({
   },
   dayTabText: {
     fontFamily: fonts.body,
-    fontSize: fontSizes.xs,
+    fontSize: fontSizes.sm,
     color: colors.textSecondary,
   },
   dayTabTextActive: {
@@ -274,6 +298,8 @@ const styles = StyleSheet.create({
     color: colors.surface,
   },
   scroll: { flex: 1 },
+  footerRow: { flexDirection: 'row', gap: s(8) },
+  footerBtn: { flex: 1 },
   footer: {
     padding: s(14),
     paddingBottom: s(24),
@@ -319,7 +345,7 @@ const styles = StyleSheet.create({
   },
   numBadgeText: {
     fontFamily: fonts.bodyBold,
-    fontSize: s(8.5),
+    fontSize: fontSizes.label,
     color: colors.navy,
   },
   exerciseName: {
@@ -341,7 +367,7 @@ const styles = StyleSheet.create({
   },
   metaLabel: {
     fontFamily: fonts.body,
-    fontSize: s(7.5),
+    fontSize: fontSizes.micro,
     color: colors.textMuted,
     textTransform: 'uppercase',
   },
@@ -370,7 +396,7 @@ const styles = StyleSheet.create({
   },
   supersetTag: {
     fontFamily: fonts.bodyBold,
-    fontSize: s(8),
+    fontSize: fontSizes.label,
     color: colors.navy,
     backgroundColor: colors.lime,
     paddingHorizontal: s(6),
@@ -395,7 +421,7 @@ const styles = StyleSheet.create({
   },
   subLetterText: {
     fontFamily: fonts.bodyBold,
-    fontSize: s(7.5),
+    fontSize: fontSizes.micro,
     color: colors.surface,
   },
   subExInfo: {
@@ -437,6 +463,6 @@ const styles = StyleSheet.create({
     fontFamily: fonts.body,
     fontSize: fontSizes.xs,
     color: colors.text,
-    lineHeight: s(15),
+    lineHeight: lineHeights.xs,
   },
 });

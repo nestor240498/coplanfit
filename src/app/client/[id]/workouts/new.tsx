@@ -11,7 +11,7 @@ import { getClient } from '@/features/clients/repository';
 import { listTags } from '@/features/clients/tagsRepository';
 import { Client, ClientTag } from '@/features/clients/types';
 import { WorkoutStepper } from '@/features/workouts/components/WorkoutStepper';
-import { FieldLabel, MultiChoice } from '@/features/workouts/components/ExerciseFormControls';
+import { MultiSelectField } from '@/features/workouts/components/ExerciseFormControls';
 import {
   EQUIPMENT_OPTIONS,
   MUSCLE_GROUPS,
@@ -258,7 +258,7 @@ export default function NewWorkoutScreen() {
                   placeholderTextColor={colors.textMuted}
                 />
                 {days.length > 1 && (
-                  <Pressable
+                  <Pressable accessibilityRole="button" accessibilityLabel={`Quitar ${day.day_name}`}
                     hitSlop={8}
                     onPress={() => removeDay(day.id)}
                     style={styles.removeDayBtn}
@@ -275,11 +275,14 @@ export default function NewWorkoutScreen() {
                 placeholderTextColor={colors.textMuted}
               />
               <View style={styles.musclesField}>
-                <FieldLabel>Músculos del día</FieldLabel>
-                <MultiChoice
+                <MultiSelectField
+                  label="Músculos del día"
                   options={MUSCLE_GROUPS}
                   values={day.muscles ?? []}
                   onChange={(muscles) => setDayMuscles(day.id, muscles)}
+                  empty="Toca para elegir"
+                  sheetTitle={`Músculos · ${day.day_name}`}
+                  sheetHint="La propuesta de ejercicios usará estos músculos."
                 />
               </View>
             </View>
@@ -388,7 +391,7 @@ const styles = StyleSheet.create({
   },
   medicalNoticeTitle: {
     fontFamily: fonts.bodyBold,
-    fontSize: s(9),
+    fontSize: fontSizes.label,
     color: colors.danger,
   },
   chipRow: {
@@ -459,6 +462,10 @@ const styles = StyleSheet.create({
     padding: 0,
   },
   removeDayBtn: {
+    minWidth: 44,
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
     padding: s(4),
   },
   dayFocusInput: {

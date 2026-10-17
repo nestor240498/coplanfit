@@ -1,8 +1,11 @@
-import { ActivityIndicator, Pressable, StyleSheet, Text, ViewStyle } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, ViewStyle } from 'react-native';
 
+import { hapticPress } from '@/lib/motion';
+
+import { PressableScale } from './PressableScale';
 import { s } from '@/theme/scale';
 import { colors, radius } from '@/theme/tokens';
-import { fonts } from '@/theme/typography';
+import { fonts, fontSizes } from '@/theme/typography';
 
 type Variant = 'primary' | 'secondary' | 'ghost';
 
@@ -18,17 +21,16 @@ type Props = {
 export function Button({ title, onPress, variant = 'primary', disabled, loading, style }: Props) {
   const isDisabled = disabled || loading;
   return (
-    <Pressable
+    <PressableScale
       accessibilityRole="button"
-      onPress={onPress}
+      accessibilityState={{ disabled: isDisabled, busy: loading }}
+      onPress={() => {
+        // Vibración ligera solo en la acción principal de la pantalla
+        if (variant === 'primary') hapticPress();
+        onPress?.();
+      }}
       disabled={isDisabled}
-      style={({ pressed }) => [
-        styles.base,
-        styles[variant],
-        pressed && styles.pressed,
-        isDisabled && styles.disabled,
-        style,
-      ]}
+      style={[styles.base, styles[variant], isDisabled && styles.disabled, style]}
     >
       {loading ? (
         <ActivityIndicator color={variant === 'primary' ? colors.navy : colors.surface} />
@@ -37,13 +39,14 @@ export function Button({ title, onPress, variant = 'primary', disabled, loading,
           {title}
         </Text>
       )}
-    </Pressable>
+    </PressableScale>
   );
 }
 
 const styles = StyleSheet.create({
   base: {
-    height: s(36),
+    minHeight: 48,
+    paddingVertical: s(8),
     borderRadius: radius.button,
     alignItems: 'center',
     justifyContent: 'center',
@@ -52,11 +55,10 @@ const styles = StyleSheet.create({
   primary: { backgroundColor: colors.lime },
   secondary: { backgroundColor: colors.navy },
   ghost: { backgroundColor: 'transparent' },
-  pressed: { opacity: 0.85 },
   disabled: { opacity: 0.5 },
   label: {
     fontFamily: fonts.bodyBold,
-    fontSize: s(10),
+    fontSize: fontSizes.sm,
     letterSpacing: 0.2,
     textAlign: 'center',
   },

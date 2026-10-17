@@ -3,14 +3,19 @@ import { AlertTriangle, ArrowLeftRight, Dumbbell, Plus, Sparkles, Trash2, Users 
 import { useEffect, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { friendlyError, isQuotaError } from '@/lib/errors';
+import { hapticSuccess } from '@/lib/motion';
+import { AiProgressModal } from '@/components/ui/AiProgressModal';
 import { AppBackground } from '@/components/ui/AppBackground';
+import { toast, toastWithUndo } from '@/components/ui/Toast';
 import { Button } from '@/components/ui/Button';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
+import { AiQuotaHint } from '@/features/ai/components/AiQuotaHint';
+import { quotaHint, useAiQuota } from '@/features/ai/quota';
 import { getClient } from '@/features/clients/repository';
 import { listTags } from '@/features/clients/tagsRepository';
 import { ExercisePickerSheet } from '@/features/workouts/components/ExercisePickerSheet';
 import { SwapExerciseSheet } from '@/features/workouts/components/SwapExerciseSheet';
-import { WorkoutAiPreloaderModal } from '@/features/workouts/components/WorkoutAiPreloaderModal';
 import { WorkoutStepper } from '@/features/workouts/components/WorkoutStepper';
 import { getExercises } from '@/features/workouts/exerciseService';
 import { formatPrescription } from '@/features/workouts/prescription';
@@ -29,7 +34,7 @@ import { Exercise, SingleExerciseExecution, WorkoutDay } from '@/features/workou
 import { useWorkoutBuilderStore } from '@/features/workouts/workoutBuilderStore';
 import { s } from '@/theme/scale';
 import { colors, radius } from '@/theme/tokens';
-import { fonts, fontSizes } from '@/theme/typography';
+import { fonts, fontSizes, lineHeights } from '@/theme/typography';
 
 type SwapTarget = { blockId: string; exIndex: number | null; execution: SingleExerciseExecution };
 
@@ -59,23 +64,34 @@ export default function WorkoutAssistantScreen() {
   const [combiningBlockId, setCombiningBlockId] = useState<string | null>(null);
   const [isGeneratingAi, setIsGeneratingAi] = useState(false);
   const [bank, setBank] = useState<Exercise[]>([]);
+  const quota = useAiQuota((st) => st.quota);
+  const refreshQuota = useAiQuota((st) => st.refresh);
+  const [clientName, setClientName] = useState<string | undefined>();
   const [trainingCtx, setTrainingCtx] = useState<ClientTrainingContext>({ conditions: [] });
   const [swapTarget, setSwapTarget] = useState<SwapTarget | null>(null);
   const [replacingFromBank, setReplacingFromBank] = useState<SwapTarget | null>(null);
 
   const activeDay = days[activeDayIndex] || days[0];
+  const eligibleCount = eligibleExercises(bank, trainingCtx).length;
+
+  useEffect(() => {
+    refreshQuota();
+  }, [refreshQuota]);
 
   useEffect(() => {
     if (!id) return;
     Promise.all([getExercises(), getClient(id), listTags(id)])
       .then(([exercises, client, tags]) => {
         setBank(exercises);
+        setClientName(client.full_name);
         setTrainingCtx({
           equipmentAccess: client.equipment_access,
           conditions: tags.filter((t) => t.kind === 'condicion').map((t) => t.label),
         });
       })
-      .catch((e: Error) => Alert.alert('No se pudo cargar el banco de ejercicios', e.message));
+      .catch((e: Error) =>
+        toast({ message: `No se pudo cargar el banco de ejercicios: ${friendlyError(e)}`, tone: 'danger' })
+      );
   }, [id]);
 
   const bankById = new Map(bank.map((ex) => [ex.id, ex]));
@@ -90,6 +106,23 @@ export default function WorkoutAssistantScreen() {
     return (activeDay?.blocks ?? []).flatMap((b) =>
       (b.type === 'superset' ? b.exercises : [b.exercise]).map((e) => e.exercise_id).filter((x): x is string => !!x)
     );
+  }
+
+  // Quitar es inmediato y reversible: se guarda la rutina anterior para «Deshacer»
+  function handleRemoveBlock(blockId: string) {
+    if (!activeDay) return;
+    const previous = useWorkoutBuilderStore.getState().days;
+    const block = activeDay.blocks.find((b) => b.id === blockId);
+    removeBlock(activeDay.id, blockId);
+    const label = block?.type === 'single' ? `«${block.exercise.name}» quitado` : 'Superserie quitada';
+    toastWithUndo(label, () => setDays(previous));
+  }
+
+  function handleRemoveFromSuperset(blockId: string, index: number, name: string) {
+    if (!activeDay) return;
+    const previous = useWorkoutBuilderStore.getState().days;
+    removeExerciseFromSuperset(activeDay.id, blockId, index);
+    toastWithUndo(`«${name}» quitado de la superserie`, () => setDays(previous));
   }
 
   function handleOpenPickerForNew() {
@@ -142,26 +175,49 @@ export default function WorkoutAssistantScreen() {
     setIsGeneratingAi(true);
     try {
       let proposal: WorkoutDay[];
+      let fromAi = true;
+      let quotaMessage: string | null = null;
       try {
         proposal = await generateRoutineWithAi(id, days, eligible, generation);
         if (countExercises(proposal) === 0) throw new Error('La IA no propuso ejercicios.');
       } catch (aiError) {
         // Sin IA: la propuesta se arma igualmente con el banco (músculos de cada día)
         proposal = buildRoutineFromBank(days, eligible, generation);
-        Alert.alert(
-          'Propuesta armada con tu banco',
-          `La IA no respondió (${(aiError as Error).message}). Se eligieron ejercicios de tu banco según los músculos de cada día.`
-        );
+        fromAi = false;
+        if (isQuotaError(aiError)) quotaMessage = (aiError as Error).message;
       }
       setDays(proposal);
+      const total = countExercises(proposal);
+      if (fromAi) {
+        hapticSuccess();
+        toast({
+          message: `Propuesta lista: ${total} ejercicios de tu banco. Cambia los que quieras.`,
+          tone: 'success',
+        });
+      } else {
+        toast({
+          message:
+            quotaMessage ??
+            `La IA no respondió, así que elegimos ${total} ejercicios de tu banco según los músculos de cada día.`,
+          duration: 5000,
+        });
+      }
     } finally {
       setIsGeneratingAi(false);
+      refreshQuota();
     }
+  }
+
+  /** Propuesta sin IA, solo con el banco (cuando se agotaron las generaciones). */
+  function runBankProposal() {
+    const proposal = buildRoutineFromBank(days, eligibleExercises(bank, trainingCtx), generation);
+    setDays(proposal);
+    toast({ message: `Elegimos ${countExercises(proposal)} ejercicios de tu banco según los músculos de cada día.` });
   }
 
   function handleGenerateAi() {
     if (bank.length === 0) {
-      Alert.alert('Cargando el banco', 'Espera un momento a que se cargue el banco de ejercicios.');
+      toast('Un momento: aún se está cargando tu banco de ejercicios.');
       return;
     }
     const eligible = eligibleExercises(bank, trainingCtx);
@@ -170,6 +226,15 @@ export default function WorkoutAssistantScreen() {
         'Sin ejercicios disponibles',
         'Ningún ejercicio del banco encaja con el equipo y la salud de este cliente. Añade ejercicios al banco primero.'
       );
+      return;
+    }
+
+    const blocked = quotaHint(quota);
+    if (blocked?.blocked) {
+      Alert.alert('Sin generaciones con IA', `${blocked.text}\n\nMientras tanto puedes armar la propuesta con tu banco, sin IA.`, [
+        { text: 'Cancelar', style: 'cancel' },
+        { text: 'Armar con mi banco', onPress: runBankProposal },
+      ]);
       return;
     }
 
@@ -235,6 +300,7 @@ export default function WorkoutAssistantScreen() {
             Proponer {generation.exercisesPerDay} ejercicios por día con IA
           </Text>
         </Pressable>
+        <AiQuotaHint quota={quota} style={styles.quotaHint} />
       </View>
 
       {/* Selector de Días (Tabs horizontales) */}
@@ -325,9 +391,9 @@ export default function WorkoutAssistantScreen() {
                         >
                           <ArrowLeftRight size={s(14)} color={colors.navy} />
                         </Pressable>
-                        <Pressable
+                        <Pressable accessibilityRole="button" accessibilityLabel={`Quitar ${block.exercise.name}`}
                           hitSlop={8}
-                          onPress={() => removeBlock(activeDay.id, block.id)}
+                          onPress={() => handleRemoveBlock(block.id)}
                           style={styles.deleteBtn}
                         >
                           <Trash2 size={s(13)} color={colors.danger} />
@@ -353,9 +419,9 @@ export default function WorkoutAssistantScreen() {
                       <View style={styles.supersetTag}>
                         <Text style={styles.supersetTagText}>SUPERSERIE · {block.sets} SERIES</Text>
                       </View>
-                      <Pressable
+                      <Pressable accessibilityRole="button" accessibilityLabel="Quitar superserie"
                         hitSlop={8}
-                        onPress={() => removeBlock(activeDay.id, block.id)}
+                        onPress={() => handleRemoveBlock(block.id)}
                         style={styles.deleteBtn}
                       >
                         <Trash2 size={s(13)} color={colors.danger} />
@@ -390,9 +456,9 @@ export default function WorkoutAssistantScreen() {
                           >
                             <ArrowLeftRight size={s(13)} color={colors.navy} />
                           </Pressable>
-                          <Pressable
+                          <Pressable accessibilityRole="button" accessibilityLabel={`Quitar ${subEx.name} de la superserie`}
                             hitSlop={8}
-                            onPress={() => removeExerciseFromSuperset(activeDay.id, block.id, sIdx)}
+                            onPress={() => handleRemoveFromSuperset(block.id, sIdx, subEx.name)}
                             style={styles.deleteSubExBtn}
                           >
                             <Trash2 size={s(12)} color={colors.danger} />
@@ -426,8 +492,18 @@ export default function WorkoutAssistantScreen() {
         )}
       </ScrollView>
 
-      {/* Preloader de Pasos de IA */}
-      <WorkoutAiPreloaderModal visible={isGeneratingAi} />
+      <AiProgressModal
+        visible={isGeneratingAi}
+        title="Proponiendo la rutina"
+        clientName={clientName}
+        inputs={[
+          `${days.length} ${days.length === 1 ? 'día' : 'días'} · ${generation.exercisesPerDay} ejercicios por día`,
+          `${eligibleCount} ejercicios de tu banco aptos para su equipo y su salud`,
+          generation.allowSupersets ? 'Superseries permitidas' : 'Sin superseries',
+          'Objetivo, condiciones y última medición de su ficha',
+        ]}
+        slowHint="Está tardando más de lo normal. Si no responde, armaremos la propuesta con tu banco."
+      />
 
       {/* Sheet para seleccionar ejercicios */}
       <ExercisePickerSheet
@@ -487,24 +563,26 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: s(6),
-    height: s(30),
+    minHeight: 44,
     paddingHorizontal: s(14),
     borderRadius: radius.chip,
     alignSelf: 'center',
   },
+  quotaHint: { marginTop: s(6), alignSelf: 'stretch' },
   aiBtnText: {
     fontFamily: fonts.bodyBold,
     fontSize: fontSizes.label,
     color: colors.surface,
   },
   daysBar: {
-    maxHeight: s(44),
+    flexGrow: 0,
     backgroundColor: colors.surface,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
   daysBarContent: {
     paddingHorizontal: s(12),
+    paddingVertical: s(8),
     alignItems: 'center',
     gap: s(6),
   },
@@ -512,7 +590,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: s(4),
-    paddingVertical: s(6),
+    minHeight: 44,
+    justifyContent: 'center',
     paddingHorizontal: s(10),
     borderRadius: radius.chip,
     backgroundColor: colors.background,
@@ -525,7 +604,7 @@ const styles = StyleSheet.create({
   },
   dayTabText: {
     fontFamily: fonts.body,
-    fontSize: fontSizes.xs,
+    fontSize: fontSizes.sm,
     color: colors.textSecondary,
   },
   dayTabTextActive: {
@@ -543,7 +622,7 @@ const styles = StyleSheet.create({
   },
   countBadgeText: {
     fontFamily: fonts.bodyBold,
-    fontSize: s(8),
+    fontSize: fontSizes.label,
     color: colors.textSecondary,
   },
   countBadgeTextActive: {
@@ -568,6 +647,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: s(28),
+    paddingHorizontal: s(20),
     gap: s(6),
     backgroundColor: colors.surface,
     borderRadius: radius.card,
@@ -577,13 +657,16 @@ const styles = StyleSheet.create({
   },
   emptyDayText: {
     fontFamily: fonts.bodyBold,
-    fontSize: fontSizes.xs,
+    fontSize: fontSizes.sm,
     color: colors.text,
+    textAlign: 'center',
   },
   emptyDaySubtext: {
     fontFamily: fonts.body,
-    fontSize: fontSizes.label,
-    color: colors.textMuted,
+    fontSize: fontSizes.xs,
+    lineHeight: lineHeights.xs,
+    color: colors.textSecondary,
+    textAlign: 'center',
   },
   exerciseCard: {
     backgroundColor: colors.surface,
@@ -608,7 +691,7 @@ const styles = StyleSheet.create({
   },
   exIndexText: {
     fontFamily: fonts.bodyBold,
-    fontSize: s(9),
+    fontSize: fontSizes.label,
     color: colors.navy,
   },
   cardTitleWrap: {
@@ -626,6 +709,10 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
   },
   deleteBtn: {
+    minWidth: 44,
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
     padding: s(4),
   },
   combineBtn: {
@@ -666,7 +753,7 @@ const styles = StyleSheet.create({
   },
   supersetTagText: {
     fontFamily: fonts.bodyBold,
-    fontSize: s(8.5),
+    fontSize: fontSizes.label,
     color: colors.surface,
     letterSpacing: 0.5,
   },
@@ -692,7 +779,7 @@ const styles = StyleSheet.create({
   },
   subIndexText: {
     fontFamily: fonts.bodyBold,
-    fontSize: s(8),
+    fontSize: fontSizes.label,
     color: colors.navy,
   },
   subInfoWrap: {
@@ -709,6 +796,10 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
   },
   deleteSubExBtn: {
+    minWidth: 44,
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
     padding: s(4),
   },
   supersetRestNote: {
@@ -730,7 +821,7 @@ const styles = StyleSheet.create({
     color: colors.navy,
   },
   addExerciseCta: {
-    height: s(36),
+    minHeight: 44,
     flexDirection: 'row',
     gap: s(6),
     borderRadius: radius.input,

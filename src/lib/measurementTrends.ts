@@ -69,3 +69,50 @@ export function isChangeFavorable(metric: string, prev: number, next: number, go
   const wentUp = next > prev;
   return favorable === 'up' ? wentUp : !wentUp;
 }
+
+// Métricas que resumen el avance tras guardar (en este orden); solo se citan las que cambian
+const SUMMARY_METRICS: { key: string; label: string; unit: string; decimals: number }[] = [
+  { key: 'weight_kg', label: 'peso', unit: ' kg', decimals: 1 },
+  { key: 'body_fat_pct', label: 'grasa', unit: ' %', decimals: 1 },
+  { key: 'muscle_mass_pct', label: 'músculo', unit: ' %', decimals: 1 },
+  { key: 'waist_cm', label: 'cintura', unit: ' cm', decimals: 1 },
+];
+
+function formatDelta(delta: number, decimals: number, unit: string): string {
+  const abs = Math.abs(delta).toFixed(decimals).replace('.', ',').replace(/,0$/, '');
+  return `${delta > 0 ? '+' : '−'}${abs}${unit}`;
+}
+
+/**
+ * Frase para el aviso tras guardar una medición: qué cambió desde la anterior, en tono cercano
+ * y sin exagerar (solo se felicita si la mayoría de cambios van en la dirección del objetivo).
+ */
+export function describeMeasurementChange(
+  prev: Record<string, unknown> | null,
+  next: Record<string, unknown>,
+  goal: Goal | null
+): { message: string; favorable: boolean } {
+  if (!prev) {
+    return { message: 'Primera medición guardada. A partir de aquí verás su progreso.', favorable: false };
+  }
+  const parts: string[] = [];
+  let good = 0;
+  let bad = 0;
+  for (const { key, label, unit, decimals } of SUMMARY_METRICS) {
+    const a = prev[key];
+    const b = next[key];
+    if (typeof a !== 'number' || typeof b !== 'number') continue;
+    const delta = Number((b - a).toFixed(decimals));
+    if (delta === 0) continue;
+    parts.push(`${label} ${formatDelta(delta, decimals, unit)}`);
+    const favorable = isChangeFavorable(key, a, b, goal);
+    if (favorable === true) good++;
+    if (favorable === false) bad++;
+  }
+  if (parts.length === 0) {
+    return { message: 'Medición guardada. Sin cambios en peso, grasa, músculo ni cintura.', favorable: false };
+  }
+  const favorable = good > 0 && good > bad;
+  const lead = favorable ? 'Buen avance desde la anterior' : 'Medición guardada. Desde la anterior';
+  return { message: `${lead}: ${parts.join(', ')}.`, favorable };
+}

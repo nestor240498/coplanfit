@@ -5,7 +5,7 @@ import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { s } from '@/theme/scale';
 import { colors } from '@/theme/tokens';
-import { fonts } from '@/theme/typography';
+import { fonts, fontSizes } from '@/theme/typography';
 
 type Step = {
   number: 1 | 2 | 3;
@@ -183,7 +183,7 @@ const styles = StyleSheet.create({
   },
   circleNumber: {
     fontFamily: fonts.bodyBold,
-    fontSize: s(8),
+    fontSize: fontSizes.label,
     color: colors.onNavyMuted,
   },
   circleNumberCurrent: {
@@ -192,7 +192,7 @@ const styles = StyleSheet.create({
   },
   label: {
     fontFamily: fonts.body,
-    fontSize: s(7.5),
+    fontSize: fontSizes.micro,
     color: colors.onNavyMuted,
     textAlign: 'center',
   },

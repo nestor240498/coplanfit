@@ -11,6 +11,9 @@
 
 import { createClient } from 'npm:@supabase/supabase-js@^2.45.0';
 
+import { callGemini, geminiFailureMessage } from '../_shared/gemini.ts';
+import { checkAiQuota, recordAiGeneration } from '../_shared/quota.ts';
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
@@ -50,10 +53,12 @@ const responseSchema = {
     cues: { type: 'ARRAY', items: { type: 'STRING' } },
     contraindications: { type: 'ARRAY', items: { type: 'STRING' } },
     aliases: { type: 'ARRAY', items: { type: 'STRING' } },
+    description: { type: 'STRING' },
   },
   required: [
     'muscle_group', 'secondary_muscles', 'equipment', 'extra_equipment', 'exercise_type', 'metric',
     'laterality', 'movement_pattern', 'difficulty', 'cues', 'contraindications', 'aliases',
+    'description',
   ],
 };
 
@@ -94,41 +99,36 @@ Reglas:
 - difficulty: nivel técnico mínimo recomendado.
 - cues: 2 o 3 indicaciones de sala, de 2 a 5 palabras, en español coloquial ("pecho arriba", "codos pegados").
 - contraindications: 0 a 3 condiciones o lesiones comunes con las que conviene evitarlo o adaptarlo, en pocas palabras ("hernia discal lumbar", "dolor de hombro"). Lista vacía si no aplica.
-- aliases: 0 a 3 nombres alternativos habituales (en español o inglés de gimnasio), distintos del nombre dado.`;
+- aliases: 0 a 3 nombres alternativos habituales (en español o inglés de gimnasio), distintos del nombre dado.
+- description: UNA frase de 10 a 20 palabras que diga qué es el ejercicio y qué trabaja, para alguien que no lo conoce ("Sentadilla a una pierna con el pie trasero sobre un banco; trabaja cuádriceps y glúteos."). Sin consejos técnicos ni errores a evitar.`;
 
     const payload = {
       contents: [{ role: 'user', parts: [{ text: prompt }] }],
       generationConfig: { responseMimeType: 'application/json', responseSchema, temperature: 0.1 },
     };
 
-    let lastError = '';
-    for (const model of ['gemini-flash-latest', 'gemini-2.5-flash']) {
-      try {
-        const res = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiApiKey}`,
-          { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }
-        );
-        if (!res.ok) {
-          lastError = `[${model}] ${res.status}: ${await res.text()}`;
-          continue;
-        }
-        const data = await res.json();
-        const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (!text) {
-          lastError = `[${model}] respuesta vacía`;
-          continue;
-        }
-        const parsed = JSON.parse(text);
-        parsed.secondary_muscles = (parsed.secondary_muscles ?? []).filter((m: string) => m !== parsed.muscle_group);
-        parsed.extra_equipment = (parsed.extra_equipment ?? []).filter((e: string) => e !== parsed.equipment);
-        return json(parsed);
-      } catch (err) {
-        lastError = `[${model}] ${(err as Error).message}`;
-      }
-    }
+    const blocked = await checkAiQuota(supabase, 'Mientras tanto puedes rellenar los datos a mano.');
+    if (blocked) return json(blocked.body, blocked.status);
 
-    console.error('classify-exercise sin respuesta de Gemini:', lastError);
-    return json({ error: 'La IA no respondió. Inténtalo de nuevo o rellena los datos a mano.' }, 502);
+    const result = await callGemini(geminiApiKey, payload);
+    if (!result.ok) {
+      console.error('classify-exercise sin respuesta de Gemini:', result.detail);
+      // `detail` (código y mensaje de Gemini, nunca la clave) lo muestra la app solo en desarrollo
+      return json(
+        {
+          error: geminiFailureMessage(result, 'Prueba de nuevo en un minuto o rellena los datos a mano.'),
+          detail: result.detail,
+        },
+        result.transient ? 503 : 502
+      );
+    }
+    const parsed = JSON.parse(result.text);
+    parsed.description = String(parsed.description ?? '').trim().slice(0, 200);
+    // Cuenta 1 e incluye la redacción de la técnica que la app pide justo después
+    await recordAiGeneration(supabase, 'ejercicio');
+    parsed.secondary_muscles = (parsed.secondary_muscles ?? []).filter((m: string) => m !== parsed.muscle_group);
+    parsed.extra_equipment = (parsed.extra_equipment ?? []).filter((e: string) => e !== parsed.equipment);
+    return json(parsed);
   } catch (err) {
     return json({ error: (err as Error).message }, 500);
   }
