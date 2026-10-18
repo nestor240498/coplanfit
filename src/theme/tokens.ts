@@ -5,33 +5,10 @@
  */
 import { Platform } from 'react-native';
 
+import { colors } from './colors';
 import { s } from './scale';
 
-export const colors = {
-  navy: '#1B2A4A',
-  lime: '#8BC53F',
-  background: '#F7F8FA',
-  surface: '#FFFFFF',
-  border: '#DDE2EA',
-  /** Borde superior del tab bar (mockup: #E4E7ED) */
-  tabBarBorder: '#E4E7ED',
-
-  text: '#2E2E2E',
-  textSecondary: '#5A6270',
-  textMuted: '#697182',
-  /** Texto secundario sobre fondo navy (subtítulos de header) */
-  onNavyMuted: '#B9C2D6',
-
-  danger: '#B4442E',
-  dangerBg: '#FFE4DF',
-  success: '#4B7A1F',
-  successBg: '#EAF6D9',
-  /** Relleno de avisos «queda poco» (barras de uso); no usar como color de texto */
-  warning: '#E0A21B',
-
-  /** Fondo de chip neutro (ej. "Evita: frutos secos") */
-  neutralChipBg: '#EEF0F4',
-} as const;
+export { colors };
 
 export const radius = {
   card: s(10),

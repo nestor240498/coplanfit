@@ -2,6 +2,7 @@ import { Session } from '@supabase/supabase-js';
 import { create } from 'zustand';
 
 import { useAiQuota } from '@/features/ai/quota';
+import { clearAllIsakDrafts } from '@/features/anthropometry/draftStorage';
 import { clearMediaCache } from '@/lib/storage';
 import { supabase } from '@/lib/supabase';
 
@@ -50,6 +51,8 @@ export const useAuth = create<AuthState>((set) => ({
     await supabase.auth.signOut();
     // Las fotos de clientes son confidenciales: no deben quedar en memoria tras cerrar sesión
     await clearMediaCache().catch(() => {});
+    // Lecturas de evaluaciones a medias: datos del cliente, no deben quedar en el dispositivo
+    await clearAllIsakDrafts().catch(() => {});
     useAiQuota.setState({ quota: null });
   },
 }));

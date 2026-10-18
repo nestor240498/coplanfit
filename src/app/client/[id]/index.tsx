@@ -2,7 +2,7 @@ import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { FadeInLeft, FadeInRight, useReducedMotion } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
-import { Dumbbell, HeartPulse, Pencil, Scale, User, Users, UtensilsCrossed } from 'lucide-react-native';
+import { Dumbbell, HeartPulse, Pencil, Scale, User, UtensilsCrossed } from 'lucide-react-native';
 import { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
@@ -28,7 +28,7 @@ import { PlanesTab } from '@/features/clients/components/PlanesTab';
 import { SaludTab } from '@/features/clients/components/SaludTab';
 import {
   createMeasurement,
-  getLatestMeasurement,
+  listMeasurements,
   uploadMeasurementPhotos,
 } from '@/features/clients/measurementsRepository';
 import { usePlanBuilderStore } from '@/features/clients/planBuilderStore';
@@ -53,10 +53,15 @@ import { EntrenamientoTab } from '@/features/workouts/components/EntrenamientoTa
 import { WorkoutPlanVersion } from '@/features/workouts/types';
 import { useWorkoutBuilderStore } from '@/features/workouts/workoutBuilderStore';
 import { deleteWorkoutDraft, listWorkoutPlanVersions } from '@/features/workouts/workoutsRepository';
+import { importPdfAsDraft } from '@/features/anthropometry/pdfImport';
+import { AiProgressModal } from '@/components/ui/AiProgressModal';
+import { RegisterMeasurementsSheet, type RegisterChoice } from '@/features/anthropometry/components/RegisterMeasurementsSheet';
+import { type DraftSummary, deleteDraft, loadDraftSummary } from '@/features/anthropometry/draftStorage';
 import { friendlyError } from '@/lib/errors';
+import { supabase } from '@/lib/supabase';
 import { describeMeasurementChange } from '@/lib/measurementTrends';
 import { DURATION, EASE_OUT, hapticSelection, hapticSuccess } from '@/lib/motion';
-import { calculateAge, formatDateShort, formatMonthYear } from '@/lib/format';
+import { calculateAge, formatDateShort, formatMonthYear, localDateIso } from '@/lib/format';
 import { s } from '@/theme/scale';
 import { colors, radius } from '@/theme/tokens';
 import { fonts, fontSizes } from '@/theme/typography';
@@ -105,12 +110,15 @@ const EMPTY_MEASUREMENT_FORM: MeasurementFormState = {
 };
 
 export default function ClientDetailScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, tab: tabParam } = useLocalSearchParams<{ id: string; tab?: string }>();
   const router = useRouter();
 
-  const [tab, setTab] = useState<'datos' | 'salud' | 'antropometria' | 'planes' | 'entrenamiento'>('datos');
+  const [tab, setTab] = useState<'datos' | 'salud' | 'antropometria' | 'planes' | 'entrenamiento'>(
+    tabParam === 'antropometria' || tabParam === 'salud' || tabParam === 'planes' || tabParam === 'entrenamiento' ? tabParam : 'datos'
+  );
   const [client, setClient] = useState<Client | null>(null);
   const [tags, setTags] = useState<ClientTag[]>([]);
+  const [allMeasurements, setAllMeasurements] = useState<Measurement[]>([]);
   const [measurement, setMeasurement] = useState<Measurement | null>(null);
   const [planVersions, setPlanVersions] = useState<PlanVersion[]>([]);
   const [planDraft, setPlanDraft] = useState<PlanVersionWithData | null>(null);
@@ -126,6 +134,10 @@ export default function ClientDetailScreen() {
   const [measurementFormInitial, setMeasurementFormInitial] = useState<MeasurementFormState>(EMPTY_MEASUREMENT_FORM);
 
   const loadDraftToStore = usePlanBuilderStore((s) => s.loadDraft);
+  // Evaluación ISAK a medias guardada en el dispositivo
+  const [isakDraft, setIsakDraft] = useState<DraftSummary | null>(null);
+  const [registerOpen, setRegisterOpen] = useState(false);
+  const [readingPdf, setReadingPdf] = useState<{ name: string; sizeKb: number } | null>(null);
 
   const load = useCallback(() => {
     if (!id) return;
@@ -134,7 +146,7 @@ export default function ClientDetailScreen() {
     Promise.all([
       getClient(id),
       listTags(id),
-      getLatestMeasurement(id),
+      listMeasurements(id),
       listPlanVersions(id),
       getPlanDraft(id),
       listWorkoutPlanVersions(id).catch(() => []),
@@ -143,7 +155,8 @@ export default function ClientDetailScreen() {
         if (cancelled) return;
         setClient(c);
         setTags(t);
-        setMeasurement(m);
+        setAllMeasurements(m);
+        setMeasurement(m[0] ?? null);
         setPlanVersions(pv);
         setPlanDraft(draft);
         setWorkoutVersions(wv);
@@ -151,6 +164,13 @@ export default function ClientDetailScreen() {
       .catch((e: Error) => {
         if (!cancelled) setError(friendlyError(e));
       });
+    supabase.auth
+      .getSession()
+      .then(({ data }) => (data.session ? loadDraftSummary(data.session.user.id, id, Date.now()) : null))
+      .then((summary) => {
+        if (!cancelled) setIsakDraft(summary);
+      })
+      .catch(() => {});
     return () => {
       cancelled = true;
     };
@@ -300,7 +320,96 @@ export default function ClientDetailScreen() {
     setTab(nextTab);
   }
 
+  async function handleImportPdf() {
+    if (!client) return;
+    try {
+      const { data } = await supabase.auth.getSession();
+      const uid = data.session?.user.id;
+      if (!uid) throw new Error('Sesión expirada. Vuelve a iniciar sesión.');
+      if (isakDraft) {
+        const replace = await new Promise<boolean>((resolve) =>
+          Alert.alert('Tienes una medición a medias', 'Si importas el informe, la anterior se descarta. No se puede deshacer.', [
+            { text: 'Cancelar', style: 'cancel', onPress: () => resolve(false) },
+            { text: 'Descartar e importar', style: 'destructive', onPress: () => resolve(true) },
+          ])
+        );
+        if (!replace) return;
+      }
+      if (await importPdfAsDraft(client, uid, setReadingPdf)) {
+        hapticSuccess();
+        setIsakDraft(await loadDraftSummary(uid, client.id, Date.now()));
+        toast({ message: 'Informe leído. Revisa las medidas antes de guardar.', tone: 'success' });
+        router.push(`/client/${id}/measurements/session` as never);
+      }
+    } catch (e) {
+      Alert.alert('No se pudo leer el informe', friendlyError(e));
+    } finally {
+      setReadingPdf(null);
+    }
+  }
+
+  function handleDiscardIsakDraft() {
+    Alert.alert('¿Descartar la medición?', 'Se borrarán las lecturas anotadas. No se puede deshacer.', [
+      { text: 'Cancelar', style: 'cancel' },
+      {
+        text: 'Descartar',
+        style: 'destructive',
+        onPress: async () => {
+          const { data } = await supabase.auth.getSession();
+          if (data.session) await deleteDraft(data.session.user.id, id).catch(() => {});
+          setIsakDraft(null);
+        },
+      },
+    ]);
+  }
+
+  function handleRegisterChoice(choice: RegisterChoice) {
+    setRegisterOpen(false);
+    const base = `/client/${id}/measurements/session`;
+    if (choice === 'basic') {
+      handleStartEditingMeasurements();
+      return;
+    }
+    if (choice === 'import_pdf') {
+      // Espera a que la hoja termine de cerrarse: iOS no presenta el selector de archivos encima
+      setTimeout(handleImportPdf, 400);
+      return;
+    }
+    const target = `${base}?profile=${choice}`;
+    if (!isakDraft) {
+      router.push(target as never);
+      return;
+    }
+    // Empezar otra medición descartaría la que está a medias
+    Alert.alert('Tienes una medición a medias', 'Si empiezas otra, la anterior se descarta. No se puede deshacer.', [
+      { text: 'Cancelar', style: 'cancel' },
+      {
+        text: 'Descartar y empezar',
+        style: 'destructive',
+        onPress: async () => {
+          const { data } = await supabase.auth.getSession();
+          if (data.session) await deleteDraft(data.session.user.id, id).catch(() => {});
+          setIsakDraft(null);
+          router.push(target as never);
+        },
+      },
+    ]);
+  }
+
   function handleStartEditingMeasurements() {
+    // Tras una evaluación ISAK solo se copian peso y talla: los pliegues y porcentajes calculados
+    // aparecerían como «medidos hoy» en el registro rápido
+    if (measurement?.protocol === 'isak_restricted' || measurement?.protocol === 'skinfolds') {
+      const initial: MeasurementFormState = {
+        ...EMPTY_MEASUREMENT_FORM,
+        weight: measurement.weight_kg != null ? String(measurement.weight_kg) : '',
+        height: measurement.height_cm != null ? String(measurement.height_cm) : '',
+      };
+      setMeasurementForm(initial);
+      setMeasurementFormInitial(initial);
+      setIsEditingMeasurements(true);
+      return;
+    }
     const initialForm: MeasurementFormState = {
       photos: measurement?.photos ? [...measurement.photos] : [],
       weight: measurement?.weight_kg != null ? String(measurement.weight_kg) : '',
@@ -364,6 +473,7 @@ export default function ClientDetailScreen() {
       const heightCm = rawH != null ? (rawH > 3 ? rawH : rawH * 100) : null;
 
       const created = await createMeasurement(id, {
+        measured_at: localDateIso(),
         photos: uploadedUrls.length > 0 ? uploadedUrls : undefined,
         weight_kg: num(measurementForm.weight),
         height_cm: heightCm,
@@ -401,6 +511,7 @@ export default function ClientDetailScreen() {
 
       const change = describeMeasurementChange(measurement, created, client?.goal ?? null);
       setMeasurement(created);
+      setAllMeasurements((prev) => [created, ...prev]);
       setIsEditingMeasurements(false);
       hapticSuccess();
       toast({ message: change.message, tone: 'success', duration: 5000 });
@@ -452,10 +563,6 @@ export default function ClientDetailScreen() {
         title={client.full_name}
         subtitle={subtitle}
         showBack
-        breadcrumbs={[
-          { label: 'Clientes', href: '/', icon: Users },
-          { label: client.full_name },
-        ]}
         right={
           <Pressable
             accessibilityRole="button"
@@ -513,7 +620,14 @@ export default function ClientDetailScreen() {
             isEditing={isEditingMeasurements}
             formState={measurementForm}
             onChangeFormState={handleChangeMeasurementForm}
+            measurements={allMeasurements}
+            draft={isakDraft}
+            onResumeDraft={() => router.push(`/client/${id}/measurements/session` as never)}
+            onDiscardDraft={handleDiscardIsakDraft}
             onViewHistory={() => router.push(`/client/${id}/measurements/history`)}
+            onOpenAnalysis={(measurementId) =>
+              router.push({ pathname: '/client/[id]/measurements/[measurementId]', params: { id, measurementId } })
+            }
             onSent={bumpSent}
           />
         )}
@@ -572,13 +686,27 @@ export default function ClientDetailScreen() {
               />
             </View>
           ) : (
-            <Button
-              title="Actualizar medición"
-              onPress={handleStartEditingMeasurements}
-            />
+            <Button title="+ Registrar medidas" onPress={() => setRegisterOpen(true)} />
           )}
         </View>
       )}
+
+      <RegisterMeasurementsSheet
+        visible={registerOpen}
+        onClose={() => setRegisterOpen(false)}
+        onChoose={handleRegisterChoice}
+      />
+
+      <AiProgressModal
+        visible={readingPdf != null}
+        title="Leyendo el informe"
+        clientName={client.full_name}
+        inputs={[
+          readingPdf ? `Archivo: ${readingPdf.name} (${readingPdf.sizeKb} KB)` : 'Informe PDF',
+          'Se buscan las 21 medidas del perfil ISAK y los resultados del informe',
+        ]}
+        slowHint="Si la IA no responde, podrás volver a intentarlo o anotar las medidas a mano."
+      />
 
       <EditNameSheet
         key={`${client.id}-${client.full_name}-${client.avatar_url ?? ''}`}

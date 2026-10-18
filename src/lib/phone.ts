@@ -42,3 +42,30 @@ export function formatPhone(value: string | null | undefined): string {
   const groups = localNumber.replace(/(\d{3})(\d{3})(\d+)/, '$1 $2 $3');
   return `+${prefix} ${groups}`;
 }
+
+/**
+ * Interpreta un teléfono escrito a mano o pegado (Excel, contactos): «+34 612…», «0034…», «0412-1234567»
+ * (0 nacional) o «4121234567» (sin prefijo, se añade `defaultPrefix`). Si la celda trae varios números,
+ * usa el primero y avisa con `issue: 'multiple'`.
+ */
+export function parsePhoneInput(
+  raw: string,
+  defaultPrefix: string = DEFAULT_COUNTRY_PREFIX
+): { phone: string | null; issue?: 'invalid' | 'multiple'; rest?: string } {
+  const text = raw.trim();
+  if (!text) return { phone: null };
+  const pieces = text.split(/\s*(?:[/;,|]|\sy\s|\so\s)\s*/).filter((p) => onlyDigits(p).length >= 7);
+  const first = (pieces[0] ?? text).trim();
+  const multiple = pieces.length > 1;
+  let digits: string;
+  if (first.startsWith('+')) digits = onlyDigits(first);
+  else if (onlyDigits(first).startsWith('00')) digits = onlyDigits(first).slice(2);
+  else {
+    const d = onlyDigits(first);
+    if (d.startsWith('0')) digits = `${onlyDigits(defaultPrefix)}${d.replace(/^0+/, '')}`;
+    else if (d.length >= 11 && KNOWN_PREFIXES.some((p) => d.startsWith(p))) digits = d;
+    else digits = `${onlyDigits(defaultPrefix)}${d}`;
+  }
+  if (!isValidPhone(digits)) return { phone: null, issue: 'invalid' };
+  return multiple ? { phone: digits, issue: 'multiple', rest: pieces.slice(1).join(', ') } : { phone: digits };
+}

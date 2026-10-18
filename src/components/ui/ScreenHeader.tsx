@@ -14,6 +14,8 @@ type Props = {
   subtitle?: string;
   /** Muestra la flecha de volver */
   showBack?: boolean;
+  /** Destino al volver cuando no hay pantalla anterior (recarga o enlace directo); por defecto, el inicio. */
+  backHref?: string;
   /** Muestra el botón de ir al inicio */
   showHome?: boolean;
   /** Elemento a la derecha del título (badge de cupo, ícono, botón…) */
@@ -27,6 +29,7 @@ export function ScreenHeader({
   subtitle,
   showBack,
   showHome: _showHome,
+  backHref,
   right,
   breadcrumbs,
 }: Props) {
@@ -35,7 +38,7 @@ export function ScreenHeader({
 
   function handleBack() {
     if (router.canGoBack()) router.back();
-    else router.replace('/');
+    else router.replace((backHref ?? '/') as never);
   }
 
   return (

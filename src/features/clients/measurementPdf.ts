@@ -1,12 +1,12 @@
 import { Profile } from '@/features/profile/types';
-import { formatDateShort, formatGoal } from '@/lib/format';
+import { ageAt, formatDateShort, formatGoal } from '@/lib/format';
 import { isChangeFavorable } from '@/lib/measurementTrends';
 import { esc, pdfDocument, pdfFooter, pdfHeader, pdfMetaCard, pdfSectionTitle } from '@/lib/pdf';
 import { resolveMediaUrls } from '@/lib/storage';
 import { Client, Measurement } from './types';
 
 type MeasurementPdfOptions = {
-  client: Pick<Client, 'full_name' | 'goal' | 'age'>;
+  client: Pick<Client, 'full_name' | 'goal' | 'age' | 'birth_date'>;
   profile: Profile | null;
   measurement: Measurement;
   /** Fotos de progreso (confidenciales): solo si el entrenador lo activa. */
@@ -14,7 +14,7 @@ type MeasurementPdfOptions = {
 };
 
 type ComparisonPdfOptions = {
-  client: Pick<Client, 'full_name' | 'goal' | 'age'>;
+  client: Pick<Client, 'full_name' | 'goal' | 'age' | 'birth_date'>;
   profile: Profile | null;
   earlier: Measurement;
   later: Measurement;
@@ -59,12 +59,18 @@ const SKINFOLDS: Metric[] = [
   { key: 'biceps_mm', label: 'Bíceps', unit: 'mm', decimals: 1 },
   { key: 'subscapular_mm', label: 'Subescapular', unit: 'mm', decimals: 1 },
   { key: 'supraspinal_mm', label: 'Supraespinal', unit: 'mm', decimals: 1 },
-  { key: 'suprailiac_mm', label: 'Suprailíaco', unit: 'mm', decimals: 1 },
+  { key: 'suprailiac_mm', label: 'Cresta ilíaca', unit: 'mm', decimals: 1 },
   { key: 'abdominal_mm', label: 'Abdominal', unit: 'mm', decimals: 1 },
   { key: 'thigh_mm', label: 'Muslo frontal', unit: 'mm', decimals: 1 },
   { key: 'calf_mm', label: 'Pantorrilla medial', unit: 'mm', decimals: 1 },
   { key: 'chest_mm', label: 'Pectoral', unit: 'mm', decimals: 1 },
 ];
+
+/** Edad a la fecha de la medición (con la fecha de nacimiento si la hay). */
+function ageLabel(client: Pick<Client, 'age' | 'birth_date'>, measuredAt: string): string | null {
+  const age = ageAt(client.birth_date, measuredAt) ?? client.age;
+  return age != null ? `${age} años` : null;
+}
 
 export const MEASUREMENT_PDF_CSS = `
   .grid-2 { display: flex; gap: 12px; align-items: flex-start; }
@@ -135,7 +141,7 @@ export async function buildMeasurementPdfHtml({
     ${pdfMetaCard([
       { label: 'Cliente', value: client.full_name },
       { label: 'Fecha de medición', value: date },
-      { label: 'Edad', value: client.age != null ? `${client.age} años` : null },
+      { label: 'Edad', value: ageLabel(client, measurement.measured_at) },
       { label: 'Objetivo', value: goal },
     ])}
     <div class="grid-2">
@@ -215,7 +221,7 @@ export async function buildMeasurementComparisonPdfHtml({
     ${pdfMetaCard([
       { label: 'Cliente', value: client.full_name },
       { label: 'Periodo', value: `${dateEarlier} → ${dateLater}` },
-      { label: 'Edad', value: client.age != null ? `${client.age} años` : null },
+      { label: 'Edad', value: ageLabel(client, later.measured_at) },
       { label: 'Objetivo', value: goal },
     ])}
     ${comparisonTable('Composición corporal', COMPOSITION)}

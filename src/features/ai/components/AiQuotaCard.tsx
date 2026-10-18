@@ -21,7 +21,7 @@ export function AiQuotaCard({ quota }: Props) {
           <Text style={styles.title} accessibilityRole="header">
             Generaciones con IA
           </Text>
-          <Text style={styles.subtitle}>Cuenta cada plan, rutina o ejercicio que completas con IA.</Text>
+          <Text style={styles.subtitle}>Cuenta cada plan, rutina, ejercicio o informe PDF que completas con IA.</Text>
         </View>
       </View>
 

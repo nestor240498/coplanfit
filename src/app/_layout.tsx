@@ -42,6 +42,8 @@ export default function RootLayout() {
         <Stack.Protected guard={!!session}>
           <Stack.Screen name="(tabs)" />
           <Stack.Screen name="client/new" />
+          <Stack.Screen name="client/import" />
+          <Stack.Screen name="privacy" />
           <Stack.Screen name="client/[id]" />
         </Stack.Protected>
         <Stack.Protected guard={!session}>

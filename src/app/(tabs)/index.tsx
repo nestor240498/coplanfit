@@ -18,8 +18,6 @@ import { s } from '@/theme/scale';
 import { colors, radius } from '@/theme/tokens';
 import { fonts, fontSizes, lineHeights } from '@/theme/typography';
 
-// TODO: leer el límite del paquete de suscripción cuando exista esa tabla
-const PLAN_LIMIT = 10;
 
 /**
  * Pantalla Clientes:
@@ -61,7 +59,10 @@ export default function ClientsScreen() {
   return (
     <View style={styles.screen}>
       <AppBackground />
-      <ScreenHeader title="Clientes" right={<Badge label={`${clients?.length ?? '–'}/${PLAN_LIMIT}`} />} />
+      <ScreenHeader title="Clientes" right={
+          // Suscripciones en pausa: sin límite de clientes que mostrar
+          <Badge label={clients ? `${clients.length} ${clients.length === 1 ? 'cliente' : 'clientes'}` : '–'} />
+        } />
 
       <View style={styles.body}>
         <Input
@@ -88,13 +89,17 @@ export default function ClientsScreen() {
             contentContainerStyle={styles.list}
             showsVerticalScrollIndicator={false}
             ListEmptyComponent={
-              <View style={styles.messageBox}>
-                <Text style={styles.messageText}>
-                  {query
-                    ? 'Ningún cliente coincide con la búsqueda.'
-                    : 'Aún no tienes clientes. Crea el primero con el botón +.'}
-                </Text>
-              </View>
+              query ? (
+                <View style={styles.messageBox}>
+                  <Text style={styles.messageText}>Ningún cliente coincide con la búsqueda.</Text>
+                </View>
+              ) : (
+                <View style={styles.messageBox}>
+                  <Text style={styles.messageText}>Aún no tienes clientes.</Text>
+                  <Text style={styles.messageText}>¿Ya los tienes en un Excel? Impórtalos todos de una vez, o crea el primero con el botón +.</Text>
+                  <Button title="Importar desde Excel o CSV" onPress={() => router.push('/client/import')} />
+                </View>
+              )
             }
             renderItem={({ item }) => <ClientRow client={item} onPress={() => router.push(`/client/${item.id}`)} />}
           />

@@ -56,7 +56,7 @@ export async function checkAiQuota(
 /** Anota una generación con éxito. Un fallo al anotarla no debe estropear la respuesta ya obtenida. */
 export async function recordAiGeneration(
   supabase: SupabaseLike,
-  kind: 'plan' | 'rutina' | 'ejercicio',
+  kind: 'plan' | 'rutina' | 'ejercicio' | 'medicion',
   clientId?: string | null,
   bundled = false
 ) {

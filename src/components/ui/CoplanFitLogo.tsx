@@ -82,53 +82,6 @@ export function CoplanFitLogo({
   );
 }
 
-/** Icono de app / cuadrado isotipo estilizado (como en el mockup 1a) */
-export function CoplanFitAppIcon({ size = s(44) }: { size?: number }) {
-  const innerSize = size * 0.46;
-  const innerRadius = innerSize * 0.32;
-
-  return (
-    <View
-      style={[
-        styles.appIconWrap,
-        {
-          width: size,
-          height: size,
-          borderRadius: size * 0.28,
-          backgroundColor: colors.navy,
-        },
-      ]}
-    >
-      <View style={{ width: size * 0.76, height: size * 0.76, position: 'relative' }}>
-        {/* Forma blanca superior izquierda */}
-        <View
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            width: innerSize,
-            height: innerSize,
-            borderRadius: innerRadius,
-            backgroundColor: '#FFFFFF',
-          }}
-        />
-        {/* Forma verde lima inferior derecha */}
-        <View
-          style={{
-            position: 'absolute',
-            bottom: 0,
-            right: 0,
-            width: innerSize,
-            height: innerSize,
-            borderRadius: innerRadius,
-            backgroundColor: colors.lime,
-          }}
-        />
-      </View>
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
@@ -154,10 +107,5 @@ const styles = StyleSheet.create({
     fontFamily: fonts.heading,
     fontWeight: '800',
     letterSpacing: -0.5,
-  },
-  appIconWrap: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
   },
 });

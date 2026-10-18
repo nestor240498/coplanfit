@@ -4,24 +4,14 @@ import { Platform } from 'react-native';
 
 import { Profile } from '@/features/profile/types';
 
+import { esc, escMultiline } from './escape';
+
 /**
  * Base común de los PDF de CoplanFit (dirección visual "Navy Pro").
  * Todo texto que venga del usuario (nombres, notas, alimentos…) debe pasar por `esc()`.
  */
 
-export function esc(value: string | number | null | undefined): string {
-  return String(value ?? '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-}
-
-/** Texto multilínea escapado, con saltos de línea como <br/>. */
-export function escMultiline(value: string | null | undefined): string {
-  return esc(value).replace(/\n/g, '<br/>');
-}
+export { esc, escMultiline };
 
 export const PDF_BASE_CSS = `
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Manrope:wght@700;800&display=swap');
@@ -120,10 +110,11 @@ export function pdfSectionTitle(title: string): string {
 export function pdfFooter(profile: Profile | null, clientName: string, date: string): string {
   return `
     <div class="doc-footer" data-pdf-footer>
-      <div class="doc-meta">Generado con CoplanFit · ${esc(clientName)} · ${esc(date)}</div>
+      <div class="doc-meta">Generado con CoplanFit · ${esc(clientName)} · ${esc(date)}<br/>Información orientativa: no es un diagnóstico ni sustituye una valoración médica.</div>
       <div>
         <div class="trainer-name">${esc(profile?.full_name || 'Entrenador personal')}</div>
         ${profile?.business_name ? `<div class="trainer-role">${esc(profile.business_name)}</div>` : ''}
+        ${profile?.certification ? `<div class="trainer-role">Certificación declarada: ${esc(profile.certification)}</div>` : ''}
         ${profile?.description ? `<div class="trainer-desc">${esc(profile.description)}</div>` : ''}
       </div>
     </div>`;

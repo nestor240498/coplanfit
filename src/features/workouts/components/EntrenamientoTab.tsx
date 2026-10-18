@@ -60,6 +60,17 @@ export function EntrenamientoTab({
   const goalObj = TRAINING_GOALS.find((g) => g.id === client.training_goal);
   const levelObj = TRAINING_LEVELS.find((l) => l.id === client.training_level);
   const equipObj = EQUIPMENT_OPTIONS.find((e) => e.id === client.equipment_access);
+  const profileSummary =
+    [
+      goalObj?.label,
+      levelObj?.label,
+      equipObj?.label,
+      client.days_per_week ? `${client.days_per_week} días/semana` : null,
+    ]
+      .filter(Boolean)
+      .join(' · ') || 'Sin configurar: elige objetivo, nivel, equipamiento y frecuencia';
+  // Abierto solo si el perfil está vacío (hay que rellenarlo antes de generar rutinas)
+  const [profileOpen, setProfileOpen] = useState(!goalObj && !levelObj && !equipObj && !client.days_per_week);
 
   // Tags médicos y de condiciones desde la pestaña Salud
   const medicalTags = tags.filter((t) => t.kind === 'condicion');
@@ -86,61 +97,6 @@ export function EntrenamientoTab({
             Perfil fitness, distribución semanal y rutinas con animaciones de ejercicios.
           </Text>
         </View>
-
-        {/* Configuración del Perfil Fitness */}
-        <View style={styles.fieldsGroup}>
-          {/* Objetivo de entrenamiento */}
-          <Pressable onPress={() => setGoalSheetOpen(true)} style={styles.fieldRow}>
-            <Text style={styles.fieldLabel}>Objetivo en pesas / fitness</Text>
-            <Text style={styles.fieldValue}>{goalObj ? goalObj.label : 'Elegir'} ▾</Text>
-          </Pressable>
-
-          {/* Nivel de experiencia */}
-          <Pressable onPress={() => setLevelSheetOpen(true)} style={styles.fieldRow}>
-            <Text style={styles.fieldLabel}>Nivel de experiencia</Text>
-            <Text style={styles.fieldValue}>{levelObj ? levelObj.label : 'Elegir'} ▾</Text>
-          </Pressable>
-
-          {/* Equipamiento disponible */}
-          <Pressable onPress={() => setEquipmentSheetOpen(true)} style={styles.fieldRow}>
-            <Text style={styles.fieldLabel}>Equipamiento disponible</Text>
-            <Text style={styles.fieldValue}>{equipObj ? equipObj.label : 'Elegir'} ▾</Text>
-          </Pressable>
-
-          {/* Frecuencia semanal */}
-          <Pressable onPress={() => setFrequencySheetOpen(true)} style={styles.fieldRow}>
-            <Text style={styles.fieldLabel}>Frecuencia semanal</Text>
-            <Text style={styles.fieldValue}>
-              {client.days_per_week ? `${client.days_per_week} días / semana` : 'Elegir'} ▾
-            </Text>
-          </Pressable>
-        </View>
-
-        {/* Resumen de consideraciones de salud / lesiones (informativo) */}
-        {medicalTags.length > 0 && (
-          <View style={styles.healthWarningBox}>
-            <Text style={styles.healthWarningTitle}>
-              Consideraciones de salud (desde pestaña Salud):
-            </Text>
-            <View style={styles.chipRow}>
-              {medicalTags.map((t) => (
-                <Chip key={t.id} label={t.label} variant="neutral" />
-              ))}
-            </View>
-          </View>
-        )}
-
-        {/* Notas y preferencias de entrenamiento */}
-        <Text style={styles.groupLabel}>Notas y observaciones de entrenamiento</Text>
-        <TextInput
-          value={trainingNotes}
-          onChangeText={setTrainingNotes}
-          onEndEditing={handleNotesBlur}
-          multiline
-          placeholder="Ej: Prefiere ejercicios con mancuernas, descanso mínimo de 90s, enfoque en glúteos…"
-          placeholderTextColor={colors.textMuted}
-          style={styles.notes}
-        />
 
         {/* Separador de Rutinas */}
         <View style={styles.routinesSection}>
@@ -208,6 +164,81 @@ export function EntrenamientoTab({
             </Pressable>
           ))
         )}
+        {/* Perfil de entrenamiento: plegado en un resumen para que las rutinas queden arriba */}
+        <View style={styles.profileCard}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityState={{ expanded: profileOpen }}
+            accessibilityLabel={`Perfil de entrenamiento: ${profileSummary}. ${profileOpen ? 'Ocultar' : 'Editar'}`}
+            onPress={() => setProfileOpen((v) => !v)}
+            style={styles.profileHeader}
+          >
+            <View style={styles.profileTexts}>
+              <Text style={styles.profileTitle}>Perfil de entrenamiento</Text>
+              <Text style={styles.profileSummary} numberOfLines={profileOpen ? undefined : 2}>
+                {profileSummary}
+              </Text>
+            </View>
+            <Text style={styles.profileToggle}>{profileOpen ? 'Ocultar' : 'Editar'}</Text>
+          </Pressable>
+          {profileOpen && <View style={styles.profileBody}>
+        {/* Configuración del Perfil Fitness */}
+          <View style={styles.fieldsGroup}>
+            {/* Objetivo de entrenamiento */}
+            <Pressable onPress={() => setGoalSheetOpen(true)} style={styles.fieldRow}>
+              <Text style={styles.fieldLabel}>Objetivo en pesas / fitness</Text>
+              <Text style={styles.fieldValue}>{goalObj ? goalObj.label : 'Elegir'} ▾</Text>
+            </Pressable>
+
+            {/* Nivel de experiencia */}
+            <Pressable onPress={() => setLevelSheetOpen(true)} style={styles.fieldRow}>
+              <Text style={styles.fieldLabel}>Nivel de experiencia</Text>
+              <Text style={styles.fieldValue}>{levelObj ? levelObj.label : 'Elegir'} ▾</Text>
+            </Pressable>
+
+            {/* Equipamiento disponible */}
+            <Pressable onPress={() => setEquipmentSheetOpen(true)} style={styles.fieldRow}>
+              <Text style={styles.fieldLabel}>Equipamiento disponible</Text>
+              <Text style={styles.fieldValue}>{equipObj ? equipObj.label : 'Elegir'} ▾</Text>
+            </Pressable>
+
+            {/* Frecuencia semanal */}
+            <Pressable onPress={() => setFrequencySheetOpen(true)} style={styles.fieldRow}>
+              <Text style={styles.fieldLabel}>Frecuencia semanal</Text>
+              <Text style={styles.fieldValue}>
+                {client.days_per_week ? `${client.days_per_week} días / semana` : 'Elegir'} ▾
+              </Text>
+            </Pressable>
+          </View>
+
+          {/* Resumen de consideraciones de salud / lesiones (informativo) */}
+          {medicalTags.length > 0 && (
+            <View style={styles.healthWarningBox}>
+              <Text style={styles.healthWarningTitle}>
+                Consideraciones de salud (desde pestaña Salud):
+              </Text>
+              <View style={styles.chipRow}>
+                {medicalTags.map((t) => (
+                  <Chip key={t.id} label={t.label} variant="neutral" />
+                ))}
+              </View>
+            </View>
+          )}
+
+          {/* Notas y preferencias de entrenamiento */}
+          <Text style={styles.groupLabel}>Notas y observaciones de entrenamiento</Text>
+          <TextInput
+            value={trainingNotes}
+            onChangeText={setTrainingNotes}
+            onEndEditing={handleNotesBlur}
+            multiline
+            placeholder="Ej: Prefiere ejercicios con mancuernas, descanso mínimo de 90s, enfoque en glúteos…"
+            placeholderTextColor={colors.textMuted}
+            style={styles.notes}
+          />
+
+          </View>}
+        </View>
       </View>
 
       {/* Sheets de selección */}
@@ -274,6 +305,19 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     lineHeight: lineHeights.label,
   },
+  profileCard: {
+    marginTop: s(8),
+    borderRadius: radius.card,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  profileHeader: { flexDirection: 'row', alignItems: 'center', gap: s(12), minHeight: 56, padding: s(14) },
+  profileTexts: { flex: 1, gap: 2 },
+  profileTitle: { fontFamily: fonts.heading, fontSize: fontSizes.base, color: colors.navy },
+  profileSummary: { fontFamily: fonts.body, fontSize: fontSizes.sm, lineHeight: lineHeights.sm, color: colors.textSecondary },
+  profileToggle: { fontFamily: fonts.bodyBold, fontSize: fontSizes.sm, color: colors.navy },
+  profileBody: { gap: s(8), paddingHorizontal: s(14), paddingBottom: s(14) },
   fieldsGroup: {
     gap: s(8),
   },

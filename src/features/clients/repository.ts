@@ -2,7 +2,7 @@ import { uploadClientMedia } from '@/lib/storage';
 import { supabase } from '@/lib/supabase';
 
 import { EquipmentAccess, TrainingGoal, TrainingLevel } from '../workouts/types';
-import { Client, Goal } from './types';
+import { Client, ConsentMethod, Goal, Sex } from './types';
 
 export type ClientPatch = Partial<{
   full_name: string;
@@ -10,8 +10,12 @@ export type ClientPatch = Partial<{
   phone: string | null;
   age: number | null;
   birth_date: string | null;
+  sex: Sex | null;
+  sport: string | null;
   goal: Goal | null;
   avatar_url: string | null;
+  consent_at: string | null;
+  consent_method: ConsentMethod | null;
   notes: string | null;
   medical_notes: string | null;
   training_goal: TrainingGoal | null;
@@ -63,7 +67,8 @@ export async function listClients(): Promise<Client[]> {
       .from('measurements')
       .select('client_id, weight_kg, body_fat_pct, measured_at')
       .in('client_id', clientIds)
-      .order('measured_at', { ascending: false });
+      .order('measured_at', { ascending: false })
+      .order('created_at', { ascending: false });
 
     if (measurementsData && measurementsData.length > 0) {
       const measurementMap: Record<string, { weight_kg: number | null; body_fat_pct: number | null; measured_at: string }> = {};
@@ -95,11 +100,14 @@ export async function createClient(input: {
   phone?: string | null;
   age?: number;
   birth_date?: string;
+  sex?: Sex | null;
   goal?: Goal;
   avatar_url?: string;
+  consent_method?: ConsentMethod | null;
 }): Promise<Client> {
-  const { data: userData } = await supabase.auth.getUser();
-  const trainerId = userData.user?.id;
+  // Sesión local (sin llamada de red); RLS comprueba igualmente que trainer_id = auth.uid()
+  const { data: sessionData } = await supabase.auth.getSession();
+  const trainerId = sessionData.session?.user.id;
   if (!trainerId) throw new Error('Sesión expirada. Vuelve a iniciar sesión.');
 
   const { data, error } = await supabase
@@ -111,8 +119,10 @@ export async function createClient(input: {
       phone: input.phone ?? null,
       age: input.age ?? null,
       birth_date: input.birth_date ?? null,
+      ...(input.sex ? { sex: input.sex } : {}),
       goal: input.goal ?? null,
       ...(input.avatar_url ? { avatar_url: input.avatar_url } : {}),
+      ...(input.consent_method ? { consent_method: input.consent_method, consent_at: new Date().toISOString() } : {}),
     })
     .select()
     .single();

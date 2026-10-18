@@ -7,7 +7,7 @@ import { toast, toastWithUndo } from '@/components/ui/Toast';
 import { friendlyError } from '@/lib/errors';
 import { s } from '@/theme/scale';
 import { colors, radius } from '@/theme/tokens';
-import { fonts, fontSizes } from '@/theme/typography';
+import { fonts, fontSizes, lineHeights } from '@/theme/typography';
 
 import { addTag, removeTag } from '../tagsRepository';
 import { Client, ClientTag, TagKind } from '../types';
@@ -59,9 +59,19 @@ export function SaludTab({ client, tags, onReloadTags, onUpdateClient }: Props) 
 
   const conditionTags = tags.filter((t) => t.kind === 'condicion');
   const allergyTags = tags.filter((t) => t.kind === 'alergia');
+  const isEmpty = conditionTags.length === 0 && allergyTags.length === 0 && medicalNotes.trim() === '';
 
   return (
     <View style={styles.container}>
+      {isEmpty && (
+        <View style={styles.helpBox}>
+          <Text style={styles.helpTitle}>Aún no hay datos de salud</Text>
+          <Text style={styles.helpText}>
+            Anota las condiciones médicas, alergias y lesiones del cliente. Se tienen en cuenta al generar planes y rutinas.
+          </Text>
+        </View>
+      )}
+
       {/* Condiciones médicas */}
       <View style={styles.group}>
         <Text style={styles.groupLabel}>Condiciones médicas / Patologías</Text>
@@ -121,6 +131,9 @@ export function SaludTab({ client, tags, onReloadTags, onUpdateClient }: Props) 
 
 const styles = StyleSheet.create({
   container: { padding: s(16), gap: s(10) },
+  helpBox: { gap: s(2), padding: s(12), borderRadius: radius.card, backgroundColor: colors.successBg },
+  helpTitle: { fontFamily: fonts.bodyBold, fontSize: fontSizes.sm, color: colors.navy },
+  helpText: { fontFamily: fonts.body, fontSize: fontSizes.xs, lineHeight: lineHeights.xs, color: colors.textSecondary },
   group: { gap: s(4) },
   groupLabel: {
     fontFamily: fonts.headingSemi,

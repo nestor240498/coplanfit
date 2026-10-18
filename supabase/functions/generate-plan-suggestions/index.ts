@@ -113,6 +113,17 @@ type RequestBody = {
   aiNote: string;
 };
 
+/** Edad actual a partir de YYYY-MM-DD (la columna `age` puede estar desactualizada). */
+function ageFromBirthDate(birthDate: string | null | undefined): number | null {
+  if (!birthDate) return null;
+  const [y, m, d] = birthDate.slice(0, 10).split('-').map(Number);
+  if (!y || !m || !d) return null;
+  const now = new Date();
+  let age = now.getFullYear() - y;
+  if (now.getMonth() + 1 < m || (now.getMonth() + 1 === m && now.getDate() < d)) age--;
+  return age >= 0 && age <= 130 ? age : null;
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -141,13 +152,20 @@ Deno.serve(async (req) => {
       { data: tags, error: tagsError },
       { data: latestMeasurement, error: measurementError },
     ] = await Promise.all([
-      supabase.from('clients').select('full_name, goal, notes, medical_notes, age').eq('id', body.clientId).single(),
+      supabase
+        .from('clients')
+        .select('full_name, goal, notes, medical_notes, age, birth_date, sex')
+        .eq('id', body.clientId)
+        .single(),
       supabase.from('client_tags').select('kind, label').eq('client_id', body.clientId),
       supabase
         .from('measurements')
-        .select('weight_kg, height_cm, body_fat_pct, bmi')
+        .select(
+          'protocol, equations, weight_kg, height_cm, body_fat_pct, muscle_mass_pct, bmi, bmr_kcal, visceral_fat, waist_cm, hip_cm, waist_hip_ratio, chest_cm, arm_right_cm, arm_left_cm, thigh_right_cm, thigh_left_cm, triceps_mm, abdominal_mm, subscapular_mm'
+        )
         .eq('client_id', body.clientId)
         .order('measured_at', { ascending: false })
+        .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle(),
     ]);
@@ -165,12 +183,15 @@ Deno.serve(async (req) => {
     }
 
     const m = latestMeasurement;
+    const clientAge = ageFromBirthDate(client.birth_date) ?? client.age;
     const anthropometryParts: string[] = [];
     if (m) {
       if (m.weight_kg) anthropometryParts.push(`Peso: ${m.weight_kg} kg`);
       if (m.height_cm) anthropometryParts.push(`Estatura: ${m.height_cm} cm`);
-      if (m.body_fat_pct) anthropometryParts.push(`% Grasa: ${m.body_fat_pct}%`);
-      if (m.muscle_mass_pct) anthropometryParts.push(`% Masa Muscular: ${m.muscle_mass_pct}%`);
+      // En evaluaciones ISAK el % de grasa y de músculo se calculan con pliegues y perímetros (no bioimpedancia)
+      const isIsak = m.protocol === 'isak_restricted';
+      if (m.body_fat_pct) anthropometryParts.push(`% Grasa: ${m.body_fat_pct}%${isIsak ? ' (estimado por pliegues, ISAK)' : ''}`);
+      if (m.muscle_mass_pct) anthropometryParts.push(`% Masa Muscular: ${m.muscle_mass_pct}%${isIsak ? ' (masa muscular esquelética, Lee 2000)' : ''}`);
       if (m.bmi) anthropometryParts.push(`IMC: ${m.bmi}`);
       if (m.bmr_kcal) anthropometryParts.push(`Metabolismo basal (BMR): ${m.bmr_kcal} kcal`);
       if (m.visceral_fat) anthropometryParts.push(`Grasa visceral: nivel ${m.visceral_fat}`);
@@ -191,7 +212,7 @@ Deno.serve(async (req) => {
 
     const prompt = `Eres un asistente experto en nutrición deportiva para un entrenador personal que arma planes nutricionales precisos. Genera sugerencias de alimentos y suplementos para este cliente, agrupadas por categoría.
 
-Cliente: ${client.full_name}${client.age != null ? `, ${client.age} años` : ''}
+Cliente: ${client.full_name}${clientAge != null ? `, ${clientAge} años` : ''}${client.sex ? `, ${client.sex}` : ''}
 Objetivo: ${client.goal ?? 'no especificado'}
 ${anthropometryText}
 ${allergies.length > 0 ? `Alergias (NUNCA sugerir ni incluir): ${allergies.join(', ')}` : 'Sin alergias registradas.'}

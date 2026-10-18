@@ -1,4 +1,7 @@
+import type { MeasurementEquations, MeasurementReadings, Sex } from '../anthropometry/engine';
 import { EquipmentAccess, TrainingGoal, TrainingLevel } from '../workouts/types';
+
+export type { Sex };
 
 export type Goal = 'volumen' | 'definición' | 'subir de peso' | 'bajar de peso' | 'mantenimiento' | 'recomposición';
 
@@ -13,8 +16,15 @@ export type Client = {
   phone?: string | null;
   age: number | null;
   birth_date?: string | null;
+  /** Sexo para las ecuaciones de composición corporal (migración 015). */
+  sex?: Sex | null;
+  /** Deporte que practica (informe ISAK; sugiere ecuaciones de deportistas). */
+  sport?: string | null;
   goal: Goal | null;
   avatar_url?: string | null;
+  /** Cuándo aceptó el cliente que se guarden y envíen sus datos (lo declara el entrenador; migración 019). */
+  consent_at?: string | null;
+  consent_method?: ConsentMethod | null;
   /** Notas libres — tab Datos */
   notes: string | null;
   /** Notas médicas generales — tab Salud */
@@ -39,6 +49,15 @@ export type Client = {
   created_at: string;
 };
 
+/** Cómo obtuvo el entrenador el consentimiento del cliente. */
+export type ConsentMethod = 'escrito' | 'whatsapp' | 'verbal';
+
+export const CONSENT_METHODS: { id: ConsentMethod; label: string }[] = [
+  { id: 'whatsapp', label: 'Por WhatsApp' },
+  { id: 'escrito', label: 'Por escrito' },
+  { id: 'verbal', label: 'Verbal' },
+];
+
 export type TagKind = 'condicion' | 'alergia' | 'evita';
 
 export type ClientTag = {
@@ -48,10 +67,26 @@ export type ClientTag = {
   label: string;
 };
 
+export type MeasurementProtocol = 'manual' | 'isak_restricted' | 'skinfolds' | 'import';
+
 export type Measurement = {
   id: string;
   client_id: string;
   measured_at: string;
+  created_at?: string;
+  /** manual (registro rápido) · isak_restricted (evaluación ISAK) · import (Excel/CSV) */
+  protocol?: MeasurementProtocol;
+  /** Lecturas en bruto de la sesión ISAK (2-3 por punto). */
+  readings?: MeasurementReadings | null;
+  /** Fórmulas usadas al guardar (ISAK). */
+  equations?: MeasurementEquations | null;
+  // Medidas básicas ISAK (cm)
+  sitting_height_cm?: number | null;
+  arm_span_cm?: number | null;
+  // Diámetros óseos ISAK (cm)
+  humerus_breadth_cm?: number | null;
+  wrist_breadth_cm?: number | null;
+  femur_breadth_cm?: number | null;
   // Composición corporal
   weight_kg: number | null;
   height_cm: number | null;
@@ -87,6 +122,7 @@ export type Measurement = {
   thigh_mm?: number | null;
   calf_mm?: number | null;
   chest_mm?: number | null;
+  midaxillary_mm?: number | null;
   /** Fotos de progreso asociadas a la medición */
   photos?: string[] | null;
   /** Calculados server-side (columnas generadas) */

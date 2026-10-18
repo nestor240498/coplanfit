@@ -37,3 +37,8 @@ export function hapticPress() {
 export function hapticSuccess() {
   if (hapticsAvailable) Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
 }
+
+/** Aviso (p. ej. dos lecturas que no coinciden y piden una 3.ª). */
+export function hapticWarning() {
+  if (hapticsAvailable) Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
+}

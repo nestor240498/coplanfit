@@ -8,11 +8,8 @@ export async function getMyProfile(): Promise<Profile> {
   if (!userId) throw new Error('Sesión expirada. Vuelve a iniciar sesión.');
 
   // Intentamos traer con description si existe la columna en Supabase
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('id, full_name, email, business_name, logo_url, description')
-    .eq('id', userId)
-    .single();
+  // select('*') tolera columnas que aún no existan (description, certification)
+  const { data, error } = await supabase.from('profiles').select('*').eq('id', userId).single();
 
   if (error) {
     // Fallback por si la columna description no ha sido creada en la BD
@@ -32,6 +29,7 @@ export async function updateMyProfile(input: {
   full_name: string;
   business_name: string | null;
   description?: string | null;
+  certification?: string | null;
   logo_url?: string;
 }): Promise<void> {
   const { data: userData } = await supabase.auth.getUser();
@@ -42,6 +40,7 @@ export async function updateMyProfile(input: {
     full_name: input.full_name.trim(),
     business_name: input.business_name?.trim() || null,
     ...(input.description !== undefined ? { description: input.description?.trim() || null } : {}),
+    ...(input.certification !== undefined ? { certification: input.certification?.trim() || null } : {}),
     ...(input.logo_url != null ? { logo_url: input.logo_url } : {}),
   };
 
@@ -52,8 +51,9 @@ export async function updateMyProfile(input: {
 
   if (error) {
     // Si falla porque la columna description no existe aún en la BD remota, reintentar sin ella
-    if (error.message.includes('description') || error.code === '42703') {
+    if (error.message.includes('description') || error.message.includes('certification') || error.code === '42703') {
       delete payload.description;
+      delete payload.certification;
       const { error: retryError } = await supabase
         .from('profiles')
         .update(payload)

@@ -82,6 +82,15 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
   },
 ];
 
+/** Aviso de que el dato es de ejemplo: aún no hay cobros ni suscripciones reales. */
+function DemoTag() {
+  return (
+    <View style={styles.demoTag} accessibilityLabel="Dato de ejemplo">
+      <Text style={styles.demoTagText}>DEMO</Text>
+    </View>
+  );
+}
+
 export default function SubscriptionScreen() {
   const insets = useSafeAreaInsets();
   const [activePlanId, setActivePlanId] = useState<PlanId>('basico');
@@ -163,7 +172,10 @@ export default function SubscriptionScreen() {
         {/* Caja de próximo cobro */}
         <View style={styles.chargeBox}>
           <View style={styles.cardInfoCol}>
-            <Text style={styles.chargeLabel}>Próxima renovación</Text>
+            <View style={styles.labelWithTag}>
+              <Text style={styles.chargeLabel}>Próxima renovación</Text>
+              <DemoTag />
+            </View>
             <Text style={styles.chargeDate}>El 15 del próximo mes</Text>
           </View>
           <View style={styles.chargeStatusBadge}>
@@ -174,7 +186,10 @@ export default function SubscriptionScreen() {
         {/* Método de pago */}
         <View style={styles.paymentRow}>
           <View style={styles.cardInfoCol}>
-            <Text style={styles.paymentText}>Tarjeta de crédito / débito</Text>
+            <View style={styles.labelWithTag}>
+              <Text style={styles.paymentText}>Tarjeta de crédito / débito</Text>
+              <DemoTag />
+            </View>
             <Text style={styles.paymentSub}>Facturación mensual automática</Text>
           </View>
           <Text style={styles.paymentStatus}>•••• 4821</Text>
@@ -398,6 +413,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
+  labelWithTag: { flexDirection: 'row', alignItems: 'center', gap: s(6), flexWrap: 'wrap' },
+  demoTag: { paddingHorizontal: s(7), paddingVertical: 1, borderRadius: radius.pill, backgroundColor: colors.neutralChipBg },
+  demoTagText: { fontFamily: fonts.bodyBold, fontSize: fontSizes.micro, color: colors.textSecondary, letterSpacing: 0.3 },
   chargeLabel: {
     fontFamily: fonts.bodyBold,
     fontSize: fontSizes.xs,

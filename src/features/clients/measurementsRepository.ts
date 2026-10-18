@@ -1,9 +1,20 @@
 import { isLocalUri, uploadClientMedia } from '@/lib/storage';
 import { supabase } from '@/lib/supabase';
 
-import { Measurement } from './types';
+import type { MeasurementEquations, MeasurementReadings } from '../anthropometry/engine';
+import { Measurement, MeasurementProtocol } from './types';
 
 export type MeasurementInput = {
+  /** Fecha de la medición (YYYY-MM-DD, local). Enviarla siempre: el valor por defecto de la BD es la fecha UTC. */
+  measured_at?: string;
+  protocol?: MeasurementProtocol;
+  readings?: MeasurementReadings | null;
+  equations?: MeasurementEquations | null;
+  sitting_height_cm?: number | null;
+  arm_span_cm?: number | null;
+  humerus_breadth_cm?: number | null;
+  wrist_breadth_cm?: number | null;
+  femur_breadth_cm?: number | null;
   // Composición corporal
   weight_kg?: number | null;
   height_cm?: number | null;
@@ -39,6 +50,7 @@ export type MeasurementInput = {
   thigh_mm?: number | null;
   calf_mm?: number | null;
   chest_mm?: number | null;
+  midaxillary_mm?: number | null;
   // Fotos de progreso
   photos?: string[] | null;
 };
@@ -48,7 +60,9 @@ export async function listMeasurements(clientId: string): Promise<Measurement[]>
     .from('measurements')
     .select('*')
     .eq('client_id', clientId)
-    .order('measured_at', { ascending: false });
+    .order('measured_at', { ascending: false })
+    // Varias mediciones el mismo día: la más reciente primero
+    .order('created_at', { ascending: false });
   if (error) throw new Error(error.message);
   return (data ?? []) as Measurement[];
 }
@@ -65,6 +79,7 @@ export async function getLatestMeasurement(clientId: string): Promise<Measuremen
     .select('*')
     .eq('client_id', clientId)
     .order('measured_at', { ascending: false })
+    .order('created_at', { ascending: false })
     .limit(1)
     .maybeSingle();
   if (error) throw new Error(error.message);

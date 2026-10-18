@@ -73,13 +73,16 @@ export function SingleChoice<T extends string>({
   options,
   value,
   onChange,
+  compact,
 }: {
   options: Option<T>[];
   value: T | null | undefined;
   onChange: (value: T) => void;
+  /** Chips más bajos (34 pt visibles, 44 pt tocables) para selectores con 5 o más opciones. */
+  compact?: boolean;
 }) {
   return (
-    <View style={styles.chipsWrap} accessibilityRole="radiogroup">
+    <View style={[styles.chipsWrap, compact && styles.chipsWrapCompact]} accessibilityRole="radiogroup">
       {options.map((opt) => {
         const active = opt.id === value;
         return (
@@ -91,9 +94,10 @@ export function SingleChoice<T extends string>({
               if (!active) hapticSelection();
               onChange(opt.id);
             }}
-            style={[styles.chip, active && styles.chipActive]}
+            hitSlop={compact ? { top: 5, bottom: 5 } : undefined}
+            style={[styles.chip, compact && styles.chipCompact, active && styles.chipActive]}
           >
-            <Text style={[styles.chipText, active && styles.chipTextActive]}>{opt.label}</Text>
+            <Text style={[styles.chipText, compact && styles.chipTextCompact, active && styles.chipTextActive]}>{opt.label}</Text>
           </Pressable>
         );
       })}
@@ -403,6 +407,7 @@ const styles = StyleSheet.create({
   },
   aiBadgeText: { fontFamily: fonts.bodyBold, fontSize: fontSizes.micro, color: colors.success },
   chipsWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: s(8) },
+  chipsWrapCompact: { gap: s(6) },
   selectRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -470,6 +475,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
   },
+  chipCompact: { minHeight: 34, paddingHorizontal: s(12) },
+  chipTextCompact: { fontSize: fontSizes.xs },
   chipActive: {
     backgroundColor: colors.navy,
     borderColor: colors.navy,

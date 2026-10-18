@@ -1,19 +1,22 @@
 import * as ImagePicker from 'expo-image-picker';
-import { Camera, Download, History, ImagePlus, Trash2 } from 'lucide-react-native';
+import { Camera, ChevronDown, ChevronUp, Download, ImagePlus, Trash2 } from 'lucide-react-native';
 import { useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { friendlyError } from '@/lib/errors';
+import { AnalysisCard } from '@/features/anthropometry/components/AnalysisCard';
+import { fmtEs } from '@/features/anthropometry/engine';
+import { EvaluationsList } from '@/features/anthropometry/components/EvaluationsList';
+import type { DraftSummary } from '@/features/anthropometry/draftStorage';
 import { PhotoPreview, PhotoViewer } from '@/components/ui/PhotoViewer';
 import { StorageImage } from '@/components/ui/StorageImage';
 import { InputFieldRow } from '@/components/ui/FieldRow';
-import { getMyProfile } from '@/features/profile/repository';
 import { formatDateShort } from '@/lib/format';
+import { buildMeasurementDocumentHtml } from '@/features/anthropometry/measurementDocument';
 import { s } from '@/theme/scale';
 import { colors, radius } from '@/theme/tokens';
 import { fonts, fontSizes } from '@/theme/typography';
 
-import { buildMeasurementPdfHtml } from '../measurementPdf';
 import { DocumentToDeliver } from '../sentLogRepository';
 import { IncludePhotosToggle } from './IncludePhotosToggle';
 import { SendDocumentSheet } from './SendDocumentSheet';
@@ -64,15 +67,18 @@ type Props = {
   isEditing?: boolean;
   formState?: MeasurementFormState;
   onChangeFormState?: (key: keyof MeasurementFormState, value: any) => void;
+  /** Medición ISAK / pliegues a medias en este dispositivo. */
+  /** Todas las evaluaciones del cliente, la más reciente primero. */
+  measurements?: Measurement[];
+  draft?: DraftSummary | null;
+  onResumeDraft?: () => void;
+  onDiscardDraft?: () => void;
   onViewHistory: () => void;
+  /** Abre el análisis completo de una medición. */
+  onOpenAnalysis: (measurementId: string) => void;
   /** Tras enviar el reporte (refresca el historial de envíos). */
   onSent?: () => void;
 };
-
-function fmt(value: number | null | undefined, unit: string, decimals = 0): string {
-  if (value == null) return '—';
-  return `${value.toFixed(decimals)} ${unit}`.trim();
-}
 
 export function AntropometriaTab({
   client,
@@ -80,9 +86,15 @@ export function AntropometriaTab({
   isEditing = false,
   formState,
   onChangeFormState,
+  measurements = [],
+  draft,
+  onResumeDraft,
+  onDiscardDraft,
   onViewHistory,
+  onOpenAnalysis,
   onSent,
 }: Props) {
+  const [showMore, setShowMore] = useState(false);
   const [sendOpen, setSendOpen] = useState(false);
   const [includePhotos, setIncludePhotos] = useState(false);
   const [selectedPreview, setSelectedPreview] = useState<PhotoPreview | null>(null);
@@ -93,10 +105,7 @@ export function AntropometriaTab({
         kind: 'medicion',
         refId: measurement.id,
         label: `Evaluación antropométrica del ${formatDateShort(measurement.measured_at)}`,
-        buildHtml: async () => {
-          const profile = await getMyProfile().catch(() => null);
-          return buildMeasurementPdfHtml({ client, profile, measurement, includePhotos });
-        },
+        buildHtml: () => buildMeasurementDocumentHtml({ client, measurement, includePhotos }),
       }
     : null;
 
@@ -256,8 +265,8 @@ export function AntropometriaTab({
           )}
         </View>
 
-        {/* COMPOSICIÓN CORPORAL */}
-        <Text style={styles.sectionHeader}>COMPOSICIÓN CORPORAL</Text>
+        {/* MEDIDAS BÁSICAS (cinta y báscula) */}
+        <Text style={styles.sectionHeader}>MEDIDAS BÁSICAS</Text>
         <InputFieldRow
           label="Peso"
           value={formState.weight}
@@ -270,6 +279,58 @@ export function AntropometriaTab({
           onChangeText={(v) => onChangeFormState('height', v)}
           suffix="cm"
         />
+        <InputFieldRow
+          label="Cintura"
+          value={formState.waist}
+          onChangeText={(v) => onChangeFormState('waist', v)}
+          suffix="cm"
+        />
+        <InputFieldRow
+          label="Cadera / Glúteos"
+          value={formState.hip}
+          onChangeText={(v) => onChangeFormState('hip', v)}
+          suffix="cm"
+        />
+        <InputFieldRow
+          label="Pecho / Tórax"
+          value={formState.chest}
+          onChangeText={(v) => onChangeFormState('chest', v)}
+          suffix="cm"
+        />
+        <Text style={styles.subGroupLabel}>Brazo relajado</Text>
+        <View style={styles.dualInputRow}>
+          <View style={{ flex: 1 }}>
+            <InputFieldRow
+              label="Der."
+              value={formState.armRight}
+              onChangeText={(v) => onChangeFormState('armRight', v)}
+              suffix="cm"
+            />
+          </View>
+          <View style={{ flex: 1 }}>
+            <InputFieldRow
+              label="Izq."
+              value={formState.armLeft}
+              onChangeText={(v) => onChangeFormState('armLeft', v)}
+              suffix="cm"
+            />
+          </View>
+        </View>
+
+        <Pressable
+          accessibilityRole="button"
+          accessibilityState={{ expanded: showMore }}
+          onPress={() => setShowMore((v) => !v)}
+          style={styles.moreToggle}
+        >
+          <Text style={styles.moreToggleText}>{showMore ? 'Menos medidas' : 'Más medidas (composición, perímetros, pliegues)'}</Text>
+          {showMore ? <ChevronUp size={18} color={colors.navy} /> : <ChevronDown size={18} color={colors.navy} />}
+        </Pressable>
+
+        {showMore && (
+          <>
+        {/* COMPOSICIÓN CORPORAL */}
+        <Text style={styles.sectionHeader}>COMPOSICIÓN CORPORAL</Text>
         <InputFieldRow
           label="Porcentaje de grasa"
           value={formState.bodyFat}
@@ -327,51 +388,13 @@ export function AntropometriaTab({
           suffix="cm"
         />
         <InputFieldRow
-          label="Pecho / Tórax"
-          value={formState.chest}
-          onChangeText={(v) => onChangeFormState('chest', v)}
-          suffix="cm"
-        />
-        <InputFieldRow
-          label="Cintura"
-          value={formState.waist}
-          onChangeText={(v) => onChangeFormState('waist', v)}
-          suffix="cm"
-        />
-        <InputFieldRow
           label="Abdomen umbilical"
           value={formState.abdomen}
           onChangeText={(v) => onChangeFormState('abdomen', v)}
           suffix="cm"
         />
-        <InputFieldRow
-          label="Cadera / Glúteos"
-          value={formState.hip}
-          onChangeText={(v) => onChangeFormState('hip', v)}
-          suffix="cm"
-        />
         
         {/* Extremidades bilaterales */}
-        <Text style={styles.subGroupLabel}>Bíceps relajado</Text>
-        <View style={styles.dualInputRow}>
-          <View style={{ flex: 1 }}>
-            <InputFieldRow
-              label="Der."
-              value={formState.armRight}
-              onChangeText={(v) => onChangeFormState('armRight', v)}
-              suffix="cm"
-            />
-          </View>
-          <View style={{ flex: 1 }}>
-            <InputFieldRow
-              label="Izq."
-              value={formState.armLeft}
-              onChangeText={(v) => onChangeFormState('armLeft', v)}
-              suffix="cm"
-            />
-          </View>
-        </View>
-
         <Text style={styles.subGroupLabel}>Bíceps contraído</Text>
         <View style={styles.dualInputRow}>
           <View style={{ flex: 1 }}>
@@ -479,7 +502,7 @@ export function AntropometriaTab({
           suffix="mm"
         />
         <InputFieldRow
-          label="Suprailíaco"
+          label="Cresta ilíaca"
           value={formState.suprailiac}
           onChangeText={(v) => onChangeFormState('suprailiac', v)}
           suffix="mm"
@@ -512,6 +535,8 @@ export function AntropometriaTab({
         <Text style={styles.hint}>
           Se guardará como una nueva medición completa en el historial del cliente.
         </Text>
+          </>
+        )}
       </View>
     );
   }
@@ -519,6 +544,32 @@ export function AntropometriaTab({
   // MODO LECTURA LIMPIA
   return (
     <View style={styles.container}>
+      {draft ? (
+        <View style={styles.draftCard}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`Continuar la medición, ${draft.measured} de ${draft.total} medidas`}
+            onPress={onResumeDraft}
+            style={styles.draftMain}
+          >
+            <Text style={styles.draftTitle}>{draft.profile === 'skinfolds' ? 'Pliegues' : 'Evaluación ISAK'} a medias</Text>
+            <Text style={styles.draftMeta}>
+              {draft.measured} de {draft.total} medidas · Continuar ›
+            </Text>
+          </Pressable>
+          <Pressable accessibilityRole="button" accessibilityLabel="Descartar la medición a medias" onPress={onDiscardDraft} style={styles.draftDiscard}>
+            <Trash2 size={20} color={colors.danger} />
+          </Pressable>
+        </View>
+      ) : null}
+      <EvaluationsList measurements={measurements} onOpen={onOpenAnalysis} onViewAll={onViewHistory} />
+
+      {measurement != null && (
+        <View style={styles.lastDataHeader}>
+          <Text style={styles.lastDataTitle}>Datos de la última medición</Text>
+          <Text style={styles.lastDataMeta}>{formatDateShort(measurement.measured_at)} · de la evaluación más reciente</Text>
+        </View>
+      )}
       {/* FOTOS DE PROGRESO DE LA MEDICIÓN ACTUAL (SI EXISTEN) */}
       {measurement?.photos && measurement.photos.length > 0 && (
         <View style={styles.photosReadSection}>
@@ -550,95 +601,17 @@ export function AntropometriaTab({
         </View>
       )}
 
-      {/* COMPOSICIÓN CORPORAL */}
-      <Text style={styles.sectionHeader}>COMPOSICIÓN CORPORAL</Text>
-      <Row label="Peso" value={fmt(measurement?.weight_kg, 'kg', 1)} />
-      <Row
-        label="Estatura"
-        value={measurement?.height_cm != null ? `${(measurement.height_cm / 100).toFixed(2)} m (${measurement.height_cm} cm)` : '—'}
-      />
-      <Row
-        label="Porcentaje de grasa"
-        value={measurement?.body_fat_pct != null ? `${measurement.body_fat_pct}%` : '—'}
-      />
-      <Row
-        label="Masa muscular"
-        value={measurement?.muscle_mass_pct != null ? `${measurement.muscle_mass_pct}%` : '—'}
-      />
-      <Row
-        label="Grasa visceral"
-        value={measurement?.visceral_fat != null ? `${measurement.visceral_fat}` : '—'}
-      />
-      <Row
-        label="Metabolismo basal (BMR)"
-        value={measurement?.bmr_kcal != null ? `${measurement.bmr_kcal} kcal` : '—'}
-      />
-
-      {/* RATIOS E INDICADORES */}
-      <Text style={styles.sectionHeader}>INDICADORES Y RATIOS</Text>
-      <Row
-        label="Índice de masa corporal (IMC)"
-        value={measurement?.bmi != null ? measurement.bmi.toFixed(1) : '—'}
-      />
-      <Row
-        label="Relación cintura/cadera"
-        value={measurement?.waist_hip_ratio != null ? measurement.waist_hip_ratio.toFixed(2) : '—'}
-      />
-
-      {/* PERÍMETROS CORPORALES */}
-      <Text style={styles.sectionHeader}>PERÍMETROS CORPORALES</Text>
-      <Row label="Cuello" value={fmt(measurement?.neck_cm, 'cm')} />
-      <Row label="Hombros" value={fmt(measurement?.shoulders_cm, 'cm')} />
-      <Row label="Pecho / Tórax" value={fmt(measurement?.chest_cm, 'cm')} />
-      <Row label="Cintura" value={fmt(measurement?.waist_cm, 'cm')} />
-      <Row label="Abdomen umbilical" value={fmt(measurement?.abdomen_cm, 'cm')} />
-      <Row label="Cadera / Glúteos" value={fmt(measurement?.hip_cm, 'cm')} />
-      
-      {/* Extremidades */}
-      <Row
-        label="Bíceps relajado"
-        value={
-          measurement?.arm_right_cm != null || measurement?.arm_left_cm != null
-            ? `Der: ${fmt(measurement?.arm_right_cm, 'cm')} · Izq: ${fmt(measurement?.arm_left_cm, 'cm')}`
-            : fmt(measurement?.arm_cm, 'cm')
-        }
-      />
-      {(measurement?.arm_flexed_right_cm != null || measurement?.arm_flexed_left_cm != null) && (
-        <Row
-          label="Bíceps contraído"
-          value={`Der: ${fmt(measurement?.arm_flexed_right_cm, 'cm')} · Izq: ${fmt(measurement?.arm_flexed_left_cm, 'cm')}`}
-        />
-      )}
-      {(measurement?.forearm_right_cm != null || measurement?.forearm_left_cm != null) && (
-        <Row
-          label="Antebrazo"
-          value={`Der: ${fmt(measurement?.forearm_right_cm, 'cm')} · Izq: ${fmt(measurement?.forearm_left_cm, 'cm')}`}
-        />
-      )}
-      {(measurement?.thigh_right_cm != null || measurement?.thigh_left_cm != null) && (
-        <Row
-          label="Muslo"
-          value={`Der: ${fmt(measurement?.thigh_right_cm, 'cm')} · Izq: ${fmt(measurement?.thigh_left_cm, 'cm')}`}
-        />
-      )}
-      {(measurement?.calf_right_cm != null || measurement?.calf_left_cm != null) && (
-        <Row
-          label="Pantorrilla"
-          value={`Der: ${fmt(measurement?.calf_right_cm, 'cm')} · Izq: ${fmt(measurement?.calf_left_cm, 'cm')}`}
-        />
-      )}
-
-      {/* PLICOMETRÍA */}
-      <Text style={styles.sectionHeader}>PLICOMETRÍA (PLIEGUES)</Text>
-      <Row label="Tríceps" value={fmt(measurement?.triceps_mm, 'mm')} />
-      <Row label="Bíceps" value={fmt(measurement?.biceps_mm, 'mm')} />
-      <Row label="Subescapular" value={fmt(measurement?.subscapular_mm, 'mm')} />
-      <Row label="Supraespinal" value={fmt(measurement?.supraspinal_mm, 'mm')} />
-      <Row label="Suprailíaco" value={fmt(measurement?.suprailiac_mm, 'mm')} />
-      <Row label="Abdominal" value={fmt(measurement?.abdominal_mm, 'mm')} />
-      <Row label="Muslo frontal" value={fmt(measurement?.thigh_mm, 'mm')} />
-      <Row label="Pantorrilla medial" value={fmt(measurement?.calf_mm, 'mm')} />
-      <Row label="Pectoral / Pecho" value={fmt(measurement?.chest_mm, 'mm')} />
+      {measurement != null &&
+        dataGroups(measurement).map((group) => (
+          <AnalysisCard key={group.title} title={group.title}>
+            {group.rows.map((row, i) => (
+              <View key={row.label} style={[styles.dataRow, i > 0 && styles.dataRowDivider]}>
+                <Text style={styles.dataLabel}>{row.label}</Text>
+                <Text style={styles.dataValue}>{row.value}</Text>
+              </View>
+            ))}
+          </AnalysisCard>
+        ))}
 
       <Text style={styles.updatedAt}>
         {measurement != null
@@ -651,11 +624,6 @@ export function AntropometriaTab({
           <Pressable accessibilityRole="button" onPress={() => setSendOpen(true)} style={styles.exportPdfBtn}>
             <Download size={s(12)} color="#3B6B11" strokeWidth={2.2} />
             <Text style={styles.exportPdfBtnText}>Enviar o descargar el reporte</Text>
-          </Pressable>
-
-          <Pressable onPress={onViewHistory} style={styles.historyBtn}>
-            <History size={s(12)} color={colors.textSecondary} strokeWidth={2} />
-            <Text style={styles.historyLink}>Ver historial completo ›</Text>
           </Pressable>
         </View>
       )}
@@ -678,13 +646,69 @@ export function AntropometriaTab({
   );
 }
 
-function Row({ label, value }: { label: string; value: string }) {
-  return (
-    <View style={styles.row}>
-      <Text style={styles.rowLabel}>{label}</Text>
-      <Text style={styles.rowValue}>{value}</Text>
-    </View>
-  );
+type DataRowItem = { label: string; value: string };
+
+const num = (v: number | null | undefined, decimals: number, unit: string): string | null =>
+  v == null ? null : `${fmtEs(v, decimals)} ${unit}`;
+
+/** «Der. 31,0 · Izq. 30,5 cm»; si solo hay un lado, solo ese. */
+function sides(right: number | null | undefined, left: number | null | undefined, unit: string): string | null {
+  if (right == null && left == null) return null;
+  if (right != null && left != null) return `Der. ${fmtEs(right, 1)} · Izq. ${fmtEs(left, 1)} ${unit}`;
+  return right != null ? `Der. ${fmtEs(right, 1)} ${unit}` : `Izq. ${fmtEs(left!, 1)} ${unit}`;
+}
+
+/** Datos de la medición en grupos; las filas sin dato no se muestran y un grupo vacío tampoco. */
+function dataGroups(m: Measurement): { title: string; rows: DataRowItem[] }[] {
+  const height = m.height_cm != null ? `${fmtEs(m.height_cm / 100, 2)} m (${fmtEs(m.height_cm, Number.isInteger(m.height_cm) ? 0 : 1)} cm)` : null;
+  const groups: { title: string; rows: [string, string | null][] }[] = [
+    {
+      title: 'Composición corporal',
+      rows: [
+        ['Peso', num(m.weight_kg, 1, 'kg')],
+        ['Estatura', height],
+        ['Porcentaje de grasa', num(m.body_fat_pct, 1, '%')],
+        ['Masa muscular', num(m.muscle_mass_pct, 1, '%')],
+        ['Grasa visceral', m.visceral_fat != null ? fmtEs(m.visceral_fat, 0) : null],
+        ['Metabolismo basal (BMR)', num(m.bmr_kcal, 0, 'kcal')],
+        ['Índice de masa corporal (IMC)', m.bmi != null ? fmtEs(m.bmi, 1) : null],
+        ['Relación cintura/cadera', m.waist_hip_ratio != null ? fmtEs(m.waist_hip_ratio, 2) : null],
+      ],
+    },
+    {
+      title: 'Perímetros',
+      rows: [
+        ['Cuello', num(m.neck_cm, 1, 'cm')],
+        ['Hombros', num(m.shoulders_cm, 1, 'cm')],
+        ['Pecho / Tórax', num(m.chest_cm, 1, 'cm')],
+        ['Cintura', num(m.waist_cm, 1, 'cm')],
+        ['Abdomen umbilical', num(m.abdomen_cm, 1, 'cm')],
+        ['Cadera / Glúteos', num(m.hip_cm, 1, 'cm')],
+        ['Bíceps relajado', sides(m.arm_right_cm, m.arm_left_cm, 'cm') ?? num(m.arm_cm, 1, 'cm')],
+        ['Bíceps contraído', sides(m.arm_flexed_right_cm, m.arm_flexed_left_cm, 'cm')],
+        ['Antebrazo', sides(m.forearm_right_cm, m.forearm_left_cm, 'cm')],
+        ['Muslo', sides(m.thigh_right_cm, m.thigh_left_cm, 'cm')],
+        ['Pantorrilla', sides(m.calf_right_cm, m.calf_left_cm, 'cm')],
+      ],
+    },
+    {
+      title: 'Pliegues cutáneos',
+      rows: [
+        ['Tríceps', num(m.triceps_mm, 1, 'mm')],
+        ['Bíceps', num(m.biceps_mm, 1, 'mm')],
+        ['Subescapular', num(m.subscapular_mm, 1, 'mm')],
+        ['Supraespinal', num(m.supraspinal_mm, 1, 'mm')],
+        ['Cresta ilíaca', num(m.suprailiac_mm, 1, 'mm')],
+        ['Abdominal', num(m.abdominal_mm, 1, 'mm')],
+        ['Muslo frontal', num(m.thigh_mm, 1, 'mm')],
+        ['Pantorrilla medial', num(m.calf_mm, 1, 'mm')],
+        ['Pectoral / Pecho', num(m.chest_mm, 1, 'mm')],
+      ],
+    },
+  ];
+  return groups
+    .map((g) => ({ title: g.title, rows: g.rows.flatMap(([label, value]) => (value != null ? [{ label, value }] : [])) }))
+    .filter((g) => g.rows.length > 0);
 }
 
 const styles = StyleSheet.create({
@@ -861,6 +885,31 @@ const styles = StyleSheet.create({
     fontSize: fontSizes.micro,
     color: colors.surface,
   },
+  draftCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: radius.card,
+    backgroundColor: colors.lime,
+  },
+  draftMain: { flex: 1, minHeight: 64, justifyContent: 'center', gap: 2, paddingHorizontal: s(16), paddingVertical: s(10) },
+  draftTitle: { fontFamily: fonts.bodyBold, fontSize: fontSizes.base, color: colors.navy },
+  draftMeta: { fontFamily: fonts.bodySemi, fontSize: fontSizes.xs, color: colors.navy },
+  draftDiscard: { width: 48, height: 48, margin: s(8), alignItems: 'center', justifyContent: 'center', borderRadius: 24, backgroundColor: colors.surface },
+  lastDataHeader: { gap: 2, marginTop: s(16) },
+  lastDataTitle: { fontFamily: fonts.heading, fontSize: fontSizes.headline, color: colors.navy },
+  lastDataMeta: { fontFamily: fonts.body, fontSize: fontSizes.xs, color: colors.textSecondary },
+  dataRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: s(12), minHeight: 44 },
+  dataRowDivider: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border },
+  dataLabel: { flexShrink: 1, fontFamily: fonts.body, fontSize: fontSizes.sm, color: colors.text },
+  dataValue: { flexShrink: 1, textAlign: 'right', fontFamily: fonts.bodyBold, fontSize: fontSizes.sm, color: colors.navy },
+  moreToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    minHeight: 48,
+    marginTop: s(8),
+  },
+  moreToggleText: { fontFamily: fonts.bodyBold, fontSize: fontSizes.sm, color: colors.navy },
   sectionHeader: {
     fontFamily: fonts.headingSemi,
     fontSize: fontSizes.label,
@@ -880,19 +929,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: s(8),
   },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: s(6),
-    backgroundColor: colors.surface,
-    borderRadius: radius.input,
-    paddingVertical: s(7),
-    paddingHorizontal: s(9),
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  rowLabel: { flex: 1, fontFamily: fonts.body, fontSize: fontSizes.xs, color: colors.text },
-  rowValue: { fontFamily: fonts.bodyBold, fontSize: fontSizes.xs, color: colors.text },
   computedRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -952,22 +988,5 @@ const styles = StyleSheet.create({
     fontFamily: fonts.bodyBold,
     fontSize: fontSizes.xs,
     color: '#3B6B11',
-  },
-  historyBtn: {
-    width: '100%',
-    minHeight: 44,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: s(5),
-    backgroundColor: colors.surface,
-    borderRadius: radius.button,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  historyLink: {
-    fontFamily: fonts.bodyBold,
-    fontSize: fontSizes.xs,
-    color: colors.textSecondary,
   },
 });

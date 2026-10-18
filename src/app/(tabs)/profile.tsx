@@ -1,6 +1,6 @@
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { Pencil } from 'lucide-react-native';
 import { useCallback, useState } from 'react';
 import {
@@ -28,7 +28,7 @@ import {
 } from '@/features/profile/repository';
 import { s } from '@/theme/scale';
 import { colors, radius } from '@/theme/tokens';
-import { fonts, fontSizes } from '@/theme/typography';
+import { fonts, fontSizes, lineHeights } from '@/theme/typography';
 
 /**
  * Pantalla Perfil:
@@ -37,6 +37,7 @@ import { fonts, fontSizes } from '@/theme/typography';
  * - Botón "Guardar cambios".
  */
 export default function ProfileScreen() {
+  const router = useRouter();
   const signOut = useAuth((st) => st.signOut);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -45,6 +46,7 @@ export default function ProfileScreen() {
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [businessName, setBusinessName] = useState('');
+  const [certification, setCertification] = useState('');
   const [description, setDescription] = useState('');
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const quota = useAiQuota((st) => st.quota);
@@ -61,6 +63,7 @@ export default function ProfileScreen() {
         setFullName(profile.full_name);
         setEmail(profile.email);
         setBusinessName(profile.business_name ?? '');
+        setCertification(profile.certification ?? '');
         setDescription(profile.description ?? '');
         setLogoUrl(profile.logo_url);
       })
@@ -84,6 +87,7 @@ export default function ProfileScreen() {
       await updateMyProfile({
         full_name: fullName,
         business_name: businessName || null,
+        certification: certification || null,
         description: description || null,
       });
     } catch (e) {
@@ -115,6 +119,7 @@ export default function ProfileScreen() {
       await updateMyProfile({
         full_name: fullName,
         business_name: businessName || null,
+        certification: certification || null,
         description: description || null,
         logo_url: uploadedUrl,
       });
@@ -178,6 +183,16 @@ export default function ProfileScreen() {
                 value={businessName}
                 onChangeText={setBusinessName}
               />
+              <Input
+                label="Certificación (aparece en tus informes)"
+                placeholder="Ej: Antropometrista ISAK nivel 1"
+                value={certification}
+                onChangeText={setCertification}
+                maxLength={120}
+              />
+              <Text style={styles.certHint}>
+                Lo declaras tú: CoplanFit no la verifica. Escribe solo una acreditación que tengas vigente; eres responsable de que sea cierta.
+              </Text>
 
               <View style={styles.fieldGroup}>
                 <Text style={styles.fieldLabel}>Descripción</Text>
@@ -204,6 +219,12 @@ export default function ProfileScreen() {
               loading={saving}
               style={styles.cta}
             />
+            <Pressable accessibilityRole="button" onPress={() => router.push('/privacy' as never)} style={styles.signOut}>
+              <Text style={styles.importText}>Privacidad y uso de datos ›</Text>
+            </Pressable>
+            <Pressable accessibilityRole="button" onPress={() => router.push('/client/import')} style={styles.signOut}>
+              <Text style={styles.importText}>Importar clientes desde Excel ›</Text>
+            </Pressable>
             <Pressable onPress={signOut} hitSlop={8} style={styles.signOut}>
               <Text style={styles.signOutText}>Cerrar sesión</Text>
             </Pressable>
@@ -215,6 +236,8 @@ export default function ProfileScreen() {
 }
 
 const styles = StyleSheet.create({
+  certHint: { fontFamily: fonts.body, fontSize: fontSizes.xs, lineHeight: lineHeights.xs, color: colors.textSecondary, marginTop: -s(4) },
+  importText: { fontFamily: fonts.bodyBold, fontSize: fontSizes.sm, color: colors.navy },
   screen: { flex: 1, backgroundColor: colors.background },
   spinner: { marginTop: s(24) },
   body: {

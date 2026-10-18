@@ -8,6 +8,8 @@ import { isChangeFavorable } from '@/lib/measurementTrends';
 import { esc, pdfDocument, pdfFooter, pdfHeader, pdfMetaCard, pdfSectionTitle } from '@/lib/pdf';
 import { resolveMediaUrls } from '@/lib/storage';
 import { listMeasurements } from './measurementsRepository';
+import { buildIsakSummaryHtml, ISAK_SUMMARY_CSS } from '@/features/anthropometry/isakPdf';
+import { buildReportContext } from '@/features/anthropometry/report';
 import { PLAN_PDF_CSS, planSectionsHtml } from './planPdf';
 import { getPlanVersionById, listPlanVersions } from './plansRepository';
 import { getClient } from './repository';
@@ -142,6 +144,7 @@ export async function buildClientReportHtml(clientId: string, opts: { includePho
     ${
       latest
         ? measurementSectionHtml(latest, previous ?? null, client.goal ?? null) +
+          (latest.protocol === 'isak_restricted' ? pdfSectionTitle('Análisis ISAK') + buildIsakSummaryHtml(buildReportContext(latest, client, measurements)) : '') +
           (photos.length
             ? `<div class="photos">${photos.map((u, i) => `<img src="${esc(u)}" alt="Foto ${i + 1}" />`).join('')}</div>`
             : '')
@@ -165,6 +168,6 @@ export async function buildClientReportHtml(clientId: string, opts: { includePho
   return pdfDocument({
     title: `Informe · ${client.full_name}`,
     body,
-    extraCss: PLAN_PDF_CSS + WORKOUT_PDF_CSS + REPORT_CSS,
+    extraCss: PLAN_PDF_CSS + WORKOUT_PDF_CSS + REPORT_CSS + ISAK_SUMMARY_CSS,
   });
 }

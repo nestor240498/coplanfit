@@ -60,6 +60,13 @@ const FAVORABLE_BY_METRIC: Record<string, (goal: Goal | null) => TrendDirection>
   thigh_mm: () => 'down',
   calf_mm: () => 'down',
   chest_mm: () => 'down',
+
+  // Derivados del análisis ISAK
+  sum6_mm: () => 'down',
+  sum8_mm: () => 'down',
+  fat_mass_kg: () => 'down',
+  adipose_kg: () => 'down',
+  muscle_kg: () => 'up',
 };
 
 /** true si `next` respecto a `prev` va en la dirección favorable para ese objetivo; null si es neutro. */
@@ -73,6 +80,7 @@ export function isChangeFavorable(metric: string, prev: number, next: number, go
 // Métricas que resumen el avance tras guardar (en este orden); solo se citan las que cambian
 const SUMMARY_METRICS: { key: string; label: string; unit: string; decimals: number }[] = [
   { key: 'weight_kg', label: 'peso', unit: ' kg', decimals: 1 },
+  { key: 'sum6_mm', label: 'Σ6 pliegues', unit: ' mm', decimals: 1 },
   { key: 'body_fat_pct', label: 'grasa', unit: ' %', decimals: 1 },
   { key: 'muscle_mass_pct', label: 'músculo', unit: ' %', decimals: 1 },
   { key: 'waist_cm', label: 'cintura', unit: ' cm', decimals: 1 },
@@ -98,9 +106,16 @@ export function describeMeasurementChange(
   const parts: string[] = [];
   let good = 0;
   let bad = 0;
+  // % de grasa y de músculo calculados con métodos distintos (báscula vs pliegues) no son comparables
+  const sameMethod = fatMethod(prev) === fatMethod(next);
+  const withSums: { prev: Record<string, unknown>; next: Record<string, unknown> } = {
+    prev: { ...prev, sum6_mm: sum6(prev) },
+    next: { ...next, sum6_mm: sum6(next) },
+  };
   for (const { key, label, unit, decimals } of SUMMARY_METRICS) {
-    const a = prev[key];
-    const b = next[key];
+    if (!sameMethod && (key === 'body_fat_pct' || key === 'muscle_mass_pct')) continue;
+    const a = withSums.prev[key];
+    const b = withSums.next[key];
     if (typeof a !== 'number' || typeof b !== 'number') continue;
     const delta = Number((b - a).toFixed(decimals));
     if (delta === 0) continue;
@@ -115,4 +130,24 @@ export function describeMeasurementChange(
   const favorable = good > 0 && good > bad;
   const lead = favorable ? 'Buen avance desde la anterior' : 'Medición guardada. Desde la anterior';
   return { message: `${lead}: ${parts.join(', ')}.`, favorable };
+}
+
+const SUM6_KEYS = ['triceps_mm', 'subscapular_mm', 'supraspinal_mm', 'abdominal_mm', 'thigh_mm', 'calf_mm'];
+
+/** Σ6 pliegues si están los seis; si no, undefined (no se cita). */
+function sum6(m: Record<string, unknown>): number | undefined {
+  let total = 0;
+  for (const key of SUM6_KEYS) {
+    const v = m[key];
+    if (typeof v !== 'number') return undefined;
+    total += v;
+  }
+  return total;
+}
+
+/** Método del % de grasa: la ecuación en evaluaciones ISAK, «medido» en el resto. */
+function fatMethod(m: Record<string, unknown>): string {
+  if (m.protocol !== 'isak_restricted' && m.protocol !== 'skinfolds') return 'medido';
+  const equations = m.equations as { fat?: string | null } | null | undefined;
+  return equations?.fat ?? 'isak';
 }

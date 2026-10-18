@@ -1,12 +1,15 @@
 import { ClipboardList, Dumbbell, FileText, Ruler, Salad } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { formatDateShort } from '@/lib/format';
 import { s } from '@/theme/scale';
 import { colors, radius } from '@/theme/tokens';
 import { fonts, fontSizes } from '@/theme/typography';
 import { listSentLog, SentKind, SentLogEntry } from '../sentLogRepository';
+
+/** Cuántos envíos se ven de entrada; el resto, con «Ver todo». */
+const VISIBLE = 3;
 
 const ICONS: Record<SentKind, typeof FileText> = {
   plan: Salad,
@@ -25,6 +28,7 @@ type Props = {
 /** "Enviado al cliente": qué documentos se le compartieron y cuándo. */
 export function SentHistory({ clientId, refreshKey }: Props) {
   const [entries, setEntries] = useState<SentLogEntry[] | null>(null);
+  const [expanded, setExpanded] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -44,7 +48,7 @@ export function SentHistory({ clientId, refreshKey }: Props) {
           Todavía no le has enviado nada. Lo que compartas desde «Enviar» aparecerá aquí con su fecha.
         </Text>
       ) : (
-        entries.map((entry) => {
+        (expanded ? entries : entries.slice(0, VISIBLE)).map((entry) => {
           const Icon = ICONS[entry.kind] ?? FileText;
           return (
             <View key={entry.id} style={styles.row}>
@@ -57,6 +61,11 @@ export function SentHistory({ clientId, refreshKey }: Props) {
           );
         })
       )}
+      {entries !== null && entries.length > VISIBLE ? (
+        <Pressable accessibilityRole="button" accessibilityState={{ expanded }} onPress={() => setExpanded((v) => !v)} style={styles.more}>
+          <Text style={styles.moreText}>{expanded ? 'Ver menos' : `Ver todo (${entries.length})`}</Text>
+        </Pressable>
+      ) : null}
     </View>
   );
 }
@@ -71,6 +80,8 @@ const styles = StyleSheet.create({
     gap: s(6),
   },
   title: { fontFamily: fonts.headingSemi, fontSize: fontSizes.sm, color: colors.navy },
+  more: { minHeight: 44, alignItems: 'center', justifyContent: 'center' },
+  moreText: { fontFamily: fonts.bodyBold, fontSize: fontSizes.sm, color: colors.navy },
   empty: { fontFamily: fonts.body, fontSize: fontSizes.xs, color: colors.textSecondary },
   row: { flexDirection: 'row', alignItems: 'center', gap: s(8), minHeight: 32 },
   label: { flex: 1, fontFamily: fonts.bodyMedium, fontSize: fontSizes.xs, color: colors.text },

@@ -24,6 +24,10 @@ import { Client, Measurement } from '@/features/clients/types';
 import { getMyProfile } from '@/features/profile/repository';
 import { formatDateShort } from '@/lib/format';
 import { isChangeFavorable } from '@/lib/measurementTrends';
+import { ChartView } from '@/features/anthropometry/charts/ChartView';
+import { somatochart } from '@/features/anthropometry/charts/builders';
+import { fmtEs, type IsakResults } from '@/features/anthropometry/engine';
+import { computeMeasurementResults } from '@/features/anthropometry/fromMeasurement';
 import { s } from '@/theme/scale';
 import { colors, radius } from '@/theme/tokens';
 import { fonts, fontSizes } from '@/theme/typography';
@@ -87,7 +91,7 @@ const METRIC_GROUPS: MetricGroup[] = [
       { key: 'biceps_mm', label: 'Bíceps', unit: 'mm', decimals: 1 },
       { key: 'subscapular_mm', label: 'Subescapular', unit: 'mm', decimals: 1 },
       { key: 'supraspinal_mm', label: 'Supraespinal', unit: 'mm', decimals: 1 },
-      { key: 'suprailiac_mm', label: 'Suprailíaco', unit: 'mm', decimals: 1 },
+      { key: 'suprailiac_mm', label: 'Cresta ilíaca', unit: 'mm', decimals: 1 },
       { key: 'abdominal_mm', label: 'Abdominal', unit: 'mm', decimals: 1 },
       { key: 'thigh_mm', label: 'Muslo frontal', unit: 'mm', decimals: 1 },
       { key: 'calf_mm', label: 'Pantorrilla medial', unit: 'mm', decimals: 1 },
@@ -95,6 +99,77 @@ const METRIC_GROUPS: MetricGroup[] = [
     ],
   },
 ];
+
+/** Orden cronológico: fecha de medición y, el mismo día, la hora de registro. */
+function isEarlier(a: Measurement, b: Measurement): boolean {
+  if (a.measured_at !== b.measured_at) return a.measured_at < b.measured_at;
+  return (a.created_at ?? '') <= (b.created_at ?? '');
+}
+
+type DerivedRow = { key: string; label: string; unit: string; decimals: number; get: (r: IsakResults) => number | null };
+
+const DERIVED: DerivedRow[] = [
+  { key: 'body_fat_pct', label: '% grasa (pliegues)', unit: '%', decimals: 1, get: (r) => (r.fat.ok ? r.fat.value.pct : null) },
+  { key: 'fat_mass_kg', label: 'Masa grasa', unit: 'kg', decimals: 1, get: (r) => (r.fat.ok ? r.fat.value.fatKg : null) },
+  { key: 'adipose_kg', label: 'Tejido adiposo', unit: 'kg', decimals: 1, get: (r) => (r.adipose.ok ? r.adipose.value.kg : null) },
+  { key: 'muscle_kg', label: 'Tejido muscular', unit: 'kg', decimals: 1, get: (r) => (r.muscle.ok ? r.muscle.value.kg : null) },
+  { key: 'bone_kg', label: 'Tejido óseo', unit: 'kg', decimals: 1, get: (r) => (r.bone.ok ? r.bone.value.kg : null) },
+  { key: 'sum6_mm', label: 'Σ 6 pliegues', unit: 'mm', decimals: 1, get: (r) => (r.sum6.ok ? r.sum6.value : null) },
+  { key: 'sum8_mm', label: 'Σ 8 pliegues', unit: 'mm', decimals: 1, get: (r) => (r.sum8.ok ? r.sum8.value : null) },
+  { key: 'endo', label: 'Endomorfia', unit: '', decimals: 2, get: (r) => (r.somatotype.ok ? r.somatotype.value.endo : null) },
+  { key: 'meso', label: 'Mesomorfia', unit: '', decimals: 2, get: (r) => (r.somatotype.ok ? r.somatotype.value.meso : null) },
+  { key: 'ecto', label: 'Ectomorfia', unit: '', decimals: 2, get: (r) => (r.somatotype.ok ? r.somatotype.value.ecto : null) },
+  { key: 'muscle_bone', label: 'Índice músculo-óseo', unit: '', decimals: 2, get: (r) => (r.muscleBoneIndex.ok ? r.muscleBoneIndex.value.value : null) },
+];
+
+/** Resultados del análisis ISAK de las dos mediciones (solo los que se pueden calcular en alguna). */
+function IsakComparison({ client, earlier, later }: { client: Client; earlier: Measurement; later: Measurement }) {
+  const [width, setWidth] = useState(0);
+  const a = computeMeasurementResults(earlier, client);
+  const b = computeMeasurementResults(later, client);
+  const sameFat = a.fat.ok && b.fat.ok && a.fat.value.equation === b.fat.value.equation;
+  const rows = DERIVED.filter((d) => d.get(a) != null || d.get(b) != null);
+  if (!rows.length) return null;
+  return (
+    <View style={styles.card} onLayout={(e) => setWidth(Math.floor(e.nativeEvent.layout.width) - s(28) - 2)}>
+      <View style={styles.categoryHeader}>
+        <Text style={styles.categoryTitle}>RESULTADOS DEL ANÁLISIS</Text>
+      </View>
+      <View style={[styles.row, styles.headerRow]}>
+        <View style={styles.labelCol}>
+          <Text style={styles.colTitle}>Resultado</Text>
+        </View>
+        <Text style={styles.headerCell}>{formatDateShort(earlier.measured_at)}</Text>
+        <Text style={styles.headerCell}>{formatDateShort(later.measured_at)}</Text>
+      </View>
+      {rows.map((d) => {
+        const prev = d.get(a);
+        const next = d.get(b);
+        const comparable = d.key === 'body_fat_pct' || d.key === 'fat_mass_kg' ? sameFat : true;
+        const favorable = prev != null && next != null && comparable ? isChangeFavorable(d.key, prev, next, client.goal) : null;
+        const show = (v: number | null) => (v == null ? '—' : `${fmtEs(v, d.decimals)}${d.unit ? ` ${d.unit}` : ''}`);
+        return (
+          <View key={d.key} style={styles.row}>
+            <Text style={styles.labelCell}>{d.label}</Text>
+            <Text style={styles.valueCell}>{show(prev)}</Text>
+            <Text style={[styles.valueCell, styles.valueCellBold, favorable === true && styles.favorable]}>{show(next)}</Text>
+          </View>
+        );
+      })}
+      {a.fat.ok && b.fat.ok && !sameFat && (
+        <Text style={styles.methodNote}>El % de grasa se calculó con ecuaciones distintas: no es comparable.</Text>
+      )}
+      {a.somatotype.ok && b.somatotype.ok && width > 0 && (
+        <ChartView
+          scene={somatochart(
+            { current: { x: b.somatotype.value.x, y: b.somatotype.value.y }, previous: [{ x: a.somatotype.value.x, y: a.somatotype.value.y }] },
+            { width, desc: 'Somatocarta: evolución entre las dos mediciones' }
+          )}
+        />
+      )}
+    </View>
+  );
+}
 
 export default function CompareMeasurementsScreen() {
   const { id, a, b } = useLocalSearchParams<{ id: string; a: string; b: string }>();
@@ -109,7 +184,7 @@ export default function CompareMeasurementsScreen() {
     Promise.all([getClient(id), getMeasurementById(a), getMeasurementById(b)]).then(([c, ma, mb]) => {
       setClient(c);
       const [first, second] =
-        new Date(ma.measured_at).getTime() <= new Date(mb.measured_at).getTime() ? [ma, mb] : [mb, ma];
+        isEarlier(ma, mb) ? [ma, mb] : [mb, ma];
       setEarlier(first);
       setLater(second);
     });
@@ -146,6 +221,7 @@ export default function CompareMeasurementsScreen() {
       <AppBackground />
       <ScreenHeader
         title="Comparar mediciones"
+        backHref={`/client/${id}?tab=antropometria`}
         subtitle={`${client.full_name} · evolución`}
         showBack
       />
@@ -260,6 +336,8 @@ export default function CompareMeasurementsScreen() {
           </View>
         )}
 
+        <IsakComparison client={client} earlier={earlier} later={later} />
+
         {METRIC_GROUPS.map((group) => {
           const visibleMetrics = group.metrics.filter(
             (m) => earlier[m.key] != null || later[m.key] != null
@@ -338,6 +416,7 @@ function fmt(value: number | null, unit: string, decimals = 0): string {
 }
 
 const styles = StyleSheet.create({
+  methodNote: { fontFamily: fonts.body, fontSize: fontSizes.xs, color: colors.textSecondary, marginTop: s(6) },
   screen: { flex: 1, backgroundColor: colors.background },
   spinner: { marginTop: s(24) },
   scrollContent: { padding: s(16), gap: s(12), paddingBottom: s(32) },

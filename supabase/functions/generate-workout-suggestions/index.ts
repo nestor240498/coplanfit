@@ -125,6 +125,7 @@ Deno.serve(async (req) => {
         .select('weight_kg, height_cm, body_fat_pct')
         .eq('client_id', body.clientId)
         .order('measured_at', { ascending: false })
+        .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle(),
       catalogIds.length

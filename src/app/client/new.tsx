@@ -11,7 +11,8 @@ import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { GoalPickerSheet } from '@/features/clients/components/GoalPickerSheet';
 import { PhoneField } from '@/features/clients/components/PhoneField';
 import { createClient } from '@/features/clients/repository';
-import { Goal } from '@/features/clients/types';
+import { CONSENT_METHODS, type ConsentMethod, Goal } from '@/features/clients/types';
+import { SingleChoice } from '@/features/workouts/components/ExerciseFormControls';
 import { formatGoal } from '@/lib/format';
 import { DEFAULT_COUNTRY_PREFIX, joinPhone } from '@/lib/phone';
 import { s } from '@/theme/scale';
@@ -32,6 +33,7 @@ export default function NewClientScreen() {
   const [age, setAge] = useState('');
   const [goal, setGoal] = useState<Goal | null>(null);
   const [goalSheetOpen, setGoalSheetOpen] = useState(false);
+  const [consent, setConsent] = useState<ConsentMethod | 'pendiente'>('pendiente');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -50,6 +52,7 @@ export default function NewClientScreen() {
         phone,
         age: age ? Number(age) : undefined,
         goal: goal ?? undefined,
+        consent_method: consent === 'pendiente' ? undefined : consent,
       });
       router.back();
     } catch (e) {
@@ -103,11 +106,25 @@ export default function NewClientScreen() {
           </View>
         </View>
 
+        <View style={styles.consentBox}>
+          <Text style={styles.selectLabel}>Consentimiento para guardar y enviar sus datos de salud</Text>
+          <SingleChoice<ConsentMethod | 'pendiente'>
+            options={[{ id: 'pendiente', label: 'Aún no' }, ...CONSENT_METHODS]}
+            value={consent}
+            onChange={setConsent}
+          />
+          <Text style={styles.hint}>Cómo te lo dio el cliente. Es una declaración tuya y puedes registrarla después en su ficha.</Text>
+        </View>
+
         <Text style={styles.hint}>
           Los demás datos (alergias, condiciones, medidas) se completan luego, en la ficha del cliente.
         </Text>
 
         {error != null && <Text style={styles.error}>{error}</Text>}
+
+        <Pressable accessibilityRole="button" onPress={() => router.replace('/client/import')} style={styles.importLink}>
+          <Text style={styles.importLinkText}>¿Tienes muchos clientes? Impórtalos desde Excel ›</Text>
+        </Pressable>
       </ScrollView>
 
       {/* Footer fijo al pie de la pantalla */}
@@ -127,6 +144,9 @@ export default function NewClientScreen() {
 }
 
 const styles = StyleSheet.create({
+  consentBox: { gap: s(8) },
+  importLink: { minHeight: 44, justifyContent: 'center', alignSelf: 'center' },
+  importLinkText: { fontFamily: fonts.bodyBold, fontSize: fontSizes.sm, color: colors.navy },
   flex: { flex: 1, backgroundColor: colors.background },
   form: {
     flexGrow: 1,
